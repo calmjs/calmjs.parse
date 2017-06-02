@@ -439,6 +439,6 @@ class Lexer(object):
         return token
 
     def t_error(self, token):
-        print('Illegal character %r at %s:%s after %s' % (
+        # TODO figure out how to report column instead of lexpos.
+        raise SyntaxError('Illegal character %r at %s:%s after %s' % (
             token.value[0], token.lineno, token.lexpos, self.prev_token))
-        token.lexer.skip(1)

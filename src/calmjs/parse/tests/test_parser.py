@@ -39,6 +39,15 @@ class ParserTestCase(unittest.TestCase):
         parser = Parser()
         parser.parse('var $_ = function(x){}(window);\n')
 
+    def test_bad_char_error(self):
+        parser = Parser()
+        with self.assertRaises(SyntaxError) as e:
+            parser.parse('var\x01 blagh = 1;')
+        self.assertEqual(
+            e.exception.args[0],
+            "Illegal character '\\x01' at 1:3 after LexToken(VAR,'var',1,0)"
+        )
+
     # XXX: function expression ?
     def test_function_expression(self):
         text = """
