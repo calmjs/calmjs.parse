@@ -328,6 +328,80 @@ ParserToECMAASITestCase = build_equality_testcase(
 
         }
         """
+    ), (
+        'regex',
+        r"""
+        r = /foo/
+        q = /default/g
+        """,
+        r"""
+        r = /foo/;
+        q = /default/g;
+        """
+    ), (
+        'new_expr',
+        r"""
+        var T = function() {}
+        a = new T()
+        """,
+        r"""
+        var T = function() {
+
+        };
+        a = new T();
+        """
+    ), (
+        'bracket_accessor',
+        """
+        foo = [1, 2, 3][1]
+        """,
+        """
+        foo = [1,2,3][1];
+        """
+    ), (
+        'get_prop_assignment',
+        """
+        foo = {get bar() {return 1}}
+        """,
+        """
+        foo = {
+          get bar() {
+            return 1;
+          }
+        };
+        """
+    ), (
+        'set_prop_assignment',
+        """
+        foo = {set bar(x) {this.x = x}}
+        """,
+        """
+        foo = {
+          set bar(x) {
+            this.x = x;
+          }
+        };
+        """
+    ), (
+        'conditional_standard',
+        """
+        x ? y : z
+        x ? y : z
+        """,
+        """
+        x ? y : z;
+        x ? y : z;
+        """
+    ), (
+        'conditional_standard_overflowed',
+        """
+        x ?
+        y :
+        z
+        """,
+        """
+        x ? y : z;
+        """
     )])
 )
 

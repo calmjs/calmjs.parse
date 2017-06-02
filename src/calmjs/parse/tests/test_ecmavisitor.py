@@ -25,17 +25,34 @@
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 import textwrap
+import unittest
 
+from calmjs.parse.asttypes import Node
 from calmjs.parse.parser import Parser
+from calmjs.parse.visitors.nodevisitor import NodeVisitor
 
 from calmjs.parse.testing.util import build_equality_testcase
-
+from calmjs.parse.testing.util import build_exception_testcase
 
 parser = Parser()
 
 
+class BaseTestCase(unittest.TestCase):
+
+    def test_default(self):
+        self.assertTrue(Node().to_ecma().startswith('GEN: '))
+
+
 def parse_to_ecma(value):
     return parser.parse(value).to_ecma()
+
+
+def parse_force_parens_to_ecma(value):
+    # Parse, then walk through all nodes and force parens
+    tree = parser.parse(value)
+    for node in NodeVisitor().visit(tree):
+        node._parens = True
+    return tree.to_ecma()
 
 
 ECMAVisitorTestCase = build_equality_testcase(
@@ -571,5 +588,112 @@ ECMAVisitorTestCase = build_equality_testcase(
           }
         };
         """,
+    ), (
+        'dot_accessor_on_integer',
+        """
+        (0).toString();
+        """,
     )]))
+)
+
+
+ECMAVisitorWithParensTestCase = build_equality_testcase(
+    'ECMAVisitorWithParensTestCase', parse_force_parens_to_ecma, ((
+        label,
+        textwrap.dedent(source).strip(),
+        textwrap.dedent(answer).strip(),
+    ) for label, source, answer in [(
+        'dot_accessor',
+        """
+        value = this.value;
+        """,
+        """
+        (value = (this.value));
+        """,
+    ), (
+        'ternary_conditional',
+        """
+        x ? y : z;
+        """,
+        """
+        (x ? y : z);
+        """,
+    ), (
+        'unary_operator',
+        """
+        !true;
+        """,
+        """
+        (!true);
+        """,
+    ), (
+        'function_wrap',
+        """
+        var foo = function() {
+
+        };
+        """,
+        """
+        var foo = (function() {
+
+        });
+        """,
+    ), (
+        'prop_get_set',
+        """
+        Name.prototype = {
+          get fullName() {
+            return this.first + " " + this.last;
+          },
+          set fullName(name) {
+            var names = name.split(" ");
+            this.first = names[0];
+            this.last = names[1];
+          }
+        };
+        """,
+        """
+        ((Name.prototype) = {
+          (get fullName() {
+            return (((this.first) + " ") + (this.last));
+          }),
+          (set fullName(name) {
+            var names = ((name.split)(" "));
+            ((this.first) = names[0]);
+            ((this.last) = names[1]);
+          })
+        });
+        """,
+    )])
+)
+
+
+ECMASyntaxErrorTestCase = build_exception_testcase(
+    'ECMAVisitorTestCase', parse_to_ecma, ((
+        label,
+        textwrap.dedent(argument).strip(),
+    ) for label, argument in [(
+        'get_no_argument',
+        """
+        Name.prototype = {
+          get something(fail) {
+            return false;
+          }
+        }
+        """
+    ), (
+        'set_too_many_arguments',
+        """
+        Name.prototype = {
+          set failure(arg1, arg2) {
+            return false;
+          }
+        };
+        """,
+    ), (
+        'numeric_bare_accessor',
+        """
+        var x = 0.toString();
+        """,
+    )]), SyntaxError
 )
