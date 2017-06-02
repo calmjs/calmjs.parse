@@ -99,13 +99,1221 @@ class ParserTestCase(unittest.TestCase):
 
 
 parser = Parser()
+repr_visitor = nodevisitor.ReprVisitor()
 
+
+def parse_to_repr(value):
+    return repr_visitor.visit(parser.parse(value))
+
+
+def singleline(s):
+    def clean(f):
+        r = f.strip()
+        return r + ' ' if r[-1:] == ',' else r
+    return ''.join(clean(t) for t in textwrap.dedent(s).splitlines())
+
+
+ParsedNodeTypeTestCase = build_equality_testcase(
+    'ParsedNodeTypeTestCase', parse_to_repr, ((
+        label,
+        textwrap.dedent(argument).strip(),
+        singleline(result),
+    ) for label, argument, result in [(
+        'block',
+        """
+        {
+          var a = 5;
+        }
+        """,
+        """
+        <Program ?children=[<Block ?children=[
+          <VarStatement ?children=[<VarDecl identifier=<Identifier value='a'>,
+            initializer=<Number value='5'>>]>
+        ]>]>
+        """,
+    ), (
+        'variable_statement',
+        """
+        var a;
+        var b;
+        var a, b = 3;
+        var a = 1, b;
+        var a = 5, b = 7;
+        """,
+        """
+        <Program ?children=[
+          <VarStatement ?children=[
+            <VarDecl identifier=<Identifier value='a'>, initializer=None>
+          ]>,
+          <VarStatement ?children=[
+            <VarDecl identifier=<Identifier value='b'>, initializer=None>
+          ]>,
+          <VarStatement ?children=[
+            <VarDecl identifier=<Identifier value='a'>, initializer=None>,
+            <VarDecl identifier=<Identifier value='b'>, initializer=<
+              Number value='3'>>
+          ]>,
+          <VarStatement ?children=[
+            <VarDecl identifier=<Identifier value='a'>,
+              initializer=<Number value='1'>>,
+            <VarDecl identifier=<Identifier value='b'>, initializer=None>
+          ]>,
+          <VarStatement ?children=[
+            <VarDecl identifier=<Identifier value='a'>, initializer=<
+              Number value='5'>>,
+            <VarDecl identifier=<Identifier value='b'>, initializer=<
+              Number value='7'>>
+          ]>
+        ]>
+        """,
+    ), (
+        'empty_statement',
+        """
+        ;
+        ;
+        ;
+        """,
+        """
+        <Program ?children=[
+          <EmptyStatement value=';'>,
+          <EmptyStatement value=';'>,
+          <EmptyStatement value=';'>
+        ]>
+        """,
+    ), (
+        'if_statement_inline',
+        'if (true) var x = 100;',
+        """
+        <Program ?children=[<If alternative=None,
+          consequent=<VarStatement ?children=[
+            <VarDecl identifier=<Identifier value='x'>,
+              initializer=<Number value='100'>>
+          ]>, predicate=<Boolean value='true'>>
+        ]>
+        """,
+    ), (
+        'if_statement_block',
+        """
+        if (true) {
+          var x = 100;
+          var y = 200;
+        }
+        """,
+        """
+        <Program ?children=[<If alternative=None,
+          consequent=<Block ?children=[
+            <VarStatement ?children=[
+              <VarDecl identifier=<Identifier value='x'>,
+                initializer=<Number value='100'>>
+            ]>,
+            <VarStatement ?children=[
+              <VarDecl identifier=<Identifier value='y'>,
+                initializer=<Number value='200'>>
+            ]>
+          ]>,
+          predicate=<Boolean value='true'>>
+        ]>
+        """,
+    ), (
+        'if_else_inline',
+        'if (true) if (true) var x = 100; else var y = 200;',
+        """
+        <Program ?children=[<
+          If alternative=None,
+          consequent=<If alternative=<VarStatement ?children=[
+            <VarDecl identifier=<Identifier value='y'>,
+              initializer=<Number value='200'>>
+            ]>,
+            consequent=<VarStatement ?children=[
+              <VarDecl identifier=<Identifier value='x'>,
+                initializer=<Number value='100'>>
+            ]>,
+            predicate=<Boolean value='true'>>,
+          predicate=<Boolean value='true'>>
+        ]>
+        """,
+    ), (
+        'if_else_block',
+        """
+        if (true) {
+          var x = 100;
+        } else {
+          var y = 200;
+        }
+        """,
+        """
+        <Program ?children=[
+          <If alternative=<Block ?children=[
+            <VarStatement ?children=[
+              <VarDecl identifier=<Identifier value='y'>,
+                initializer=<Number value='200'>>
+            ]>
+          ]>, consequent=<Block ?children=[
+            <VarStatement ?children=[
+              <VarDecl identifier=<Identifier value='x'>,
+                initializer=<Number value='100'>>
+            ]>
+          ]>, predicate=<Boolean value='true'>>
+        ]>
+        """,
+    ), (
+        'iteration_var',
+        """
+        for (var i = 0; i < 10; i++) {
+          x = 10 * i;
+        }
+        """,
+        """
+        <Program ?children=[
+          <For cond=<BinOp left=<Identifier value='i'>, op='<', right=<
+            Number value='10'>>, count=<
+              UnaryOp op='++', postfix=True, value=<Identifier value='i'>>,
+            init=<VarStatement ?children=[
+              <VarDecl identifier=<Identifier value='i'>,
+                initializer=<Number value='0'>>
+            ]>, statement=<Block ?children=[
+              <ExprStatement expr=<Assign left=<Identifier value='x'>,
+                op='=', right=<BinOp left=<Number value='10'>, op='*',
+                  right=<Identifier value='i'>>>>
+            ]
+          >>
+        ]>
+        """,
+    ), (
+        'iteration_multi_value',
+        """
+        for (i = 0, j = 10; i < j && j < 15; i++, j++) {
+          x = i * j;
+        }
+        """,
+        """
+        <Program ?children=[<For cond=<BinOp left=<BinOp left=<
+          Identifier value='i'>, op='<', right=<Identifier value='j'>>,
+          op='&&', right=<BinOp left=<Identifier value='j'>, op='<', right=<
+            Number value='15'>>>,
+          count=<Comma left=<UnaryOp op='++', postfix=True, value=<
+            Identifier value='i'>>, right=<UnaryOp op='++', postfix=True
+            , value=<Identifier value='j'>>>,
+          init=<Comma left=<Assign left=<Identifier value='i'>,
+            op='=', right=<Number value='0'>>, right=<Assign left=<
+              Identifier value='j'>, op='=', right=<Number value='10'>>>,
+          statement=<Block ?children=[
+            <ExprStatement expr=<Assign left=<Identifier value='x'>, op='=',
+              right=<BinOp left=<Identifier value='i'>, op='*',
+              right=<Identifier value='j'>>>>
+          ]>>
+        ]>
+        """,
+
+    ), (
+        'iteration_in',
+        """
+        for (p in obj) {
+
+        }
+        """,
+        """
+        <Program ?children=[
+          <ForIn item=<Identifier value='p'>,
+            iterable=<Identifier value='obj'>, statement=<Block >>
+        ]>
+        """,
+    ), (
+        # retain the semicolon in the initialiser part of a 'for' statement
+        'iteration_conditional_initialiser',
+        """
+        for (Q || (Q = []); d < b; ) {
+          d = 1;
+        }
+        """,
+        """
+        <Program ?children=[<For cond=<BinOp left=<Identifier value='d'>,
+          op='<', right=<Identifier value='b'>>, count=None,
+          init=<BinOp left=<Identifier value='Q'>, op='||',
+            right=<Assign left=<Identifier value='Q'>, op='=',
+              right=<Array items=[]>>>,
+          statement=<Block ?children=[
+            <ExprStatement expr=<Assign left=<Identifier value='d'>,
+              op='=', right=<Number value='1'>>>
+          ]>>
+        ]>
+        """,
+    ), (
+        'iteration_ternary_initializer',
+        """
+        for (2 >> (foo ? 32 : 43) && 54; 21; ) {
+          a = c;
+        }
+        """,
+        """
+        <Program ?children=[<For cond=<Number value='21'>, count=None, init=<
+          BinOp left=<BinOp left=<Number value='2'>, op='>>', right=<
+            Conditional alternative=<Number value='43'>,
+            consequent=<Number value='32'>,
+            predicate=<Identifier value='foo'>>>, op='&&',
+            right=<Number value='54'>>, statement=<
+              Block ?children=[
+                <ExprStatement expr=<Assign left=<Identifier value='a'>,
+                  op='=', right=<Identifier value='c'>>>
+              ]>>
+        ]>
+        """,
+    ), (
+        'iteration_regex_initialiser',
+        """
+        for (/^.+/g; cond(); ++z) {
+          ev();
+        }
+        """,
+        """
+        <Program ?children=[
+          <For cond=<FunctionCall args=[],
+            identifier=<Identifier value='cond'>>,
+            count=<UnaryOp op='++', postfix=False,
+            value=<Identifier value='z'>>,
+            init=<Regex value='/^.+/g'>,
+            statement=<Block ?children=[
+              <ExprStatement expr=<FunctionCall args=[],
+                identifier=<Identifier value='ev'>>>
+            ]>>
+        ]>
+        """,
+    ), (
+        'iteration_var_in_obj',
+        """
+        for (var p in obj) {
+          p = 1;
+        }
+        """,
+        """
+        <Program ?children=[<ForIn item=<VarDecl identifier=<
+          Identifier value='p'>, initializer=None>, iterable=<
+            Identifier value='obj'>, statement=<
+              Block ?children=[
+              <ExprStatement expr=<Assign left=<Identifier value='p'>,
+                op='=', right=<Number value='1'>>>
+              ]>
+        >]>
+        """,
+    ), (
+        'iteration_do_while',
+        """
+        do {
+          x += 1;
+        } while (true);
+        """,
+        """
+        <Program ?children=[<DoWhile predicate=<Boolean value='true'>,
+          statement=<Block ?children=[
+            <ExprStatement expr=<Assign left=<Identifier value='x'>,
+              op='+=', right=<Number value='1'>>>
+          ]>>
+        ]>
+        """,
+    ), (
+        'while_loop',
+        """
+        while (false) {
+          x = null;
+        }
+        """,
+        """
+        <Program ?children=[
+          <While predicate=<Boolean value='false'>,
+            statement=<Block ?children=[
+              <ExprStatement expr=<Assign left=<Identifier value='x'>,
+                op='=', right=<Null value='null'>>>
+            ]>
+          >
+        ]>
+        """,
+    ), (
+        # test 15
+        ################################
+        # continue statement
+        ################################
+
+        'while_loop_continue',
+        """
+        while (true) {
+          continue;
+          s = 'I am not reachable';
+        }
+        """,
+        """
+        <Program ?children=[
+          <While predicate=<Boolean value='true'>, statement=<Block ?children=[
+            <Continue identifier=None>,
+            <ExprStatement expr=<Assign left=<Identifier value='s'>,
+              op='=', right=<String value="'I am not reachable'">>>
+          ]>>
+        ]>
+        """,
+    ), (
+        'while_loop_continue_label',
+        """
+        while (true) {
+          continue label1;
+          s = 'I am not reachable';
+        }
+        """,
+        """
+        <Program ?children=[
+          <While predicate=<Boolean value='true'>, statement=<Block ?children=[
+            <Continue identifier=<Identifier value='label1'>>,
+            <ExprStatement expr=<Assign left=<Identifier value='s'>,
+              op='=', right=<String value="'I am not reachable'">>>
+          ]>>
+        ]>
+        """,
+    ), (
+        ################################
+        # break statement
+        ################################
+        'while_loop_break',
+        """
+        while (true) {
+          break;
+          s = 'I am not reachable';
+        }
+        """,
+        # test 18
+        """
+        <Program ?children=[
+          <While predicate=<Boolean value='true'>,
+            statement=<Block ?children=[
+              <Break identifier=None>,
+              <ExprStatement expr=<Assign left=<Identifier value='s'>,
+                op='=', right=<String value="'I am not reachable'">>>
+            ]
+          >>
+        ]>
+        """,
+    ), (
+        'while_loop_break_label',
+        """
+        while (true) {
+          break label1;
+          s = 'I am not reachable';
+        }
+        """,
+        """
+        <Program ?children=[
+          <While predicate=<Boolean value='true'>, statement=<Block ?children=[
+            <Break identifier=<Identifier value='label1'>>,
+            <ExprStatement expr=<Assign left=<Identifier value='s'>,
+              op='=', right=<String value="'I am not reachable'">>>
+          ]>>
+        ]>
+        """,
+    ), (
+        ################################
+        # return statement
+        ################################
+
+        'return_empty',
+        """
+        {
+          return;
+        }
+        """,
+        """
+        <Program ?children=[<Block ?children=[<Return expr=None>]>]>
+        """,
+    ), (
+        'return_1',
+        """
+        {
+          return 1;
+        }
+        """,
+        """
+        <Program ?children=[
+          <Block ?children=[<Return expr=<Number value='1'>>]>]>
+        """,
+    ), (
+        # test21
+        ################################
+        # with statement
+        ################################
+        'with_statement',
+        """
+        with (x) {
+          var y = x * 2;
+        }
+        """,
+        """
+        <Program ?children=[
+          <With expr=<Identifier value='x'>, statement=<Block ?children=[
+            <VarStatement ?children=[
+              <VarDecl identifier=<Identifier value='y'>, initializer=
+                <BinOp left=<Identifier value='x'>, op='*', right=
+                <Number value='2'>>>
+            ]>
+          ]>>
+        ]>
+        """,
+    ), (
+        ################################
+        # labelled statement
+        ################################
+
+        'labelled_statement',
+        """
+        label: while (true) {
+          x *= 3;
+        }
+        """,
+        """
+        <Program ?children=[<Label identifier=<
+          Identifier value='label'>, statement=<
+            While predicate=<Boolean value='true'>,
+            statement=<Block ?children=[
+              <ExprStatement expr=<Assign left=<Identifier value='x'>,
+                op='*=', right=<Number value='3'>>>
+            ]>
+        >>]>
+        """,
+
+    ), (
+        ################################
+        # switch statement
+        ################################
+        'switch_statement',
+        """
+        switch (day_of_week) {
+          case 6:
+          case 7:
+            x = 'Weekend';
+            break;
+          case 1:
+            x = 'Monday';
+            break;
+          default:
+            break;
+        }
+        """,
+        """
+        <Program ?children=[<
+          Switch cases=[
+            <Case elements=[], expr=<Number value='6'>>,
+            <Case elements=[
+              <ExprStatement expr=<Assign left=<Identifier value='x'>,
+                op='=', right=<String value="'Weekend'">>>,
+              <Break identifier=None>
+            ], expr=<Number value='7'>>,
+            <Case elements=[
+              <ExprStatement expr=<Assign left=<Identifier value='x'>,
+                op='=', right=<String value="'Monday'">>>,
+              <Break identifier=None>
+            ], expr=<Number value='1'>>
+          ],
+          default=<Default elements=[
+            <Break identifier=None>
+          ]>,
+          expr=<Identifier value='day_of_week'>>
+        ]>
+        """,
+
+    ), (
+        # test 24
+        ################################
+        # throw statement
+        ################################
+        'throw_statement',
+        """
+        throw 'exc';
+        """,
+        """
+        <Program ?children=[<Throw expr=<String value="'exc'">>]>
+        """,
+    ), (
+        ################################
+        # debugger statement
+        ################################
+        'debugger_statement',
+        'debugger;',
+        """
+        <Program ?children=[<Debugger value='debugger'>]>
+        """,
+    ), (
+        ################################
+        # expression statement
+        ################################
+        'expression_statement',
+        """
+        5 + 7 - 20 * 10;
+        ++x;
+        --x;
+        x++;
+        x--;
+        x = 17 /= 3;
+        s = mot ? z : /x:3;x<5;y</g / i;
+        """,
+
+        """
+        <Program ?children=[
+          <ExprStatement expr=<BinOp left=<BinOp left=<Number value='5'>,
+            op='+', right=<Number value='7'>>, op='-',
+            right=<BinOp left=<Number value='20'>, op='*',
+              right=<Number value='10'>>>>,
+          <ExprStatement expr=<UnaryOp op='++', postfix=False, value=<
+            Identifier value='x'>>>,
+          <ExprStatement expr=<UnaryOp op='--', postfix=False, value=<
+            Identifier value='x'>>>,
+          <ExprStatement expr=<UnaryOp op='++', postfix=True, value=<
+            Identifier value='x'>>>,
+          <ExprStatement expr=<UnaryOp op='--', postfix=True, value=<
+            Identifier value='x'>>>,
+          <ExprStatement expr=<Assign left=<Identifier value='x'>, op='=',
+            right=<Assign left=<Number value='17'>, op='/=',
+              right=<Number value='3'>>>>,
+          <ExprStatement expr=<Assign left=<Identifier value='s'>, op='=',
+            right=<Conditional alternative=<BinOp left=<
+              Regex value='/x:3;x<5;y</g'>, op='/', right=<
+                Identifier value='i'>>,
+              consequent=<Identifier value='z'>,
+              predicate=<Identifier value='mot'>>>>
+        ]>
+        """,
+    ), (
+        # test 27
+        ################################
+        # try statement
+        ################################
+        'try_catch_statement',
+        """
+        try {
+          x = 3;
+        } catch (exc) {
+          x = exc;
+        }
+        """,
+        """
+        <Program ?children=[<Try catch=<
+          Catch elements=<Block ?children=[
+            <ExprStatement expr=<Assign left=<Identifier value='x'>,
+              op='=', right=<Identifier value='exc'>>>
+            ]>,
+            identifier=<Identifier value='exc'>
+          >,
+          fin=None,
+          statements=<Block ?children=[
+            <ExprStatement expr=<Assign left=<Identifier value='x'>, op='=',
+              right=<Number value='3'>>>
+          ]>
+        >]>
+        """,
+    ), (
+        'try_finally_statement',
+        """
+        try {
+          x = 3;
+        } finally {
+          x = null;
+        }
+        """,
+        """
+        <Program ?children=[<Try catch=None,
+          fin=<Finally ?children=[
+            <ExprStatement expr=<Assign left=<Identifier value='x'>, op='=',
+              right=<Null value='null'>>>
+            ], elements=<Block ?children=[
+              <ExprStatement expr=<Assign left=<Identifier value='x'>,
+                op='=', right=<Null value='null'>>>
+              ]
+            >
+          >,
+          statements=<Block ?children=[
+            <ExprStatement expr=<Assign left=<Identifier value='x'>,
+              op='=', right=<Number value='3'>>>
+          ]>
+        >]>
+        """,
+
+    ), (
+        'try_catch_finally_statement',
+        """
+        try {
+          x = 5;
+        } catch (exc) {
+          x = exc;
+        } finally {
+          y = null;
+        }
+        """,
+        """
+        <Program ?children=[<Try catch=<
+          Catch elements=<Block ?children=[
+            <ExprStatement expr=<Assign left=<Identifier value='x'>,
+              op='=', right=<Identifier value='exc'>>>
+            ]>, identifier=<Identifier value='exc'>>,
+          fin=<Finally ?children=[
+            <ExprStatement expr=<Assign left=<Identifier value='y'>, op='=',
+              right=<Null value='null'>>>
+            ], elements=<Block ?children=[
+              <ExprStatement expr=<Assign left=<Identifier value='y'>, op='=',
+                right=<Null value='null'>>>
+            ]>>,
+          statements=<Block ?children=[
+            <ExprStatement expr=<Assign left=<Identifier value='x'>, op='=',
+              right=<Number value='5'>>>
+          ]>
+        >]>
+        """,
+    ), (
+        # test 30
+        ################################
+        # function
+        ################################
+        'function_with_arguments',
+        """
+        function foo(x, y) {
+          z = 10;
+          return x + y + z;
+        }
+        """,
+        """
+        <Program ?children=[
+          <FuncDecl elements=[
+            <ExprStatement expr=<Assign left=<Identifier value='z'>, op='=',
+              right=<Number value='10'>>>,
+            <Return expr=<BinOp left=<BinOp left=<
+              Identifier value='x'>, op='+', right=<
+              Identifier value='y'>
+            >, op='+', right=<Identifier value='z'>>>
+          ], identifier=<Identifier value='foo'>, parameters=[
+            <Identifier value='x'>, <Identifier value='y'>]>
+        ]>
+        """,
+    ), (
+        'function_without_arguments',
+        """
+        function foo() {
+          return 10;
+        }
+        """,
+        """
+        <Program ?children=[
+          <FuncDecl elements=[<Return expr=<Number value='10'>>],
+            identifier=<Identifier value='foo'>, parameters=[]>
+        ]>
+        """,
+    ), (
+        'var_function_without_arguments',
+        """
+        var a = function() {
+          return 10;
+        };
+        """,
+        """
+        <Program ?children=[
+          <VarStatement ?children=[
+            <VarDecl identifier=<Identifier value='a'>,
+              initializer=<FuncExpr elements=[
+                <Return expr=<Number value='10'>>
+              ],
+              identifier=None, parameters=[]>
+            >
+          ]>
+        ]>
+        """,
+    ), (
+        # test 33
+        'var_function_with_arguments',
+        """
+        var a = function foo(x, y) {
+          return x + y;
+        };
+        """,
+        """
+        <Program ?children=[
+          <VarStatement ?children=[
+            <VarDecl identifier=<Identifier value='a'>,
+              initializer=<FuncExpr elements=[
+                <Return expr=<BinOp left=<Identifier value='x'>,
+                  op='+', right=<Identifier value='y'>>>
+              ], identifier=<Identifier value='foo'>, parameters=[
+                <Identifier value='x'>, <Identifier value='y'>
+              ]>
+            >
+          ]>]>
+        """,
+    ), (
+        # nested function declaration
+        'function_nested_declaration',
+        """
+        function foo() {
+          function bar() {
+
+          }
+        }
+        """,
+        """
+        <Program ?children=[
+          <FuncDecl elements=[
+            <FuncDecl elements=[], identifier=<Identifier value='bar'>,
+              parameters=[]>
+            ], identifier=<Identifier value='foo'>, parameters=[]>
+        ]>
+        """,
+    ), (
+        # function call
+        # test 36
+        'function_call',
+        'foo();',
+        """
+        <Program ?children=[
+          <ExprStatement expr=<FunctionCall args=[], identifier=<
+            Identifier value='foo'>>>
+        ]>
+        """,
+    ), (
+        'function_call_argument',
+        'foo(x, 7);',
+        """
+        <Program ?children=[
+          <ExprStatement expr=<FunctionCall args=[
+            <Identifier value='x'>, <Number value='7'>
+          ], identifier=<Identifier value='foo'>>>
+        ]>
+        """,
+    ), (
+        'function_call_access_element',
+        'foo()[10];',
+        """
+        <Program ?children=[<ExprStatement expr=<BracketAccessor expr=<
+          Number value='10'>, node=<FunctionCall args=[], identifier=<
+            Identifier value='foo'>>>>
+        ]>
+        """,
+    ), (
+        'function_call_access_attribute',
+        'foo().foo;',
+        """
+        <Program ?children=[
+          <ExprStatement expr=<DotAccessor identifier=<Identifier value='foo'>,
+            node=<FunctionCall args=[], identifier=<Identifier value='foo'>>>>
+        ]>
+        """,
+    ), (
+        'new_keyword',
+        'var foo = new Foo();',
+        """
+        <Program ?children=[<VarStatement ?children=[
+          <VarDecl identifier=<Identifier value='foo'>, initializer=<
+            NewExpr args=[], identifier=<Identifier value='Foo'>>>
+        ]>]>
+        """,
+    ), (
+        # dot accessor
+        'new_keyword_dot_accessor',
+        'var bar = new Foo.Bar();',
+        """
+        <Program ?children=[<VarStatement ?children=[
+          <VarDecl identifier=<Identifier value='bar'>, initializer=<
+            NewExpr args=[], identifier=<DotAccessor identifier=<
+              Identifier value='Bar'>, node=<Identifier value='Foo'>>>>
+        ]>]>
+        """,
+    ), (
+        # bracket accessor
+        'new_keyword_bracket_accessor',
+        'var bar = new Foo.Bar()[7];',
+        """
+        <Program ?children=[<VarStatement ?children=[
+          <VarDecl identifier=<Identifier value='bar'>, initializer=<
+            BracketAccessor expr=<Number value='7'>, node=<
+              NewExpr args=[], identifier=<DotAccessor identifier=<
+                Identifier value='Bar'>, node=<Identifier value='Foo'>>>>>
+        ]>]>
+        """,
+
+    ), (
+        # object literal
+        'object_literal_literal_keys',
+        """
+        var obj = {
+          foo: 10,
+          bar: 20
+        };
+        """,
+        """
+        <Program ?children=[<VarStatement ?children=[
+          <VarDecl identifier=<Identifier value='obj'>, initializer=<
+            Object properties=[
+              <Assign left=<Identifier value='foo'>, op=':', right=<
+                Number value='10'>>,
+              <Assign left=<Identifier value='bar'>, op=':', right=<
+                Number value='20'>>
+            ]
+          >>
+        ]>]>
+        """,
+    ), (
+        'object_literal_numeric_keys',
+        """
+        var obj = {
+          1: 'a',
+          2: 'b'
+        };
+        """,
+        """
+        <Program ?children=[<VarStatement ?children=[
+          <VarDecl identifier=<Identifier value='obj'>, initializer=<
+            Object properties=[
+              <Assign left=<Number value='1'>, op=':', right=<
+                String value="'a'">>,
+              <Assign left=<Number value='2'>, op=':', right=<
+                String value="'b'">>
+            ]
+          >>
+        ]>]>
+        """,
+    ), (
+        'object_literal_string_keys',
+        """
+        var obj = {
+          'a': 100,
+          'b': 200
+        };
+        """,
+        """
+        <Program ?children=[<VarStatement ?children=[
+          <VarDecl identifier=<Identifier value='obj'>, initializer=<
+            Object properties=[
+              <Assign left=<String value="'a'">, op=':', right=<
+                Number value='100'>>,
+              <Assign left=<String value="'b'">, op=':', right=<
+                Number value='200'>>
+            ]
+          >>
+        ]>]>
+        """,
+    ), (
+        'object_literal_empty',
+        """
+        var obj = {
+        };
+        """,
+        """
+        <Program ?children=[<VarStatement ?children=[
+          <VarDecl identifier=<Identifier value='obj'>,
+            initializer=<Object properties=[]>>
+        ]>]>
+        """,
+
+    ), (
+        # array
+        'array_create_access',
+        """
+        var a = [1,2,3,4,5];
+        var b = [1,];
+        var c = [1,,];
+        var res = a[3];
+        """,
+        """
+        <Program ?children=[
+          <VarStatement ?children=[
+            <VarDecl identifier=<Identifier value='a'>,
+              initializer=<Array items=[
+                <Number value='1'>, <Number value='2'>, <Number value='3'>,
+                <Number value='4'>, <Number value='5'>]>>]>,
+          <VarStatement ?children=[
+            <VarDecl identifier=<Identifier value='b'>,
+              initializer=<Array items=[<Number value='1'>]>>]>,
+          <VarStatement ?children=[
+            <VarDecl identifier=<Identifier value='c'>,
+              initializer=<Array items=[
+                <Number value='1'>, <Elision value=','>]>>]>,
+          <VarStatement ?children=[
+            <VarDecl identifier=<Identifier value='res'>,
+              initializer=<BracketAccessor expr=<Number value='3'>,
+                node=<Identifier value='a'>>>]>
+        ]>
+        """,
+    ), (
+        # elision
+        'elision_1',
+        'var a = [,,,];',
+        """
+        <Program ?children=[<VarStatement ?children=[
+          <VarDecl identifier=<Identifier value='a'>,
+            initializer=<Array items=[
+              <Elision value=','>, <Elision value=','>, <Elision value=','>
+            ]>>
+          ]>
+        ]>
+        """,
+    ), (
+        'elision_2',
+        'var a = [1,,,4];',
+        """
+        <Program ?children=[<VarStatement ?children=[
+          <VarDecl identifier=<Identifier value='a'>,
+            initializer=<Array items=[
+              <Number value='1'>, <Elision value=','>, <Elision value=','>,
+              <Number value='4'>
+            ]>>
+          ]>
+        ]>
+        """,
+    ), (
+        'elision_3',
+        'var a = [1,,3,,5];',
+        """
+        <Program ?children=[<VarStatement ?children=[
+          <VarDecl identifier=<Identifier value='a'>,
+            initializer=<Array items=[
+              <Number value='1'>, <Elision value=','>, <Number value='3'>,
+              <Elision value=','>, <Number value='5'>
+            ]>>
+          ]>
+        ]>
+        """,
+    ), (
+
+        #######################################
+        # Make sure parentheses are not removed
+        #######################################
+
+        # ... Expected an identifier and instead saw '/'
+        'parentheses_not_removed',
+        r'Expr.match[type].source + (/(?![^\[]*\])(?![^\(]*\))/.source);',
+
+        r"""
+        <Program ?children=[<ExprStatement expr=<BinOp left=<
+          DotAccessor identifier=<Identifier value='source'>, node=<
+            BracketAccessor expr=<Identifier value='type'>, node=<
+              DotAccessor identifier=<Identifier value='match'>,
+              node=<Identifier value='Expr'>>>>,
+          op='+', right=<DotAccessor identifier=<Identifier value='source'>,
+            node=<Regex value='/(?![^\\[]*\\])(?![^\\(]*\\))/'>>>>]>
+        """,
+    ), (
+        'comparison',
+        '(options = arguments[i]) != null;',
+        # test 54
+        """
+        <Program ?children=[
+          <ExprStatement expr=<
+            BinOp left=<
+              Assign left=<Identifier value='options'>, op='=',
+                right=<BracketAccessor expr=<Identifier value='i'>,
+                node=<Identifier value='arguments'>>
+            >, op='!=', right=<Null value='null'>
+          >>
+        ]>
+        """,
+    ), (
+        'regex_test',
+        'return (/h\d/i).test(elem.nodeName);',
+        r"""
+        <Program ?children=[<Return expr=<FunctionCall args=[
+          <DotAccessor identifier=<Identifier value='nodeName'>,
+            node=<Identifier value='elem'>>], identifier=<
+              DotAccessor identifier=<Identifier value='test'>,
+                node=<Regex value='/h\\d/i'>>>>]>
+        """,
+
+    ), (
+        # https://github.com/rspivak/slimit/issues/42
+        'slimit_issue_42',
+        """
+        e.b(d) ? (a = [c.f(j[1])], e.fn.attr.call(a, d, !0)) : a = [k.f(j[1])];
+        """,
+        """
+        <Program ?children=[
+          <ExprStatement expr=<Conditional alternative=<Assign left=<
+            Identifier value='a'>, op='=', right=<Array items=[
+              <FunctionCall args=[<BracketAccessor expr=<Number value='1'>,
+                node=<Identifier value='j'>>],
+                identifier=<DotAccessor identifier=<Identifier value='f'>,
+                node=<Identifier value='k'>>>
+            ]>>, consequent=
+              <Comma left=<Assign left=<Identifier value='a'>,
+                op='=', right=<Array items=[
+                  <FunctionCall args=[
+                    <BracketAccessor expr=<Number value='1'>,
+                      node=<Identifier value='j'>>
+                    ], identifier=<DotAccessor identifier=<
+                      Identifier value='f'>, node=<Identifier value='c'>>>
+                  ]>
+                >,
+                right=<FunctionCall args=[
+                  <Identifier value='a'>,
+                  <Identifier value='d'>,
+                  <UnaryOp op='!', postfix=False, value=<Number value='0'>>
+                ],
+                identifier=<DotAccessor identifier=<Identifier value='call'>,
+                  node=<DotAccessor identifier=<Identifier value='attr'>,
+                    node=<DotAccessor identifier=<Identifier value='fn'>,
+                      node=<Identifier value='e'>
+                    >
+                  >>
+                >
+              >,
+            predicate=<FunctionCall args=[
+              <Identifier value='d'>
+            ], identifier=<DotAccessor identifier=<Identifier value='b'>,
+              node=<Identifier value='e'>
+            >>
+          >>
+        ]>
+        """,
+    ), (
+        'closure_scope',
+        """
+        (function() {
+          x = 5;
+        }());
+        """,
+        """
+        <Program ?children=[
+          <ExprStatement expr=<FunctionCall args=[],
+            identifier=<FuncExpr elements=[
+              <ExprStatement expr=<Assign left=<Identifier value='x'>,
+                op='=', right=<Number value='5'>>>
+            ], identifier=None, parameters=[]>>>
+        ]>
+        """,
+    ), (
+        'return_statement_negation',
+        'return !(match === true || elem.getAttribute("classid") !== match);',
+        """
+        <Program ?children=[<Return expr=<
+          UnaryOp op='!', postfix=False, value=<BinOp left=<BinOp left=<
+            Identifier value='match'>,
+            op='===', right=<Boolean value='true'>>, op='||', right=<
+              BinOp left=<FunctionCall args=[<String value='"classid"'>],
+                identifier=<DotAccessor identifier=<
+                  Identifier value='getAttribute'
+                >, node=<Identifier value='elem'>>>, op='!==',
+              right=<Identifier value='match'>>>
+        >>]>
+        """,
+    ), (
+        # test 57
+        'ternary_dot_accessor',
+        'var el = (elem ? elem.ownerDocument || elem : 0).documentElement;',
+        """
+        <Program ?children=[<VarStatement ?children=[
+          <VarDecl identifier=<Identifier value='el'>,
+            initializer=<DotAccessor identifier=<
+              Identifier value='documentElement'>,
+              node=<Conditional alternative=<Number value='0'>,
+              consequent=<BinOp left=<DotAccessor identifier=<
+                Identifier value='ownerDocument'>,
+                node=<Identifier value='elem'>
+              >,
+              op='||', right=<Identifier value='elem'>>,
+            predicate=<Identifier value='elem'>>>
+          >
+        ]>]>
+        """,
+    ), (
+        # typeof
+        'typeof',
+        'typeof second.length === "number";',
+        """
+        <Program ?children=[
+          <ExprStatement expr=<BinOp left=<UnaryOp op='typeof',
+            postfix=False, value=<DotAccessor identifier=
+              <Identifier value='length'>, node=<Identifier value='second'>>>,
+            op='===', right=<String value='"number"'
+          >>>
+        ]>
+        """,
+    ), (
+        # function call in FOR init
+        'function_call_in_for_init',
+        """
+        for (o(); i < 3; i++) {
+
+        }
+        """,
+
+        """
+        <Program ?children=[
+          <For cond=<BinOp left=<Identifier value='i'>, op='<',
+            right=<Number value='3'>>, count=<UnaryOp op='++', postfix=True,
+            value=<Identifier value='i'>>, init=<
+              FunctionCall args=[], identifier=<Identifier value='o'>>,
+            statement=<Block >>
+        ]>
+        """,
+    ), (
+        # https://github.com/rspivak/slimit/issues/32
+        'slimit_issue_32',
+        """
+        Name.prototype = {
+          get fullName() {
+            return this.first + " " + this.last;
+          },
+          set fullName(name) {
+            var names = name.split(" ");
+            this.first = names[0];
+            this.last = names[1];
+          }
+        };
+        """,
+        """
+        <Program ?children=[<
+          ExprStatement expr=<Assign left=<DotAccessor identifier=<
+            Identifier value='prototype'>, node=<
+              Identifier value='Name'>>,
+            op='=', right=<Object properties=[
+              <GetPropAssign elements=[
+                <Return expr=<BinOp left=<BinOp left=<DotAccessor identifier=<
+                  Identifier value='first'>, node=<This >>,
+                  op='+', right=<String value='" "'>>,
+                  op='+', right=<DotAccessor identifier=<
+                    Identifier value='last'>, node=<This >>>>
+                ], prop_name=<Identifier value='fullName'>>,
+                <SetPropAssign elements=[
+                  <VarStatement ?children=[
+                    <VarDecl identifier=<Identifier value='names'>,
+                      initializer=<FunctionCall args=[<String value='" "'>],
+                        identifier=<
+                          DotAccessor identifier=<Identifier value='split'>,
+                          node=<Identifier value='name'>>>>
+                  ]>,
+                  <ExprStatement expr=<
+                    Assign left=<DotAccessor identifier=<
+                      Identifier value='first'>, node=<This >
+                    >, op='=', right=<BracketAccessor expr=<Number value='0'>,
+                      node=<Identifier value='names'>>>>,
+                  <ExprStatement expr=<Assign left=<DotAccessor identifier=<
+                    Identifier value='last'>, node=<This >>,
+                    op='=', right=<BracketAccessor expr=<Number value='1'>,
+                      node=<Identifier value='names'>>>>
+                  ], parameters=[<Identifier value='name'>],
+                  prop_name=<Identifier value='fullName'>>
+            ]>
+          >
+        >]>
+        """,
+    ), (
+        'dot_accessor_on_integer',
+        """
+        (0).toString();
+        """,
+        """
+        <Program ?children=[
+          <ExprStatement expr=<FunctionCall args=[], identifier=<
+            DotAccessor identifier=<Identifier value='toString'>,
+            node=<Number value='0'>>>>
+        ]>
+        """,
+    )])
+)
+
+
+# ASI - Automatic Semicolon Insertion
 
 def regenerate(value):
     return parser.parse(value).to_ecma()
 
-
-# ASI - Automatic Semicolon Insertion
 
 ParserToECMAASITestCase = build_equality_testcase(
     'ParserToECMAASITestCase', regenerate, ((
@@ -406,14 +1614,17 @@ ParserToECMAASITestCase = build_equality_testcase(
 )
 
 
-ASISyntaxErrorsTestCase = build_exception_testcase(
-    'ASISyntaxErrorsTestCase', parser.parse, ((
+SyntaxErrorsTestCase = build_exception_testcase(
+    'SyntaxErrorsTestCase', parser.parse, ((
         label,
         textwrap.dedent(argument).strip(),
     ) for label, argument in [(
+        'interger_unwrapped_raw_dot_accessor',
+        '0.toString();'
+    ), (
         # expression is not optional in throw statement
         # ASI at lexer level should insert ';' after throw
-        'throw_error',
+        'throw_error_asi',
         """
         throw
           'exc';

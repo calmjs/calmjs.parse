@@ -97,11 +97,9 @@ class Parser(object):
 
     def p_empty(self, p):
         """empty :"""
-        pass
 
     def p_auto_semi(self, p):
         """auto_semi : error"""
-        pass
 
     def p_error(self, token):
         # https://github.com/rspivak/slimit/issues/29

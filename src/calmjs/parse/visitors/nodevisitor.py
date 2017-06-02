@@ -109,29 +109,32 @@ class ReprVisitor(object):
         """
 
         attrs = []
-        children = {id(child): child for child in node.children()}
+        children = node.children()
+        ids = {id(child) for child in children}
+
         for k, v in vars(node).items():
             if k.startswith('_'):
                 continue
-            if id(v) in children:
-                children.pop(id(v))
+            if id(v) in ids:
+                ids.remove(id(v))
 
             if isinstance(v, Node):
                 attrs.append((k, self.visit(v)))
             elif isinstance(v, list):
                 items = []
                 for i in v:
-                    if id(i) in children:
-                        children.pop(id(i))
+                    if id(i) in ids:
+                        ids.remove(id(i))
                     items.append(self.visit(i))
                 attrs.append((k, '[' + ', '.join(items) + ']'))
             else:
                 attrs.append((k, v.__repr__()))
 
-        if children:
+        if ids:
             # for unnamed child nodes.
-            attrs.append(('?children', '[' + ', '.join(sorted(
-                self.visit(child) for child in children.values())) + ']'))
+            attrs.append(('?children', '[' + ', '.join(
+                self.visit(child) for child in children
+                if id(child) in ids) + ']'))
 
         omit_keys = () if not omit else set(omit)
         return '<%s %s>' % (node.__class__.__name__, ', '.join(
