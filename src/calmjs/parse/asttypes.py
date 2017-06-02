@@ -45,7 +45,7 @@ class Node(object):
 
     def to_ecma(self):
         # Can't import at module level as ecmavisitor depends
-        # on ast module...
+        # on asttypes defined here...
         from calmjs.parse.visitors.ecmavisitor import ECMAVisitor
         visitor = ECMAVisitor()
         return visitor.visit(self)

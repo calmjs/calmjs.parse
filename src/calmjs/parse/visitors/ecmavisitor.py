@@ -24,7 +24,7 @@
 
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
-from calmjs.parse import ast
+from calmjs.parse import asttypes
 
 
 class ECMAVisitor(object):
@@ -140,9 +140,11 @@ class ECMAVisitor(object):
             s += self.visit(node.init)
         if node.init is None:
             s += ' ; '
-        elif isinstance(node.init, (ast.Assign, ast.Comma, ast.FunctionCall,
-                                    ast.UnaryOp, ast.Identifier, ast.BinOp,
-                                    ast.Conditional, ast.Regex, ast.NewExpr)):
+        elif isinstance(node.init, (asttypes.Assign, asttypes.Comma,
+                                    asttypes.FunctionCall, asttypes.UnaryOp,
+                                    asttypes.Identifier, asttypes.BinOp,
+                                    asttypes.Conditional, asttypes.Regex,
+                                    asttypes.NewExpr)):
             s += '; '
         else:
             s += ' '
@@ -155,7 +157,7 @@ class ECMAVisitor(object):
         return s
 
     def visit_ForIn(self, node):
-        if isinstance(node.item, ast.VarDecl):
+        if isinstance(node.item, asttypes.VarDecl):
             template = 'for (var %s in %s) '
         else:
             template = 'for (%s in %s) '
@@ -355,7 +357,7 @@ class ECMAVisitor(object):
         else:
             template = '%s.%s'
         left = self.visit(node.node)
-        if isinstance(node.node, ast.Number):
+        if isinstance(node.node, asttypes.Number):
             left = '(%s)' % left
         s = template % (left, self.visit(node.identifier))
         return s
@@ -386,7 +388,7 @@ class ECMAVisitor(object):
         s = '['
         length = len(node.items) - 1
         for index, item in enumerate(node.items):
-            if isinstance(item, ast.Elision):
+            if isinstance(item, asttypes.Elision):
                 s += ','
             elif index != length:
                 s += self.visit(item) + ','

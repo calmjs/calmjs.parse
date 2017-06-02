@@ -25,7 +25,7 @@
 import textwrap
 import unittest
 
-from calmjs.parse import ast
+from calmjs.parse import asttypes
 from calmjs.parse.parser import Parser
 from calmjs.parse.visitors import nodevisitor
 
@@ -77,7 +77,7 @@ class ParserTestCase(unittest.TestCase):
         parser = Parser()
         tree = parser.parse(text)
         for node in nodevisitor.visit(tree):
-            if isinstance(node, ast.Identifier) and node.value == 'i':
+            if isinstance(node, asttypes.Identifier) and node.value == 'i':
                 node.value = 'hello'
         self.assertMultiLineEqual(
             tree.to_ecma(),
