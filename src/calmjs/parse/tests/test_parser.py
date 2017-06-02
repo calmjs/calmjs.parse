@@ -30,6 +30,7 @@ from calmjs.parse.parser import Parser
 from calmjs.parse.visitors import nodevisitor
 
 from calmjs.parse.testing.util import build_equality_testcase
+from calmjs.parse.testing.util import build_exception_testcase
 
 
 class ParserTestCase(unittest.TestCase):
@@ -329,14 +330,17 @@ ParserToECMATestCase = build_equality_testcase(
 )
 
 
-class SyntaxErrorsTestCase(unittest.TestCase):
-
-    def test_throw_statement(self):
+ASISyntaxErrorsTestCase = build_exception_testcase(
+    'ASISyntaxErrorsTestCase', parser.parse, ((
+        label,
+        textwrap.dedent(argument).strip(),
+    ) for label, argument in [(
         # expression is not optional in throw statement
-        input = textwrap.dedent("""
+        # ASI at lexer level should insert ';' after throw
+        'throw_error',
+        """
         throw
           'exc';
-        """)
-        parser = Parser()
-        # ASI at lexer level should insert ';' after throw
-        self.assertRaises(SyntaxError, parser.parse, input)
+        """
+    )]), SyntaxError
+)
