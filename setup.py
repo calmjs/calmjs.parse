@@ -46,4 +46,5 @@ setup(
     entry_points="""
     # -*- Entry points: -*-
     """,
+    test_suite="calmjs.parse.tests.make_suite",
 )

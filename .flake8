@@ -1,0 +1,15 @@
+[flake8]
+ignore =
+    # W503: default ignore for some reason not applied;
+    W503
+
+include =
+    src/
+
+exclude =
+    src/calmjs/parse/lexer.py,
+    src/calmjs/parse/tests/test_lexer.py,
+    src/calmjs/parse/*tab.py,
+    .git,
+    .env*,
+    env*
