@@ -223,9 +223,9 @@ world"''',
         ("""for (var x = a in foo && "</x>" || mot ? z:/x:3;x<5;y</g/i) {xyz(x++);}""",
          ["FOR for", "LPAREN (", "VAR var", "ID x", "EQ =", "ID a", "IN in",
           "ID foo", "AND &&", 'STRING "</x>"', "OR ||", "ID mot", "CONDOP ?",
-          "ID z", "COLON :", "REGEX /x:3;x<5;y</g", "DIV /", "ID i", "RPAREN )",
-          "LBRACE {",  "ID xyz", "LPAREN (", "ID x", "PLUSPLUS ++", "RPAREN )",
-          "SEMI ;", "RBRACE }"]
+          "ID z", "COLON :", "REGEX /x:3;x<5;y</g", "DIV /", "ID i",
+          "RPAREN )", "LBRACE {", "ID xyz", "LPAREN (", "ID x", "PLUSPLUS ++",
+          "RPAREN )", "SEMI ;", "RBRACE }"]
          ),
     ), (
         'regex_mozilla_example_2',
@@ -271,40 +271,39 @@ world"''',
     ), (
         'regex_stress_test_8',
         ("""
-            rexl.re = {
-            NAME: /^(?!\d)(?:\w)+|^"(?:[^"]|"")+"/,
-            UNQUOTED_LITERAL: /^@(?:(?!\d)(?:\w|\:)+|^"(?:[^"]|"")+")\[[^\]]+\]/,
-            QUOTED_LITERAL: /^'(?:[^']|'')*'/,
-            NUMERIC_LITERAL: /^[0-9]+(?:\.[0-9]*(?:[eE][-+][0-9]+)?)?/,
-            SYMBOL: /^(?:==|=|<>|<=|<|>=|>|!~~|!~|~~|~|!==|!=|!~=|!~|!|&|\||\.|\:|,|\(|\)|\[|\]|\{|\}|\?|\:|;|@|\^|\/\+|\/|\*|\+|-)/
-            };
-            """,
-         ["ID rexl", "PERIOD .", "ID re", "EQ =", "LBRACE {",
-          "ID NAME", "COLON :",
-          r"""REGEX /^(?!\d)(?:\w)+|^"(?:[^"]|"")+"/""", "COMMA ,",
-          "ID UNQUOTED_LITERAL", "COLON :",
-          r"""REGEX /^@(?:(?!\d)(?:\w|\:)+|^"(?:[^"]|"")+")\[[^\]]+\]/""",
-          "COMMA ,", "ID QUOTED_LITERAL", "COLON :",
-          r"""REGEX /^'(?:[^']|'')*'/""", "COMMA ,", "ID NUMERIC_LITERAL",
-          "COLON :",
-          r"""REGEX /^[0-9]+(?:\.[0-9]*(?:[eE][-+][0-9]+)?)?/""", "COMMA ,",
-          "ID SYMBOL", "COLON :",
-          r"""REGEX /^(?:==|=|<>|<=|<|>=|>|!~~|!~|~~|~|!==|!=|!~=|!~|!|&|\||\.|\:|,|\(|\)|\[|\]|\{|\}|\?|\:|;|@|\^|\/\+|\/|\*|\+|-)/""",
-         "RBRACE }", "SEMI ;"]
-          ),
+         rexl.re = {
+         NAME: /^(?!\d)(?:\w)+|^"(?:[^"]|"")+"/,
+         UNQUOTED_LITERAL: /^@(?:(?!\d)(?:\w|\:)+|^"(?:[^"]|"")+")\[[^\]]+\]/,
+         QUOTED_LITERAL: /^'(?:[^']|'')*'/,
+         NUMERIC_LITERAL: /^[0-9]+(?:\.[0-9]*(?:[eE][-+][0-9]+)?)?/,
+         SYMBOL: /^(?:==|=|<>|<=|<|>=|>|!~~|!~|~~|~|!==|!=|!~=|!~|!|&|\||\.|\:|,|\(|\)|\[|\]|\{|\}|\?|\:|;|@|\^|\/\+|\/|\*|\+|-)/
+         };
+         """, [
+         "ID rexl", "PERIOD .", "ID re", "EQ =", "LBRACE {",
+         "ID NAME", "COLON :",
+         r"""REGEX /^(?!\d)(?:\w)+|^"(?:[^"]|"")+"/""", "COMMA ,",
+         "ID UNQUOTED_LITERAL", "COLON :",
+         r"""REGEX /^@(?:(?!\d)(?:\w|\:)+|^"(?:[^"]|"")+")\[[^\]]+\]/""",
+         "COMMA ,", "ID QUOTED_LITERAL", "COLON :",
+         r"""REGEX /^'(?:[^']|'')*'/""", "COMMA ,", "ID NUMERIC_LITERAL",
+         "COLON :",
+         r"""REGEX /^[0-9]+(?:\.[0-9]*(?:[eE][-+][0-9]+)?)?/""", "COMMA ,",
+         "ID SYMBOL", "COLON :",
+         r"""REGEX /^(?:==|=|<>|<=|<|>=|>|!~~|!~|~~|~|!==|!=|!~=|!~|!|&|\||\.|\:|,|\(|\)|\[|\]|\{|\}|\?|\:|;|@|\^|\/\+|\/|\*|\+|-)/""",
+         "RBRACE }", "SEMI ;"]),
     ), (
         'regex_stress_test_9',
         ("""
-            rexl.re = {
-            NAME: /^(?!\d)(?:\w)+|^"(?:[^"]|"")+"/,
-            UNQUOTED_LITERAL: /^@(?:(?!\d)(?:\w|\:)+|^"(?:[^"]|"")+")\[[^\]]+\]/,
-            QUOTED_LITERAL: /^'(?:[^']|'')*'/,
-            NUMERIC_LITERAL: /^[0-9]+(?:\.[0-9]*(?:[eE][-+][0-9]+)?)?/,
-            SYMBOL: /^(?:==|=|<>|<=|<|>=|>|!~~|!~|~~|~|!==|!=|!~=|!~|!|&|\||\.|\:|,|\(|\)|\[|\]|\{|\}|\?|\:|;|@|\^|\/\+|\/|\*|\+|-)/
-            };
-            str = '"';
-        """,
-        ["ID rexl", "PERIOD .", "ID re", "EQ =", "LBRACE {",
+         rexl.re = {
+         NAME: /^(?!\d)(?:\w)+|^"(?:[^"]|"")+"/,
+         UNQUOTED_LITERAL: /^@(?:(?!\d)(?:\w|\:)+|^"(?:[^"]|"")+")\[[^\]]+\]/,
+         QUOTED_LITERAL: /^'(?:[^']|'')*'/,
+         NUMERIC_LITERAL: /^[0-9]+(?:\.[0-9]*(?:[eE][-+][0-9]+)?)?/,
+         SYMBOL: /^(?:==|=|<>|<=|<|>=|>|!~~|!~|~~|~|!==|!=|!~=|!~|!|&|\||\.|\:|,|\(|\)|\[|\]|\{|\}|\?|\:|;|@|\^|\/\+|\/|\*|\+|-)/
+         };
+         str = '"';
+         """, [
+         "ID rexl", "PERIOD .", "ID re", "EQ =", "LBRACE {",
          "ID NAME", "COLON :", r"""REGEX /^(?!\d)(?:\w)+|^"(?:[^"]|"")+"/""",
          "COMMA ,", "ID UNQUOTED_LITERAL", "COLON :",
          r"""REGEX /^@(?:(?!\d)(?:\w|\:)+|^"(?:[^"]|"")+")\[[^\]]+\]/""",

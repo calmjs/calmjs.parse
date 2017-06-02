@@ -31,7 +31,7 @@ from calmjs.parse.unicode_chars import (
     DIGIT,
     COMBINING_MARK,
     CONNECTOR_PUNCTUATION,
-    )
+)
 
 # See "Regular Expression Literals" at
 # http://www.mozilla.org/js/language/js20-2002-04/rationale/syntax.html
@@ -49,7 +49,7 @@ TOKENS_THAT_IMPLY_DIVISON = frozenset([
     'RPAREN',
     'RBRACE',
     'RBRACKET',
-    ])
+])
 
 
 class Lexer(object):
@@ -139,7 +139,7 @@ class Lexer(object):
             is_division_allowed = (
                 cur_token is not None and
                 cur_token.type in TOKENS_THAT_IMPLY_DIVISON
-                )
+            )
             if is_division_allowed:
                 return self._get_update_token()
             else:
@@ -148,9 +148,7 @@ class Lexer(object):
                 return self.cur_token
 
     def auto_semi(self, token):
-        if (token is None or token.type == 'RBRACE'
-            or self._is_prev_token_lt()
-            ):
+        if token is None or token.type == 'RBRACE' or self._is_prev_token_lt():
             if token:
                 self.next_tokens.append(token)
             return self._create_semi_token(token)
@@ -173,8 +171,7 @@ class Lexer(object):
             and self.cur_token.type == 'LINE_TERMINATOR'
             and self.prev_token is not None
             and self.prev_token.type in ['BREAK', 'CONTINUE',
-                                         'RETURN', 'THROW']
-            ):
+                                         'RETURN', 'THROW']):
             return self._create_semi_token(self.cur_token)
         return self.cur_token
 
@@ -205,7 +202,7 @@ class Lexer(object):
 
     states = (
         ('regex', 'exclusive'),
-        )
+    )
 
     keywords = (
         'BREAK', 'CASE', 'CATCH', 'CONTINUE', 'DEBUGGER', 'DEFAULT', 'DELETE',
@@ -216,7 +213,7 @@ class Lexer(object):
         # IE8 happy because it chokes up on minification:
         # obj["class"] -> obj.class
         'CLASS', 'CONST', 'ENUM', 'EXPORT', 'EXTENDS', 'IMPORT', 'SUPER',
-        )
+    )
     keywords_dict = dict((key.lower(), key) for key in keywords)
 
     tokens = (
@@ -254,7 +251,7 @@ class Lexer(object):
         'LINE_COMMENT', 'BLOCK_COMMENT',
 
         'LINE_TERMINATOR',
-        ) + keywords
+    ) + keywords
 
     # adapted from https://bitbucket.org/ned/jslex
     t_regex_REGEX = r"""(?:
@@ -288,7 +285,7 @@ class Lexer(object):
         raise TypeError(
             "Error parsing regular expression '%s' at %s" % (
                 token.value, token.lineno)
-            )
+        )
 
     # Punctuators
     t_PERIOD        = r'\.'
@@ -421,15 +418,17 @@ class Lexer(object):
     identifier_part = (
         r'(?:' + COMBINING_MARK + r'|' + r'[0-9a-zA-Z_$]' + r'|' + DIGIT +
         r'|' + CONNECTOR_PUNCTUATION + r')*'
-        )
+    )
     identifier = identifier_start + identifier_part
 
     getprop = r'get' + r'(?=\s' + identifier + r')'
+
     @ply.lex.TOKEN(getprop)
     def t_GETPROP(self, token):
         return token
 
     setprop = r'set' + r'(?=\s' + identifier + r')'
+
     @ply.lex.TOKEN(setprop)
     def t_SETPROP(self, token):
         return token

@@ -1,14 +1,22 @@
 [flake8]
 ignore =
     # W503: default ignore for some reason not applied;
-    W503
+    W503,
+
+    # E221 multiple spaces before operator
+    # - src/calmjs/parse/lexer.py,
+    E221,
+
+    # E501 line too long
+    # Pretty hard to deal with when it comes to multi-line strings.
+    # - src/calmjs/parse/lexer.py,
+    # - src/calmjs/parse/tests/test_lexer.py,
+    E501,
 
 include =
     src/
 
 exclude =
-    src/calmjs/parse/lexer.py,
-    src/calmjs/parse/tests/test_lexer.py,
     src/calmjs/parse/*tab.py,
     .git,
     .env*,
