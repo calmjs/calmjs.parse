@@ -25,55 +25,17 @@
 
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
-import doctest
 import unittest
-import difflib
-import pprint
 
 from calmjs.parse.lexer import Lexer
 
+from calmjs.parse.testing.util import build_equality_testcase
 
-def decorator(cls):
-    def make_test_function(input, expected):
 
-        def test_func(self):
-            lexer = self._get_lexer()
-            lexer.input(input)
-            result = ['%s %s' % (token.type, token.value) for token in lexer]
-            self.assertListEqual(result, expected)
-
-        return test_func
-
-    for index, (input, expected) in enumerate(cls.TEST_CASES):
-        func = make_test_function(input, expected)
-        setattr(cls, 'test_case_%d' % index, func)
-
-    return cls
-
-# The structure and some test cases are taken
-# from https://bitbucket.org/ned/jslex
-@decorator
-class LexerTestCase(unittest.TestCase):
-
-    def _get_lexer(self):
-        lexer = Lexer()
-        return lexer
-
-    def assertListEqual(self, first, second):
-        """Assert that two lists are equal.
-
-        Prints differences on error.
-        This method is similar to that of Python 2.7 'assertListEqual'
-        """
-        if first != second:
-            message = '\n'.join(
-                difflib.ndiff(pprint.pformat(first).splitlines(),
-                              pprint.pformat(second).splitlines())
-                )
-            self.fail('Lists differ:\n' + message)
+class LexerFailureTestCase(unittest.TestCase):
 
     def test_illegal_unicode_char_in_identifier(self):
-        lexer = self._get_lexer()
+        lexer = Lexer()
         lexer.input(u'\u0036_tail')
         token = lexer.token()
         # \u0036_tail is the same as 6_tail and that's not a correct ID
@@ -81,33 +43,58 @@ class LexerTestCase(unittest.TestCase):
         self.assertEqual(token.type, 'NUMBER')
         self.assertEqual(token.value, '6')
 
-    TEST_CASES = [
+
+def run_lex(value):
+    lexer = Lexer()
+    lexer.input(value)
+    return ['%s %s' % (token.type, token.value) for token in lexer]
+
+
+# The structure and some test cases are taken
+# from https://bitbucket.org/ned/jslex
+LexerTestCase = build_equality_testcase(
+    'LexerTestCase', run_lex, ((
+        label, data[0], data[1],
+    ) for label, data in [(
         # Identifiers
+        'identifiers_ascii',
         ('i my_variable_name c17 _dummy $str $ _ CamelCase class2type',
          ['ID i', 'ID my_variable_name', 'ID c17', 'ID _dummy',
           'ID $str', 'ID $', 'ID _', 'ID CamelCase', 'ID class2type']
          ),
+    ), (
+        'identifiers_unicode',
         (u'\u03c0 \u03c0_tail var\ua67c',
          [u'ID \u03c0', u'ID \u03c0_tail', u'ID var\ua67c']),
+    ), (
         # https://github.com/rspivak/slimit/issues/2
+        'slimit_issue_2',
         ('nullify truelie falsepositive',
          ['ID nullify', 'ID truelie', 'ID falsepositive']),
 
+    ), (
         # Keywords
         # ('break case ...', ['BREAK break', 'CASE case', ...])
+        'keywords_all',
         (' '.join(kw.lower() for kw in Lexer.keywords),
          ['%s %s' % (kw, kw.lower()) for kw in Lexer.keywords]
          ),
+    ), (
+        'keywords_break',
         ('break Break BREAK', ['BREAK break', 'ID Break', 'ID BREAK']),
-
+    ), (
         # Literals
+        'literals',
         ('null true false Null True False',
          ['NULL null', 'TRUE true', 'FALSE false',
           'ID Null', 'ID True', 'ID False']
          ),
-
+    ), (
         # Punctuators
+        'punctuators_simple',
         ('a /= b', ['ID a', 'DIVEQUAL /=', 'ID b']),
+    ), (
+        'punctuators_various_equality',
         (('= == != === !== < > <= >= || && ++ -- << >> '
           '>>> += -= *= <<= >>= >>>= &= %= ^= |='),
          ['EQ =', 'EQEQ ==', 'NE !=', 'STREQ ===', 'STRNEQ !==', 'LT <',
@@ -118,15 +105,19 @@ class LexerTestCase(unittest.TestCase):
           'XOREQUAL ^=', 'OREQUAL |=',
           ]
          ),
+    ), (
+        'punctuators_various_others',
         ('. , ; : + - * % & | ^ ~ ? ! ( ) { } [ ]',
          ['PERIOD .', 'COMMA ,', 'SEMI ;', 'COLON :', 'PLUS +', 'MINUS -',
           'MULT *', 'MOD %', 'BAND &', 'BOR |', 'BXOR ^', 'BNOT ~',
           'CONDOP ?', 'NOT !', 'LPAREN (', 'RPAREN )', 'LBRACE {', 'RBRACE }',
           'LBRACKET [', 'RBRACKET ]']
          ),
+    ), (
+        'division_simple',
         ('a / b', ['ID a', 'DIV /', 'ID b']),
-
-        # Numbers
+    ), (
+        'numbers',
         (('3 3.3 0 0. 0.0 0.001 010 3.e2 3.e-2 3.e+2 3E2 3E+2 3E-2 '
           '0.5e2 0.5e+2 0.5e-2 33 128.15 0x001 0X12ABCDEF 0xabcdef'),
          ['NUMBER 3', 'NUMBER 3.3', 'NUMBER 0', 'NUMBER 0.', 'NUMBER 0.0',
@@ -136,40 +127,57 @@ class LexerTestCase(unittest.TestCase):
           'NUMBER 128.15', 'NUMBER 0x001', 'NUMBER 0X12ABCDEF',
           'NUMBER 0xabcdef']
          ),
-
-        # Strings
+    ), (
+        'strings_simple_quote',
         (""" '"' """, ["""STRING '"'"""]),
+    ), (
+        'strings_escape_quote_tab',
         (r'''"foo" 'foo' "x\";" 'x\';' "foo\tbar"''',
          ['STRING "foo"', """STRING 'foo'""", r'STRING "x\";"',
           r"STRING 'x\';'", r'STRING "foo\tbar"']
          ),
+    ), (
+        'strings_escape_ascii',
         (r"""'\x55' "\x12ABCDEF" '!@#$%^&*()_+{}[]\";?'""",
          [r"STRING '\x55'", r'STRING "\x12ABCDEF"',
           r"STRING '!@#$%^&*()_+{}[]\";?'"]
          ),
+    ), (
+        'strings_escape_unicode',
         (r"""'\u0001' "\uFCEF" 'a\\\b\n'""",
          [r"STRING '\u0001'", r'STRING "\uFCEF"', r"STRING 'a\\\b\n'"]
          ),
+    ), (
+        'strings_unicode',
         (u'"тест строки\\""', [u'STRING "тест строки\\""']),
+    ), (
+        'strings_escape_octal',
         (r"""'\251'""", [r"""STRING '\251'"""]),
+    ), (
         # Bug - https://github.com/rspivak/slimit/issues/5
+        'slimit_issue_5',
         (r"var tagRegExp = new RegExp('<(\/*)(FooBar)', 'gi');",
          ['VAR var', 'ID tagRegExp', 'EQ =',
           'NEW new', 'ID RegExp', 'LPAREN (',
           r"STRING '<(\/*)(FooBar)'", 'COMMA ,', "STRING 'gi'",
-          'RPAREN )', 'SEMI ;']
-        ),
+          'RPAREN )', 'SEMI ;']),
+    ), (
         # same as above but inside double quotes
+        'slimit_issue_5_double_quote',
         (r'"<(\/*)(FooBar)"', [r'STRING "<(\/*)(FooBar)"']),
+    ), (
         # multiline string (string written across multiple lines
         # of code) https://github.com/rspivak/slimit/issues/24
+        'slimit_issue_24_multi_line_code_double',
         (r"""var a = 'hello \
 world'""",
          ['VAR var', 'ID a', 'EQ =', "STRING 'hello world'"]),
+    ), (
+        'slimit_issue_24_multi_line_code_single',
         (r'''var a = "hello \
 world"''',
          ['VAR var', 'ID a', 'EQ =', 'STRING "hello world"']),
-
+    ), (
         # # Comments
         # ("""
         # //comment
@@ -187,19 +195,29 @@ world"''',
         #  ),
 
         # regex
+        'regex_1',
         (r'a=/a*/,1', ['ID a', 'EQ =', 'REGEX /a*/', 'COMMA ,', 'NUMBER 1']),
+    ), (
+        'regex_2',
         (r'a=/a*[^/]+/,1',
          ['ID a', 'EQ =', 'REGEX /a*[^/]+/', 'COMMA ,', 'NUMBER 1']
          ),
+    ), (
+        'regex_3',
         (r'a=/a*\[^/,1',
          ['ID a', 'EQ =', r'REGEX /a*\[^/', 'COMMA ,', 'NUMBER 1']
          ),
+    ), (
+        'regex_4',
         (r'a=/\//,1', ['ID a', 'EQ =', r'REGEX /\//', 'COMMA ,', 'NUMBER 1']),
+    ), (
         # not a regex, just a division
         # https://github.com/rspivak/slimit/issues/6
+        'slimit_issue_6_not_regex_but_division',
         (r'x = this / y;',
          ['ID x', 'EQ =', 'THIS this', r'DIV /', r'ID y', r'SEMI ;']),
-
+    ), (
+        'regex_mozilla_example_1',
         # next two are from
         # http://www.mozilla.org/js/language/js20-2002-04/rationale/syntax.html#regular-expressions
         ("""for (var x = a in foo && "</x>" || mot ? z:/x:3;x<5;y</g/i) {xyz(x++);}""",
@@ -209,7 +227,8 @@ world"''',
           "LBRACE {",  "ID xyz", "LPAREN (", "ID x", "PLUSPLUS ++", "RPAREN )",
           "SEMI ;", "RBRACE }"]
          ),
-
+    ), (
+        'regex_mozilla_example_2',
         ("""for (var x = a in foo && "</x>" || mot ? z/x:3;x<5;y</g/i) {xyz(x++);}""",
          ["FOR for", "LPAREN (", "VAR var", "ID x", "EQ =", "ID a", "IN in",
           "ID foo", "AND &&", 'STRING "</x>"', "OR ||", "ID mot", "CONDOP ?",
@@ -219,20 +238,38 @@ world"''',
           "RPAREN )", "SEMI ;", "RBRACE }"]
          ),
 
+    ), (
+        'regex_illegal_1',
         # Various "illegal" regexes that are valid according to the std.
         (r"""/????/, /++++/, /[----]/ """,
          ['REGEX /????/', 'COMMA ,',
           'REGEX /++++/', 'COMMA ,', 'REGEX /[----]/']
          ),
 
+    ), (
+        'regex_stress_test_1',
         # Stress cases from http://stackoverflow.com/questions/5533925/what-javascript-constructs-does-jslex-incorrectly-lex/5573409#5573409
         (r"""/\[/""", [r"""REGEX /\[/"""]),
+    ), (
+        'regex_stress_test_2',
         (r"""/[i]/""", [r"""REGEX /[i]/"""]),
+    ), (
+        'regex_stress_test_3',
         (r"""/[\]]/""", [r"""REGEX /[\]]/"""]),
+    ), (
+        'regex_stress_test_4',
         (r"""/a[\]]/""", [r"""REGEX /a[\]]/"""]),
+    ), (
+        'regex_stress_test_5',
         (r"""/a[\]]b/""", [r"""REGEX /a[\]]b/"""]),
+    ), (
+        'regex_stress_test_6',
         (r"""/[\]/]/gi""", [r"""REGEX /[\]/]/gi"""]),
+    ), (
+        'regex_stress_test_7',
         (r"""/\[[^\]]+\]/gi""", [r"""REGEX /\[[^\]]+\]/gi"""]),
+    ), (
+        'regex_stress_test_8',
         ("""
             rexl.re = {
             NAME: /^(?!\d)(?:\w)+|^"(?:[^"]|"")+"/,
@@ -255,6 +292,8 @@ world"''',
           r"""REGEX /^(?:==|=|<>|<=|<|>=|>|!~~|!~|~~|~|!==|!=|!~=|!~|!|&|\||\.|\:|,|\(|\)|\[|\]|\{|\}|\?|\:|;|@|\^|\/\+|\/|\*|\+|-)/""",
          "RBRACE }", "SEMI ;"]
           ),
+    ), (
+        'regex_stress_test_9',
         ("""
             rexl.re = {
             NAME: /^(?!\d)(?:\w)+|^"(?:[^"]|"")+"/,
@@ -278,6 +317,8 @@ world"''',
          "RBRACE }", "SEMI ;",
          "ID str", "EQ =", """STRING '"'""", "SEMI ;",
          ]),
+    ), (
+        'regex_stress_test_10',
         (r""" this._js = "e.str(\"" + this.value.replace(/\\/g, "\\\\").replace(/"/g, "\\\"") + "\")"; """,
          ["THIS this", "PERIOD .", "ID _js", "EQ =",
           r'''STRING "e.str(\""''', "PLUS +", "THIS this", "PERIOD .",
@@ -285,14 +326,5 @@ world"''',
           "COMMA ,", r'STRING "\\\\"', "RPAREN )", "PERIOD .", "ID replace",
           "LPAREN (", r'REGEX /"/g', "COMMA ,", r'STRING "\\\""', "RPAREN )",
           "PLUS +", r'STRING "\")"', "SEMI ;"]),
-        ]
-
-
-def test_suite():
-    return unittest.TestSuite((
-        unittest.makeSuite(LexerTestCase),
-        doctest.DocFileSuite(
-            '../lexer.py',
-            optionflags=doctest.NORMALIZE_WHITESPACE|doctest.ELLIPSIS
-            ),
-        ))
+    )])
+)

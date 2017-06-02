@@ -62,7 +62,7 @@ class Lexer(object):
 
     >>> lexer.input('a = 1;')
     >>> for token in lexer:
-    ...     print token
+    ...     print(token)
     ...
     LexToken(ID,'a',1,0)
     LexToken(EQ,'=',1,2)
@@ -76,7 +76,7 @@ class Lexer(object):
     ...     token = lexer.token()
     ...     if not token:
     ...         break
-    ...     print token
+    ...     print(token)
     ...
     LexToken(ID,'a',1,0)
     LexToken(EQ,'=',1,2)

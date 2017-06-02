@@ -25,29 +25,34 @@
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 import textwrap
-import unittest
 
 from calmjs.parse.parser import Parser
 
+from calmjs.parse.testing.util import build_equality_testcase
 
-class ECMAVisitorTestCase(unittest.TestCase):
 
-    def setUp(self):
-        self.maxDiff = 2000
+parser = Parser()
 
-    TEST_CASES = [
-        ################################
-        # block
-        ################################
+
+def parse_to_ecma(value):
+    return parser.parse(value).to_ecma()
+
+
+ECMAVisitorTestCase = build_equality_testcase(
+    'ECMAVisitorTestCase', parse_to_ecma, ((
+        label, value, value,
+    ) for label, value in ((
+        label,
+        textwrap.dedent(value).strip(),
+    ) for label, value in [(
+        'block',
         """
         {
           var a = 5;
         }
         """,
-
-        ################################
-        # variable statement
-        ################################
+    ), (
+        'variable_statement',
         """
         var a;
         var b;
@@ -55,30 +60,29 @@ class ECMAVisitorTestCase(unittest.TestCase):
         var a = 1, b;
         var a = 5, b = 7;
         """,
-
-        # empty statement
+    ), (
+        'empty_statement',
         """
         ;
         ;
         ;
         """,
-
-        # test 3
-        ################################
-        # if
-        ################################
+    ), (
+        'if_statement_inline',
         'if (true) var x = 100;',
-
+    ), (
+        'if_statement_block',
         """
         if (true) {
           var x = 100;
           var y = 200;
         }
         """,
-
+    ), (
+        'if_else_inline',
         'if (true) if (true) var x = 100; else var y = 200;',
-
-        # test 6
+    ), (
+        'if_else_block',
         """
         if (true) {
           var x = 100;
@@ -86,104 +90,121 @@ class ECMAVisitorTestCase(unittest.TestCase):
           var y = 200;
         }
         """,
+    ), (
         ################################
         # iteration
         ################################
+
+        'iteration_reuse',
         """
         for (i = 0; i < 10; i++) {
           x = 10 * i;
         }
         """,
-
+    ), (
+        'iteration_var',
         """
         for (var i = 0; i < 10; i++) {
           x = 10 * i;
         }
         """,
-
-        # test 9
+    ), (
+        'iteration_multi_value',
         """
         for (i = 0, j = 10; i < j && j < 15; i++, j++) {
           x = i * j;
         }
         """,
-
+    ), (
+        'iteration_multi_var_value',
         """
         for (var i = 0, j = 10; i < j && j < 15; i++, j++) {
           x = i * j;
         }
         """,
-
+    ), (
+        'iteration_in',
         """
         for (p in obj) {
 
         }
         """,
+    ), (
         # retain the semicolon in the initialiser part of a 'for' statement
+        'iteration_conditional_initialiser',
         """
         for (Q || (Q = []); d < b; ) {
           d = 1;
         }
         """,
-
+    ), (
+        'iteration_new_object',
         """
         for (new Foo(); d < b; ) {
           d = 1;
         }
         """,
-
+    ), (
+        'iteration_ternary_initializer',
         """
         for (2 >> (foo ? 32 : 43) && 54; 21; ) {
           a = c;
         }
         """,
-
+    ), (
+        'iteration_regex_initialiser',
         """
         for (/^.+/g; cond(); ++z) {
           ev();
         }
         """,
-
-        # test 12
+    ), (
+        'iteration_var_in_obj',
         """
         for (var p in obj) {
           p = 1;
         }
         """,
-
+    ), (
+        'iteration_do_while',
         """
         do {
           x += 1;
         } while (true);
         """,
-
+    ), (
+        'while_loop',
         """
         while (false) {
           x = null;
         }
         """,
-
+    ), (
         # test 15
         ################################
         # continue statement
         ################################
+
+        'while_loop_continue',
         """
         while (true) {
           continue;
           s = 'I am not reachable';
         }
         """,
-
+    ), (
+        'while_loop_continue_label',
         """
         while (true) {
           continue label1;
           s = 'I am not reachable';
         }
         """,
-
+    ), (
         ################################
         # break statement
         ################################
+        'while_loop_break',
         """
         while (true) {
           break;
@@ -191,50 +212,60 @@ class ECMAVisitorTestCase(unittest.TestCase):
         }
         """,
         # test 18
+    ), (
+        'while_loop_break_label',
         """
         while (true) {
           break label1;
           s = 'I am not reachable';
         }
         """,
-
+    ), (
         ################################
         # return statement
         ################################
+
+        'return_empty',
         """
         {
           return;
         }
         """,
-
+    ), (
+        'return_1',
         """
         {
           return 1;
         }
         """,
-
+    ), (
         # test21
         ################################
         # with statement
         ################################
+        'with_statement',
         """
         with (x) {
           var y = x * 2;
         }
         """,
-
+    ), (
         ################################
         # labelled statement
         ################################
+
+        'labelled_statement',
         """
         label: while (true) {
           x *= 3;
         }
         """,
 
+    ), (
         ################################
         # switch statement
         ################################
+        'switch_statement',
         """
         switch (day_of_week) {
           case 6:
@@ -249,22 +280,28 @@ class ECMAVisitorTestCase(unittest.TestCase):
         }
         """,
 
+    ), (
         # test 24
         ################################
         # throw statement
         ################################
+        'throw_statement',
         """
         throw 'exc';
         """,
 
+    ), (
         ################################
         # debugger statement
         ################################
+        'debugger_statement',
         'debugger;',
 
+    ), (
         ################################
         # expression statement
         ################################
+        'expression_statement',
         """
         5 + 7 - 20 * 10;
         ++x;
@@ -275,10 +312,12 @@ class ECMAVisitorTestCase(unittest.TestCase):
         s = mot ? z : /x:3;x<5;y</g / i;
         """,
 
+    ), (
         # test 27
         ################################
         # try statement
         ################################
+        'try_catch_statement',
         """
         try {
           x = 3;
@@ -287,6 +326,8 @@ class ECMAVisitorTestCase(unittest.TestCase):
         }
         """,
 
+    ), (
+        'try_finally_statement',
         """
         try {
           x = 3;
@@ -295,6 +336,8 @@ class ECMAVisitorTestCase(unittest.TestCase):
         }
         """,
 
+    ), (
+        'try_catch_finally_statement',
         """
         try {
           x = 5;
@@ -305,10 +348,12 @@ class ECMAVisitorTestCase(unittest.TestCase):
         }
         """,
 
+    ), (
         # test 30
         ################################
         # function
         ################################
+        'function_with_arguments',
         """
         function foo(x, y) {
           z = 10;
@@ -316,24 +361,32 @@ class ECMAVisitorTestCase(unittest.TestCase):
         }
         """,
 
+    ), (
+        'function_without_arguments',
         """
         function foo() {
           return 10;
         }
         """,
 
+    ), (
+        'var_function_without_arguments',
         """
         var a = function() {
           return 10;
         };
         """,
+    ), (
         # test 33
+        'var_function_with_arguments',
         """
         var a = function foo(x, y) {
           return x + y;
         };
         """,
+    ), (
         # nested function declaration
+        'function_nested_declaration',
         """
         function foo() {
           function bar() {
@@ -342,70 +395,93 @@ class ECMAVisitorTestCase(unittest.TestCase):
         }
         """,
 
+    ), (
+        'function_immediate_execution',
         """
         var mult = function(x) {
           return x * 10;
         }();
         """,
 
+    ), (
         # function call
         # test 36
+        'function_call',
         'foo();',
+    ), (
+        'function_call_argument',
         'foo(x, 7);',
+    ), (
+        'function_call_access_element',
         'foo()[10];',
-        # test 39
+    ), (
+        'function_call_access_attribute',
         'foo().foo;',
-
-        ################################
-        # misc
-        ################################
-
-        # new
+    ), (
+        'new_keyword',
         'var foo = new Foo();',
+    ), (
         # dot accessor
+        'new_keyword_dot_accessor',
         'var bar = new Foo.Bar();',
 
-        # test 42
+    ), (
         # bracket accessor
+        'new_keyword_bracket_accessor',
         'var bar = new Foo.Bar()[7];',
 
+    ), (
         # object literal
+        'object_literal_litearl_keys',
         """
         var obj = {
           foo: 10,
           bar: 20
         };
         """,
+    ), (
+        'object_literal_numeric_keys',
         """
         var obj = {
           1: 'a',
           2: 'b'
         };
         """,
-        # test 45
+    ), (
+        'object_literal_string_keys',
         """
         var obj = {
           'a': 100,
           'b': 200
         };
         """,
+    ), (
+        'object_literal_empty',
         """
         var obj = {
         };
         """,
-
+    ), (
         # array
+        'array_create_access',
         """
         var a = [1,2,3,4,5];
         var res = a[3];
         """,
-        # test 48
+    ), (
         # elision
+        'elision_1',
         'var a = [,,,];',
+    ), (
+        'elision_2',
         'var a = [1,,,4];',
+    ), (
+        'elision_3',
         'var a = [1,,3,,5];',
 
+    ), (
         # test 51
+        'function_definition',
         """
         String.prototype.foo = function(data) {
           var tmpl = this.toString();
@@ -423,52 +499,66 @@ class ECMAVisitorTestCase(unittest.TestCase):
           });
         };
         """,
+    ), (
 
         #######################################
         # Make sure parentheses are not removed
         #######################################
 
         # ... Expected an identifier and instead saw '/'
-        'Expr.match[type].source + (/(?![^\[]*\])(?![^\(]*\))/.source);',
+        'parentheses_not_removed',
+        r'Expr.match[type].source + (/(?![^\[]*\])(?![^\(]*\))/.source);',
 
+    ), (
+        'comparison',
         '(options = arguments[i]) != null;',
 
         # test 54
+    ), (
+        'regex_test',
         'return (/h\d/i).test(elem.nodeName);',
 
+    ), (
         # https://github.com/rspivak/slimit/issues/42
+        'slimit_issue_42',
         """
         e.b(d) ? (a = [c.f(j[1])], e.fn.attr.call(a, d, !0)) : a = [k.f(j[1])];
         """,
 
+    ), (
+        'closure_scope',
         """
         (function() {
           x = 5;
         }());
         """,
 
-        """
-        (function() {
-          x = 5;
-        })();
-        """,
-
+    ), (
+        'return_statement_negation',
         'return !(match === true || elem.getAttribute("classid") !== match);',
 
+    ), (
         # test 57
+        'ternary_dot_accessor',
         'var el = (elem ? elem.ownerDocument || elem : 0).documentElement;',
 
+    ), (
         # typeof
+        'typeof',
         'typeof second.length === "number";',
 
+    ), (
         # function call in FOR init
+        'function_call_in_for_init',
         """
         for (o(); i < 3; i++) {
 
         }
         """,
 
+    ), (
         # https://github.com/rspivak/slimit/issues/32
+        'slimit_issue_32',
         """
         Name.prototype = {
           get fullName() {
@@ -481,20 +571,5 @@ class ECMAVisitorTestCase(unittest.TestCase):
           }
         };
         """,
-    ]
-
-
-def make_test_function(input, expected):
-
-    def test_func(self):
-        parser = Parser()
-        result = parser.parse(input).to_ecma()
-        self.assertMultiLineEqual(result, expected)
-
-    return test_func
-
-
-for index, input in enumerate(ECMAVisitorTestCase.TEST_CASES):
-    input = textwrap.dedent(input).strip()
-    func = make_test_function(input, input)
-    setattr(ECMAVisitorTestCase, 'test_case_%d' % index, func)
+    )]))
+)

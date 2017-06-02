@@ -29,24 +29,7 @@ from calmjs.parse import asttypes
 from calmjs.parse.parser import Parser
 from calmjs.parse.visitors import nodevisitor
 
-
-def decorator(cls):
-    def make_test_function(input, expected):
-
-        def test_func(self):
-            parser = Parser()
-            result = parser.parse(input).to_ecma()
-            self.assertMultiLineEqual(result, expected)
-
-        return test_func
-
-    for (index, source, expected) in cls.TEST_CASES:
-        source = textwrap.dedent(source).strip()
-        expected = textwrap.dedent(expected).strip()
-        func = make_test_function(source, expected)
-        setattr(cls, 'test_case_%s' % index, func)
-
-    return cls
+from calmjs.parse.testing.util import build_equality_testcase
 
 
 class ParserTestCase(unittest.TestCase):
@@ -56,7 +39,7 @@ class ParserTestCase(unittest.TestCase):
         parser.parse('var $_ = function(x){}(window);\n')
 
     # XXX: function expression ?
-    def _test_function_expression(self):
+    def test_function_expression(self):
         text = """
         if (true) {
           function() {
@@ -114,9 +97,19 @@ class ParserTestCase(unittest.TestCase):
         self.assertRaises(SyntaxError, parser.parse, text)
 
 
-@decorator
-class ASITestCase(unittest.TestCase):
-    TEST_CASES = [(
+parser = Parser()
+
+
+def regenerate(value):
+    return parser.parse(value).to_ecma()
+
+
+ParserToECMATestCase = build_equality_testcase(
+    'ParserToECMATestCase', regenerate, ((
+        label,
+        textwrap.dedent(argument).strip(),
+        textwrap.dedent(result).strip(),
+    ) for label, argument, result in [(
         'switch_case_statement',
         """
         switch (day) {
@@ -332,7 +325,11 @@ class ASITestCase(unittest.TestCase):
 
         }
         """
-    )]
+    )])
+)
+
+
+class SyntaxErrorsTestCase(unittest.TestCase):
 
     def test_throw_statement(self):
         # expression is not optional in throw statement
