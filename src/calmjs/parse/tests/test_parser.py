@@ -105,8 +105,10 @@ def regenerate(value):
     return parser.parse(value).to_ecma()
 
 
-ParserToECMATestCase = build_equality_testcase(
-    'ParserToECMATestCase', regenerate, ((
+# ASI - Automatic Semicolon Insertion
+
+ParserToECMAASITestCase = build_equality_testcase(
+    'ParserToECMAASITestCase', regenerate, ((
         label,
         textwrap.dedent(argument).strip(),
         textwrap.dedent(result).strip(),
@@ -212,7 +214,7 @@ ParserToECMATestCase = build_equality_testcase(
     ), (
         'identifiers',
         """
-        [true, false, null, undefined];
+        [true, false, null, undefined]
         """,
         """
         [true,false,null,undefined];
@@ -277,8 +279,8 @@ ParserToECMATestCase = build_equality_testcase(
         'dot_reserved_word',
         """
         var f = function(e) {
-          return e.default;
-        };
+          return e.default
+        }
         """,
         """
         var f = function(e) {
@@ -310,7 +312,7 @@ ParserToECMATestCase = build_equality_testcase(
         'try_catch_finally',
         """
         try {
-          x / 0;
+          x / 0
         }
         catch (e) {
         }
