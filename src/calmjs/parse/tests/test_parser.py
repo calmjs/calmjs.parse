@@ -649,6 +649,19 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         x--;
         x = 17 /= 3;
         s = mot ? z : /x:3;x<5;y</g / i;
+        1 << 2;
+        foo = 2 << 3;
+        1 < 2;
+        bar = 1 < 2;
+        1 | 2;
+        bar = 1 & 2;
+        1 | 2 & 8;
+        bar = 1 & 2 | 8;
+        x ^ y;
+        bar = x ^ y;
+        x && y;
+        bar = x && y;
+        1,2;
         """,
 
         """
@@ -673,9 +686,43 @@ ParsedNodeTypeTestCase = build_equality_testcase(
               Regex value='/x:3;x<5;y</g'>, op='/', right=<
                 Identifier value='i'>>,
               consequent=<Identifier value='z'>,
-              predicate=<Identifier value='mot'>>>>
+              predicate=<Identifier value='mot'>>>>,
+          <ExprStatement expr=<BinOp left=<Number value='1'>, op='<<',
+            right=<Number value='2'>>>,
+          <ExprStatement expr=<Assign left=<Identifier value='foo'>,
+            op='=', right=<BinOp left=<Number value='2'>, op='<<',
+              right=<Number value='3'>>>>,
+          <ExprStatement expr=<BinOp left=<Number value='1'>, op='<',
+            right=<Number value='2'>>>,
+          <ExprStatement expr=<Assign left=<Identifier value='bar'>, op='=',
+            right=<BinOp left=<Number value='1'>, op='<',
+              right=<Number value='2'>>>>,
+          <ExprStatement expr=<BinOp left=<Number value='1'>, op='|',
+            right=<Number value='2'>>>,
+          <ExprStatement expr=<Assign left=<Identifier value='bar'>, op='=',
+            right=<BinOp left=<Number value='1'>, op='&',
+              right=<Number value='2'>>>>,
+          <ExprStatement expr=<BinOp left=<Number value='1'>, op='|',
+            right=<BinOp left=<Number value='2'>, op='&',
+              right=<Number value='8'>>>>,
+          <ExprStatement expr=<Assign left=<Identifier value='bar'>, op='=',
+            right=<BinOp left=<BinOp left=<Number value='1'>, op='&',
+              right=<Number value='2'>>, op='|', right=<Number value='8'>>>>,
+          <ExprStatement expr=<BinOp left=<Identifier value='x'>, op='^',
+            right=<Identifier value='y'>>>,
+          <ExprStatement expr=<Assign left=<Identifier value='bar'>, op='=',
+            right=<BinOp left=<Identifier value='x'>, op='^',
+              right=<Identifier value='y'>>>>,
+          <ExprStatement expr=<BinOp left=<Identifier value='x'>, op='&&',
+            right=<Identifier value='y'>>>,
+          <ExprStatement expr=<Assign left=<Identifier value='bar'>, op='=',
+            right=<BinOp left=<Identifier value='x'>, op='&&',
+              right=<Identifier value='y'>>>>,
+          <ExprStatement expr=<Comma left=<Number value='1'>,
+            right=<Number value='2'>>>
         ]>
         """,
+
     ), (
         # test 27
         ################################
@@ -840,6 +887,18 @@ ParsedNodeTypeTestCase = build_equality_testcase(
           ]>]>
         """,
     ), (
+        'var_function_named',
+        """
+        var x = function y() {
+        };
+        """,
+        """
+        <Program ?children=[<VarStatement ?children=[
+          <VarDecl identifier=<Identifier value='x'>,
+            initializer=<FuncExpr elements=[],
+              identifier=<Identifier value='y'>, parameters=[]>>]>]>
+        """,
+    ), (
         # nested function declaration
         'function_nested_declaration',
         """
@@ -861,44 +920,74 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         # function call
         # test 36
         'function_call',
-        'foo();',
+        """
+        foo();
+        var r = foo();
+        """,
         """
         <Program ?children=[
           <ExprStatement expr=<FunctionCall args=[], identifier=<
-            Identifier value='foo'>>>
+            Identifier value='foo'>>>,
+          <VarStatement ?children=[<VarDecl identifier=<Identifier value='r'>,
+            initializer=<FunctionCall args=[],
+              identifier=<Identifier value='foo'>>>]>
         ]>
         """,
     ), (
         'function_call_argument',
-        'foo(x, 7);',
+        """
+        foo(x, 7);
+        var r = foo(x, 7);
+        """,
         """
         <Program ?children=[
           <ExprStatement expr=<FunctionCall args=[
             <Identifier value='x'>, <Number value='7'>
-          ], identifier=<Identifier value='foo'>>>
+          ], identifier=<Identifier value='foo'>>>,
+          <VarStatement ?children=[<VarDecl identifier=<Identifier value='r'>,
+            initializer=<FunctionCall args=[<Identifier value='x'>,
+              <Number value='7'>], identifier=<Identifier value='foo'>>>
+          ]>
         ]>
         """,
     ), (
         'function_call_access_element',
-        'foo()[10];',
         """
-        <Program ?children=[<ExprStatement expr=<BracketAccessor expr=<
-          Number value='10'>, node=<FunctionCall args=[], identifier=<
-            Identifier value='foo'>>>>
+        foo()[10];
+        var j = foo()[10];
+        """,
+        """
+        <Program ?children=[
+          <ExprStatement expr=<BracketAccessor expr=<Number value='10'>,
+            node=<FunctionCall args=[], identifier=<Identifier value='foo'>>>>,
+          <VarStatement ?children=[<VarDecl identifier=<Identifier value='j'>,
+            initializer=<BracketAccessor expr=<Number value='10'>,
+              node=<FunctionCall args=[], identifier=<
+                Identifier value='foo'>>>>
+          ]>
         ]>
         """,
     ), (
         'function_call_access_attribute',
-        'foo().foo;',
+        """
+        foo().foo;
+        var bar = foo().foo;
+        """,
         """
         <Program ?children=[
           <ExprStatement expr=<DotAccessor identifier=<Identifier value='foo'>,
-            node=<FunctionCall args=[], identifier=<Identifier value='foo'>>>>
+            node=<FunctionCall args=[], identifier=<Identifier value='foo'>>>>,
+          <VarStatement ?children=[<VarDecl identifier=<
+            Identifier value='bar'>, initializer=<DotAccessor identifier=<
+              Identifier value='foo'>,
+            node=<FunctionCall args=[], identifier=<Identifier value='foo'>>>>]>
         ]>
         """,
     ), (
         'new_keyword',
-        'var foo = new Foo();',
+        """
+        var foo = new Foo();
+        """,
         """
         <Program ?children=[<VarStatement ?children=[
           <VarDecl identifier=<Identifier value='foo'>, initializer=<
@@ -970,6 +1059,39 @@ ParsedNodeTypeTestCase = build_equality_testcase(
           >>
         ]>]>
         """,
+    ), (
+        'new_expr_lhs',
+        """
+        new T()
+        new T().derp
+        """,
+        """
+        <Program ?children=[
+          <ExprStatement expr=<NewExpr args=[], identifier=<
+            Identifier value='T'>>>,
+          <ExprStatement expr=<DotAccessor identifier=<
+            Identifier value='derp'>, node=<
+              NewExpr args=[], identifier=<Identifier value='T'>>>>
+        ]>
+        """
+    ), (
+        'new_new_expr',
+        # var T = function(){ return function (){} }
+        """
+        new new T()
+        var x = new new T()
+        """,
+        """
+        <Program ?children=[
+          <ExprStatement expr=<NewExpr args=[], identifier=<NewExpr args=[], identifier=<Identifier value='T'>>>>,
+          <VarStatement ?children=[
+            <VarDecl identifier=<Identifier value='x'>,
+              initializer=<NewExpr args=[],
+                identifier=<NewExpr args=[],
+                  identifier=<Identifier value='T'>>>>
+          ]>
+        ]>
+        """
     ), (
         'object_literal_string_keys',
         """
@@ -1242,6 +1364,67 @@ ParsedNodeTypeTestCase = build_equality_testcase(
             statement=<Block >>
         ]>
         """,
+    ), (
+        'for_loop_chained_noin',
+        """
+        for (o < (p < q);;);
+        for (o == (p == q);;);
+        for (o ^ (p ^ q);;);
+        for (o | (p | q);;);
+        for (o & (p & q);;);
+        for (a ? (b ? c : d) : false;;);
+        for (var x;;);
+        """,
+        """
+        <Program ?children=[
+          <For cond=None, count=None, init=<BinOp left=<Identifier value='o'>,
+              op='<', right=<BinOp left=<Identifier value='p'>, op='<',
+            right=<Identifier value='q'>>>,
+            statement=<EmptyStatement value=';'>>,
+          <For cond=None, count=None, init=<BinOp left=<Identifier value='o'>,
+              op='==', right=<BinOp left=<Identifier value='p'>, op='==',
+            right=<Identifier value='q'>>>,
+            statement=<EmptyStatement value=';'>>,
+          <For cond=None, count=None, init=<BinOp left=<Identifier value='o'>,
+              op='^', right=<BinOp left=<Identifier value='p'>, op='^',
+            right=<Identifier value='q'>>>,
+            statement=<EmptyStatement value=';'>>,
+          <For cond=None, count=None, init=<BinOp left=<Identifier value='o'>,
+              op='|', right=<BinOp left=<Identifier value='p'>, op='|',
+            right=<Identifier value='q'>>>,
+            statement=<EmptyStatement value=';'>>,
+          <For cond=None, count=None, init=<BinOp left=<Identifier value='o'>,
+              op='&', right=<BinOp left=<Identifier value='p'>, op='&',
+            right=<Identifier value='q'>>>,
+            statement=<EmptyStatement value=';'>>,
+          <For cond=None, count=None, init=<Conditional alternative=<
+              Boolean value='false'>, consequent=<Conditional alternative=<
+                Identifier value='d'>, consequent=<Identifier value='c'>,
+                  predicate=<Identifier value='b'>>,
+                predicate=<Identifier value='a'>>,
+            statement=<EmptyStatement value=';'>>,
+          <For cond=None, count=None, init=<VarStatement ?children=[
+              <VarDecl identifier=<Identifier value='x'>, initializer=None>]>,
+            statement=<EmptyStatement value=';'>>
+        ]>
+        """,
+
+    ), (
+        'for_initializer_noin',
+        """
+        for (var x = foo() in (bah())) {};
+        """,
+        """
+        <Program ?children=[<ForIn item=<VarDecl identifier=<
+          Identifier value='x'>, initializer=<FunctionCall args=[],
+            identifier=<Identifier value='foo'>>>, iterable=<
+              FunctionCall args=[], identifier=<
+                Identifier value='bah'>>,
+            statement=<Block >>,
+          <EmptyStatement value=';'>
+        ]>
+        """,
+
     ), (
         # https://github.com/rspivak/slimit/issues/32
         'slimit_issue_32',
