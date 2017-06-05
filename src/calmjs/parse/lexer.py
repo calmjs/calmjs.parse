@@ -26,6 +26,10 @@ __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 import ply.lex
 
+from calmjs.parse.exceptions import (
+    ECMASyntaxError,
+    ECMARegexSyntaxError,
+)
 from calmjs.parse.unicode_chars import (
     LETTER,
     DIGIT,
@@ -282,7 +286,7 @@ class Lexer(object):
     t_regex_ignore = ' \t'
 
     def t_regex_error(self, token):
-        raise TypeError(
+        raise ECMARegexSyntaxError(
             "Error parsing regular expression '%s' at %s" % (
                 token.value, token.lineno)
         )
@@ -440,5 +444,5 @@ class Lexer(object):
 
     def t_error(self, token):
         # TODO figure out how to report column instead of lexpos.
-        raise SyntaxError('Illegal character %r at %s:%s after %s' % (
+        raise ECMASyntaxError('Illegal character %r at %s:%s after %s' % (
             token.value[0], token.lineno, token.lexpos, self.prev_token))

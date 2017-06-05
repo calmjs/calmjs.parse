@@ -27,6 +27,7 @@ __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 import ply.yacc
 
 from calmjs.parse import asttypes
+from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.lexer import Lexer
 
 # The default values for the `Parser` constructor, passed on to ply; they must
@@ -68,7 +69,7 @@ class Parser(object):
         # a newline.
         # We keep record of the tokens that caused p_error
         # and if the token has already been seen - we raise
-        # a SyntaxError exception to avoid looping over and
+        # an ECMASyntaxError exception to avoid looping over and
         # over again.
         self._error_tokens = {}
 
@@ -85,7 +86,7 @@ class Parser(object):
         self._error_tokens[key] = True
 
     def _raise_syntax_error(self, token):
-        raise SyntaxError(
+        raise ECMASyntaxError(
             'Unexpected token (%s, %r) at %s:%s between %s and %s' % (
                 token.type, token.value, token.lineno, token.lexpos,
                 self.lexer.prev_token, self.lexer.token()

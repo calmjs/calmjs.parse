@@ -25,6 +25,7 @@
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 from calmjs.parse import asttypes
+from calmjs.parse.exceptions import ECMASyntaxError
 
 
 class ECMAVisitor(object):
@@ -96,7 +97,7 @@ class ECMAVisitor(object):
         if getattr(node, '_parens', False):
             template = '(%s)' % template
         if len(node.parameters) > 1:
-            raise SyntaxError(
+            raise ECMASyntaxError(
                 'Setter functions must have one argument: %s' % node)
         params = ','.join(self.visit(param) for param in node.parameters)
         self.indent_level += 2

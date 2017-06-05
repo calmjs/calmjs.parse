@@ -26,6 +26,8 @@ import textwrap
 import unittest
 
 from calmjs.parse import asttypes
+from calmjs.parse.exceptions import ECMASyntaxError
+from calmjs.parse.exceptions import ECMARegexSyntaxError
 from calmjs.parse.parser import Parser
 from calmjs.parse.visitors import nodevisitor
 
@@ -41,7 +43,7 @@ class ParserTestCase(unittest.TestCase):
 
     def test_bad_char_error(self):
         parser = Parser()
-        with self.assertRaises(SyntaxError) as e:
+        with self.assertRaises(ECMASyntaxError) as e:
             parser.parse('var\x01 blagh = 1;')
         self.assertEqual(
             e.exception.args[0],
@@ -104,14 +106,14 @@ class ParserTestCase(unittest.TestCase):
         text = """var a;
         , b;"""
         parser = Parser()
-        self.assertRaises(SyntaxError, parser.parse, text)
+        self.assertRaises(ECMASyntaxError, parser.parse, text)
 
 
-parser = Parser()
 repr_visitor = nodevisitor.ReprVisitor()
 
 
 def parse_to_repr(value):
+    parser = Parser()
     return repr_visitor.visit(parser.parse(value))
 
 
@@ -1504,6 +1506,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
 # ASI - Automatic Semicolon Insertion
 
 def regenerate(value):
+    parser = Parser()
     return parser.parse(value).to_ecma()
 
 
@@ -1806,13 +1809,16 @@ ParserToECMAASITestCase = build_equality_testcase(
 )
 
 
-SyntaxErrorsTestCase = build_exception_testcase(
-    'SyntaxErrorsTestCase', parser.parse, ((
+ECMASyntaxErrorsTestCase = build_exception_testcase(
+    'ECMASyntaxErrorsTestCase', parse_to_repr, ((
         label,
         textwrap.dedent(argument).strip(),
     ) for label, argument in [(
         'interger_unwrapped_raw_dot_accessor',
         '0.toString();'
+    ), (
+        'unterminated_comment',  # looks like regex
+        's = /****/;'
     ), (
         # expression is not optional in throw statement
         # ASI at lexer level should insert ';' after throw
@@ -1821,5 +1827,19 @@ SyntaxErrorsTestCase = build_exception_testcase(
         throw
           'exc';
         """
-    )]), SyntaxError
+    )]), ECMASyntaxError
+)
+
+
+ECMARegexSyntaxErrorsTestCase = build_exception_testcase(
+    'ECMARegexSyntaxErrorsTestCase', parse_to_repr, ((
+        label,
+        textwrap.dedent(argument).strip(),
+    ) for label, argument in [(
+        'unmatched_brackets',
+        'var x = /][/;'
+    ), (
+        'unmatched_backslash',
+        r'var x = /\/;'
+    )]), ECMARegexSyntaxError
 )

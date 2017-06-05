@@ -28,6 +28,7 @@ import textwrap
 import unittest
 
 from calmjs.parse.asttypes import Node
+from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.parser import Parser
 from calmjs.parse.visitors.nodevisitor import NodeVisitor
 
@@ -695,5 +696,5 @@ ECMASyntaxErrorTestCase = build_exception_testcase(
         """
         var x = 0.toString();
         """,
-    )]), SyntaxError
+    )]), ECMASyntaxError
 )
