@@ -217,15 +217,51 @@ class Parser(object):
 
     # Because reserved words can be used as identifiers under certain
     # conditions...
-    def p_reserved_keyword(self, p):
-        """reserved_keyword : CASE
-                            | CATCH
-                            | DEFAULT
-                            | FINALLY
-                            | SWITCH
-                            | TRY
+    def p_reserved_word(self, p):
+        """reserved_word : BREAK
+                         | CASE
+                         | CATCH
+                         | CONTINUE
+                         | DEBUGGER
+                         | DEFAULT
+                         | DELETE
+                         | DO
+                         | ELSE
+                         | FINALLY
+                         | FOR
+                         | FUNCTION
+                         | IF
+                         | IN
+                         | INSTANCEOF
+                         | NEW
+                         | RETURN
+                         | SWITCH
+                         | THIS
+                         | THROW
+                         | TRY
+                         | TYPEOF
+                         | VAR
+                         | VOID
+                         | WHILE
+                         | WITH
+                         | NULL
+                         | TRUE
+                         | FALSE
+                         | CLASS
+                         | CONST
+                         | ENUM
+                         | EXPORT
+                         | EXTENDS
+                         | IMPORT
+                         | SUPER
         """
         p[0] = asttypes.Identifier(p[1])
+
+    def p_identifier_name(self, p):
+        """identifier_name : identifier
+                           | reserved_word
+        """
+        p[0] = p[1]
 
     ###########################################
     # Expressions
@@ -323,7 +359,6 @@ class Parser(object):
     def p_property_assignment(self, p):
         """property_assignment \
              : property_name COLON assignment_expr
-             | reserved_keyword COLON assignment_expr
              | GETPROP property_name LPAREN RPAREN LBRACE function_body RBRACE
              | SETPROP property_name LPAREN formal_parameter_list RPAREN \
                    LBRACE function_body RBRACE
@@ -337,7 +372,7 @@ class Parser(object):
                 prop_name=p[2], parameters=p[4], elements=p[7])
 
     def p_property_name(self, p):
-        """property_name : identifier
+        """property_name : identifier_name
                          | string_literal
                          | numeric_literal
         """
@@ -348,8 +383,7 @@ class Parser(object):
         """member_expr : primary_expr
                        | function_expr
                        | member_expr LBRACKET expr RBRACKET
-                       | member_expr PERIOD identifier
-                       | member_expr PERIOD reserved_keyword
+                       | member_expr PERIOD identifier_name
                        | NEW member_expr arguments
         """
         if len(p) == 2:
@@ -365,8 +399,7 @@ class Parser(object):
         """member_expr_nobf : primary_expr_no_brace
                             | function_expr
                             | member_expr_nobf LBRACKET expr RBRACKET
-                            | member_expr_nobf PERIOD identifier
-                            | member_expr_nobf PERIOD reserved_keyword
+                            | member_expr_nobf PERIOD identifier_name
                             | NEW member_expr arguments
         """
         if len(p) == 2:
@@ -400,8 +433,7 @@ class Parser(object):
         """call_expr : member_expr arguments
                      | call_expr arguments
                      | call_expr LBRACKET expr RBRACKET
-                     | call_expr PERIOD identifier
-                     | call_expr PERIOD reserved_keyword
+                     | call_expr PERIOD identifier_name
         """
         if len(p) == 3:
             p[0] = asttypes.FunctionCall(p[1], p[2])
@@ -414,8 +446,7 @@ class Parser(object):
         """call_expr_nobf : member_expr_nobf arguments
                           | call_expr_nobf arguments
                           | call_expr_nobf LBRACKET expr RBRACKET
-                          | call_expr_nobf PERIOD identifier
-                          | call_expr_nobf PERIOD reserved_keyword
+                          | call_expr_nobf PERIOD identifier_name
         """
         if len(p) == 3:
             p[0] = asttypes.FunctionCall(p[1], p[2])
