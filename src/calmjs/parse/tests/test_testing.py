@@ -5,6 +5,12 @@ from calmjs.parse.testing.util import build_equality_testcase
 from calmjs.parse.testing.util import build_exception_testcase
 
 
+def run(self):
+    """
+    A dummy run method.
+    """
+
+
 class BuilderEqualityTestCase(unittest.TestCase):
 
     def test_build_equality_testcase(self):
@@ -13,6 +19,7 @@ class BuilderEqualityTestCase(unittest.TestCase):
             ('str_to_int_fail', '2', 1),
             ('str_to_int_exception', 'z', 1),
         ])
+        DummyTestCase.runTest = run
         testcase = DummyTestCase()
         testcase.test_str_to_int_pass()
 
@@ -41,6 +48,7 @@ class BuilderExceptionTestCase(unittest.TestCase):
             ],
             ValueError,
         )
+        FailTestCase.runTest = run
         testcase = FailTestCase()
         # ValueError should have been caught.
         testcase.test_str_to_int_fail1()
