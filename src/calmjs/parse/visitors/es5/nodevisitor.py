@@ -32,8 +32,8 @@ class ASTVisitor(object):
 
     Example:
 
-    >>> from calmjs.parse.parser import Parser
-    >>> from calmjs.parse.visitors.nodevisitor import ASTVisitor
+    >>> from calmjs.parse.parsers.es5 import Parser
+    >>> from calmjs.parse.visitors.es5.nodevisitor import ASTVisitor
     >>>
     >>> text = '''
     ... var x = {
@@ -91,13 +91,13 @@ class ReprVisitor(object):
 
     Example usage:
 
-    >>> from calmjs.parse.parser import Parser
-    >>> from calmjs.parse.visitors.nodevisitor import ReprVisitor
+    >>> from calmjs.parse.parsers.es5 import Parser
+    >>> from calmjs.parse.visitors.es5.nodevisitor import ReprVisitor
     >>> parser = Parser()
     >>> visitor = ReprVisitor()
     >>> tree = parser.parse('var x = function(x, y) { return x + y; };')
     >>> print(visitor.visit(tree))
-    <Program ?children=[<VarStatement ?children=[...]>]>
+    <ES5Program ?children=[<VarStatement ?children=[...]>]>
 
     """
 

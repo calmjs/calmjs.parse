@@ -43,7 +43,7 @@ class ECMAVisitor(object):
     def generic_visit(self, node):
         return 'GEN: %r' % node
 
-    def visit_Program(self, node):
+    def visit_ES5Program(self, node):
         return '\n'.join(self.visit(child) for child in node)
 
     def visit_Block(self, node):

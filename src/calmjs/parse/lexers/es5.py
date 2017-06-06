@@ -59,7 +59,7 @@ TOKENS_THAT_IMPLY_DIVISON = frozenset([
 class Lexer(object):
     """A JavaScript lexer.
 
-    >>> from calmjs.parse.lexer import Lexer
+    >>> from calmjs.parse.lexers.es5 import Lexer
     >>> lexer = Lexer()
 
     Lexer supports iteration:

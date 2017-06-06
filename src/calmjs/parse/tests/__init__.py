@@ -4,8 +4,8 @@ from os.path import dirname
 
 
 def make_suite():  # pragma: no cover
-    from calmjs.parse import lexer
-    from calmjs.parse.visitors import nodevisitor
+    from calmjs.parse.lexers import es5 as es5lexer
+    from calmjs.parse.visitors.es5 import nodevisitor
 
     test_loader = unittest.TestLoader()
     test_suite = test_loader.discover(
@@ -13,7 +13,7 @@ def make_suite():  # pragma: no cover
         top_level_dir=dirname(__file__)
     )
     test_suite.addTest(doctest.DocTestSuite(
-        lexer, optionflags=doctest.NORMALIZE_WHITESPACE | doctest.ELLIPSIS))
+        es5lexer, optionflags=doctest.NORMALIZE_WHITESPACE | doctest.ELLIPSIS))
     test_suite.addTest(doctest.DocTestSuite(
         nodevisitor,
         optionflags=doctest.NORMALIZE_WHITESPACE | doctest.ELLIPSIS))

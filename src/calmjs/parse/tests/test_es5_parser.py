@@ -28,8 +28,8 @@ import unittest
 from calmjs.parse import asttypes
 from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.exceptions import ECMARegexSyntaxError
-from calmjs.parse.parser import Parser
-from calmjs.parse.visitors import nodevisitor
+from calmjs.parse.parsers.es5 import Parser
+from calmjs.parse.visitors.es5 import nodevisitor
 
 from calmjs.parse.testing.util import build_equality_testcase
 from calmjs.parse.testing.util import build_exception_testcase
@@ -137,7 +137,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[<Block ?children=[
+        <ES5Program ?children=[<Block ?children=[
           <VarStatement ?children=[<VarDecl identifier=<Identifier value='a'>,
             initializer=<Number value='5'>>]>
         ]>]>
@@ -152,7 +152,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         var a = 5, b = 7;
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <VarStatement ?children=[
             <VarDecl identifier=<Identifier value='a'>, initializer=None>
           ]>,
@@ -185,7 +185,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         ;
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <EmptyStatement value=';'>,
           <EmptyStatement value=';'>,
           <EmptyStatement value=';'>
@@ -195,7 +195,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'if_statement_inline',
         'if (true) var x = 100;',
         """
-        <Program ?children=[<If alternative=None,
+        <ES5Program ?children=[<If alternative=None,
           consequent=<VarStatement ?children=[
             <VarDecl identifier=<Identifier value='x'>,
               initializer=<Number value='100'>>
@@ -211,7 +211,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[<If alternative=None,
+        <ES5Program ?children=[<If alternative=None,
           consequent=<Block ?children=[
             <VarStatement ?children=[
               <VarDecl identifier=<Identifier value='x'>,
@@ -229,7 +229,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'if_else_inline',
         'if (true) if (true) var x = 100; else var y = 200;',
         """
-        <Program ?children=[<
+        <ES5Program ?children=[<
           If alternative=None,
           consequent=<If alternative=<VarStatement ?children=[
             <VarDecl identifier=<Identifier value='y'>,
@@ -253,7 +253,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <If alternative=<Block ?children=[
             <VarStatement ?children=[
               <VarDecl identifier=<Identifier value='y'>,
@@ -275,7 +275,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <For cond=<BinOp left=<Identifier value='i'>, op='<', right=<
             Number value='10'>>, count=<
               UnaryOp op='++', postfix=True, value=<Identifier value='i'>>,
@@ -298,7 +298,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[<For cond=<BinOp left=<BinOp left=<
+        <ES5Program ?children=[<For cond=<BinOp left=<BinOp left=<
           Identifier value='i'>, op='<', right=<Identifier value='j'>>,
           op='&&', right=<BinOp left=<Identifier value='j'>, op='<', right=<
             Number value='15'>>>,
@@ -324,7 +324,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <ForIn item=<Identifier value='p'>,
             iterable=<Identifier value='obj'>, statement=<Block >>
         ]>
@@ -338,7 +338,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[<For cond=<BinOp left=<Identifier value='d'>,
+        <ES5Program ?children=[<For cond=<BinOp left=<Identifier value='d'>,
           op='<', right=<Identifier value='b'>>, count=None,
           init=<BinOp left=<Identifier value='Q'>, op='||',
             right=<Assign left=<Identifier value='Q'>, op='=',
@@ -357,8 +357,8 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[<For cond=<Number value='21'>, count=None, init=<
-          BinOp left=<BinOp left=<Number value='2'>, op='>>', right=<
+        <ES5Program ?children=[<For cond=<Number value='21'>, count=None,
+          init=<BinOp left=<BinOp left=<Number value='2'>, op='>>', right=<
             Conditional alternative=<Number value='43'>,
             consequent=<Number value='32'>,
             predicate=<Identifier value='foo'>>>, op='&&',
@@ -377,7 +377,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <For cond=<FunctionCall args=[],
             identifier=<Identifier value='cond'>>,
             count=<UnaryOp op='++', postfix=False,
@@ -397,7 +397,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[<ForIn item=<VarDecl identifier=<
+        <ES5Program ?children=[<ForIn item=<VarDecl identifier=<
           Identifier value='p'>, initializer=None>, iterable=<
             Identifier value='obj'>, statement=<
               Block ?children=[
@@ -414,7 +414,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         } while (true);
         """,
         """
-        <Program ?children=[<DoWhile predicate=<Boolean value='true'>,
+        <ES5Program ?children=[<DoWhile predicate=<Boolean value='true'>,
           statement=<Block ?children=[
             <ExprStatement expr=<Assign left=<Identifier value='x'>,
               op='+=', right=<Number value='1'>>>
@@ -429,7 +429,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <While predicate=<Boolean value='false'>,
             statement=<Block ?children=[
               <ExprStatement expr=<Assign left=<Identifier value='x'>,
@@ -452,7 +452,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <While predicate=<Boolean value='true'>, statement=<Block ?children=[
             <Continue identifier=None>,
             <ExprStatement expr=<Assign left=<Identifier value='s'>,
@@ -469,7 +469,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <While predicate=<Boolean value='true'>, statement=<Block ?children=[
             <Continue identifier=<Identifier value='label1'>>,
             <ExprStatement expr=<Assign left=<Identifier value='s'>,
@@ -490,7 +490,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
         # test 18
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <While predicate=<Boolean value='true'>,
             statement=<Block ?children=[
               <Break identifier=None>,
@@ -509,7 +509,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <While predicate=<Boolean value='true'>, statement=<Block ?children=[
             <Break identifier=<Identifier value='label1'>>,
             <ExprStatement expr=<Assign left=<Identifier value='s'>,
@@ -529,7 +529,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[<Block ?children=[<Return expr=None>]>]>
+        <ES5Program ?children=[<Block ?children=[<Return expr=None>]>]>
         """,
     ), (
         'return_1',
@@ -539,7 +539,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <Block ?children=[<Return expr=<Number value='1'>>]>]>
         """,
     ), (
@@ -554,7 +554,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <With expr=<Identifier value='x'>, statement=<Block ?children=[
             <VarStatement ?children=[
               <VarDecl identifier=<Identifier value='y'>, initializer=
@@ -576,7 +576,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[<Label identifier=<
+        <ES5Program ?children=[<Label identifier=<
           Identifier value='label'>, statement=<
             While predicate=<Boolean value='true'>,
             statement=<Block ?children=[
@@ -605,7 +605,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[<
+        <ES5Program ?children=[<
           Switch cases=[
             <Case elements=[], expr=<Number value='6'>>,
             <Case elements=[
@@ -636,7 +636,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         throw 'exc';
         """,
         """
-        <Program ?children=[<Throw expr=<String value="'exc'">>]>
+        <ES5Program ?children=[<Throw expr=<String value="'exc'">>]>
         """,
     ), (
         ################################
@@ -645,7 +645,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'debugger_statement',
         'debugger;',
         """
-        <Program ?children=[<Debugger value='debugger'>]>
+        <ES5Program ?children=[<Debugger value='debugger'>]>
         """,
     ), (
         ################################
@@ -676,7 +676,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
 
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <ExprStatement expr=<BinOp left=<BinOp left=<Number value='5'>,
             op='+', right=<Number value='7'>>, op='-',
             right=<BinOp left=<Number value='20'>, op='*',
@@ -748,7 +748,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[<Try catch=<
+        <ES5Program ?children=[<Try catch=<
           Catch elements=<Block ?children=[
             <ExprStatement expr=<Assign left=<Identifier value='x'>,
               op='=', right=<Identifier value='exc'>>>
@@ -772,7 +772,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[<Try catch=None,
+        <ES5Program ?children=[<Try catch=None,
           fin=<Finally ?children=[
             <ExprStatement expr=<Assign left=<Identifier value='x'>, op='=',
               right=<Null value='null'>>>
@@ -801,7 +801,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[<Try catch=<
+        <ES5Program ?children=[<Try catch=<
           Catch elements=<Block ?children=[
             <ExprStatement expr=<Assign left=<Identifier value='x'>,
               op='=', right=<Identifier value='exc'>>>
@@ -832,7 +832,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <FuncDecl elements=[
             <ExprStatement expr=<Assign left=<Identifier value='z'>, op='=',
               right=<Number value='10'>>>,
@@ -852,7 +852,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <FuncDecl elements=[<Return expr=<Number value='10'>>],
             identifier=<Identifier value='foo'>, parameters=[]>
         ]>
@@ -865,7 +865,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <VarStatement ?children=[
             <VarDecl identifier=<Identifier value='a'>,
               initializer=<FuncExpr elements=[
@@ -885,7 +885,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <VarStatement ?children=[
             <VarDecl identifier=<Identifier value='a'>,
               initializer=<FuncExpr elements=[
@@ -904,7 +904,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <Program ?children=[<VarStatement ?children=[
+        <ES5Program ?children=[<VarStatement ?children=[
           <VarDecl identifier=<Identifier value='x'>,
             initializer=<FuncExpr elements=[],
               identifier=<Identifier value='y'>, parameters=[]>>]>]>
@@ -920,7 +920,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <FuncDecl elements=[
             <FuncDecl elements=[], identifier=<Identifier value='bar'>,
               parameters=[]>
@@ -936,7 +936,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         var r = foo();
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <ExprStatement expr=<FunctionCall args=[], identifier=<
             Identifier value='foo'>>>,
           <VarStatement ?children=[<VarDecl identifier=<Identifier value='r'>,
@@ -951,7 +951,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         var r = foo(x, 7);
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <ExprStatement expr=<FunctionCall args=[
             <Identifier value='x'>, <Number value='7'>
           ], identifier=<Identifier value='foo'>>>,
@@ -968,7 +968,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         var j = foo()[10];
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <ExprStatement expr=<BracketAccessor expr=<Number value='10'>,
             node=<FunctionCall args=[], identifier=<Identifier value='foo'>>>>,
           <VarStatement ?children=[<VarDecl identifier=<Identifier value='j'>,
@@ -985,13 +985,14 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         var bar = foo().foo;
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <ExprStatement expr=<DotAccessor identifier=<Identifier value='foo'>,
             node=<FunctionCall args=[], identifier=<Identifier value='foo'>>>>,
           <VarStatement ?children=[<VarDecl identifier=<
             Identifier value='bar'>, initializer=<DotAccessor identifier=<
               Identifier value='foo'>,
-            node=<FunctionCall args=[], identifier=<Identifier value='foo'>>>>]>
+            node=<FunctionCall args=[],
+              identifier=<Identifier value='foo'>>>>]>
         ]>
         """,
     ), (
@@ -1000,7 +1001,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         var foo = new Foo();
         """,
         """
-        <Program ?children=[<VarStatement ?children=[
+        <ES5Program ?children=[<VarStatement ?children=[
           <VarDecl identifier=<Identifier value='foo'>, initializer=<
             NewExpr args=[], identifier=<Identifier value='Foo'>>>
         ]>]>
@@ -1010,7 +1011,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'new_keyword_dot_accessor',
         'var bar = new Foo.Bar();',
         """
-        <Program ?children=[<VarStatement ?children=[
+        <ES5Program ?children=[<VarStatement ?children=[
           <VarDecl identifier=<Identifier value='bar'>, initializer=<
             NewExpr args=[], identifier=<DotAccessor identifier=<
               Identifier value='Bar'>, node=<Identifier value='Foo'>>>>
@@ -1021,7 +1022,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'new_keyword_bracket_accessor',
         'var bar = new Foo.Bar()[7];',
         """
-        <Program ?children=[<VarStatement ?children=[
+        <ES5Program ?children=[<VarStatement ?children=[
           <VarDecl identifier=<Identifier value='bar'>, initializer=<
             BracketAccessor expr=<Number value='7'>, node=<
               NewExpr args=[], identifier=<DotAccessor identifier=<
@@ -1039,7 +1040,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <Program ?children=[<VarStatement ?children=[
+        <ES5Program ?children=[<VarStatement ?children=[
           <VarDecl identifier=<Identifier value='obj'>, initializer=<
             Object properties=[
               <Assign left=<Identifier value='foo'>, op=':', right=<
@@ -1059,7 +1060,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <Program ?children=[<VarStatement ?children=[
+        <ES5Program ?children=[<VarStatement ?children=[
           <VarDecl identifier=<Identifier value='obj'>, initializer=<
             Object properties=[
               <Assign left=<Number value='1'>, op=':', right=<
@@ -1077,7 +1078,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         new T().derp
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <ExprStatement expr=<NewExpr args=[], identifier=<
             Identifier value='T'>>>,
           <ExprStatement expr=<DotAccessor identifier=<
@@ -1093,8 +1094,9 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         var x = new new T()
         """,
         """
-        <Program ?children=[
-          <ExprStatement expr=<NewExpr args=[], identifier=<NewExpr args=[], identifier=<Identifier value='T'>>>>,
+        <ES5Program ?children=[
+          <ExprStatement expr=<NewExpr args=[], identifier=<NewExpr args=[],
+            identifier=<Identifier value='T'>>>>,
           <VarStatement ?children=[
             <VarDecl identifier=<Identifier value='x'>,
               initializer=<NewExpr args=[],
@@ -1112,7 +1114,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <Program ?children=[<VarStatement ?children=[
+        <ES5Program ?children=[<VarStatement ?children=[
           <VarDecl identifier=<Identifier value='obj'>, initializer=<
             Object properties=[
               <Assign left=<String value="'a'">, op=':', right=<
@@ -1130,7 +1132,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <Program ?children=[<VarStatement ?children=[
+        <ES5Program ?children=[<VarStatement ?children=[
           <VarDecl identifier=<Identifier value='obj'>,
             initializer=<Object properties=[]>>
         ]>]>
@@ -1146,7 +1148,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         var res = a[3];
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <VarStatement ?children=[
             <VarDecl identifier=<Identifier value='a'>,
               initializer=<Array items=[
@@ -1170,7 +1172,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'elision_1',
         'var a = [,,,];',
         """
-        <Program ?children=[<VarStatement ?children=[
+        <ES5Program ?children=[<VarStatement ?children=[
           <VarDecl identifier=<Identifier value='a'>,
             initializer=<Array items=[
               <Elision value=','>, <Elision value=','>, <Elision value=','>
@@ -1182,7 +1184,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'elision_2',
         'var a = [1,,,4];',
         """
-        <Program ?children=[<VarStatement ?children=[
+        <ES5Program ?children=[<VarStatement ?children=[
           <VarDecl identifier=<Identifier value='a'>,
             initializer=<Array items=[
               <Number value='1'>, <Elision value=','>, <Elision value=','>,
@@ -1195,7 +1197,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'elision_3',
         'var a = [1,,3,,5];',
         """
-        <Program ?children=[<VarStatement ?children=[
+        <ES5Program ?children=[<VarStatement ?children=[
           <VarDecl identifier=<Identifier value='a'>,
             initializer=<Array items=[
               <Number value='1'>, <Elision value=','>, <Number value='3'>,
@@ -1215,7 +1217,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         r'Expr.match[type].source + (/(?![^\[]*\])(?![^\(]*\))/.source);',
 
         r"""
-        <Program ?children=[<ExprStatement expr=<BinOp left=<
+        <ES5Program ?children=[<ExprStatement expr=<BinOp left=<
           DotAccessor identifier=<Identifier value='source'>, node=<
             BracketAccessor expr=<Identifier value='type'>, node=<
               DotAccessor identifier=<Identifier value='match'>,
@@ -1228,7 +1230,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         '(options = arguments[i]) != null;',
         # test 54
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <ExprStatement expr=<
             BinOp left=<
               Assign left=<Identifier value='options'>, op='=',
@@ -1242,7 +1244,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'regex_test',
         'return (/h\d/i).test(elem.nodeName);',
         r"""
-        <Program ?children=[<Return expr=<FunctionCall args=[
+        <ES5Program ?children=[<Return expr=<FunctionCall args=[
           <DotAccessor identifier=<Identifier value='nodeName'>,
             node=<Identifier value='elem'>>], identifier=<
               DotAccessor identifier=<Identifier value='test'>,
@@ -1256,7 +1258,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         e.b(d) ? (a = [c.f(j[1])], e.fn.attr.call(a, d, !0)) : a = [k.f(j[1])];
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <ExprStatement expr=<Conditional alternative=<Assign left=<
             Identifier value='a'>, op='=', right=<Array items=[
               <FunctionCall args=[<BracketAccessor expr=<Number value='1'>,
@@ -1302,7 +1304,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }());
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <ExprStatement expr=<FunctionCall args=[],
             identifier=<FuncExpr elements=[
               <ExprStatement expr=<Assign left=<Identifier value='x'>,
@@ -1314,7 +1316,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'return_statement_negation',
         'return !(match === true || elem.getAttribute("classid") !== match);',
         """
-        <Program ?children=[<Return expr=<
+        <ES5Program ?children=[<Return expr=<
           UnaryOp op='!', postfix=False, value=<BinOp left=<BinOp left=<
             Identifier value='match'>,
             op='===', right=<Boolean value='true'>>, op='||', right=<
@@ -1330,7 +1332,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'ternary_dot_accessor',
         'var el = (elem ? elem.ownerDocument || elem : 0).documentElement;',
         """
-        <Program ?children=[<VarStatement ?children=[
+        <ES5Program ?children=[<VarStatement ?children=[
           <VarDecl identifier=<Identifier value='el'>,
             initializer=<DotAccessor identifier=<
               Identifier value='documentElement'>,
@@ -1349,7 +1351,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'typeof',
         'typeof second.length === "number";',
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <ExprStatement expr=<BinOp left=<UnaryOp op='typeof',
             postfix=False, value=<DotAccessor identifier=
               <Identifier value='length'>, node=<Identifier value='second'>>>,
@@ -1367,7 +1369,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
 
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <For cond=<BinOp left=<Identifier value='i'>, op='<',
             right=<Number value='3'>>, count=<UnaryOp op='++', postfix=True,
             value=<Identifier value='i'>>, init=<
@@ -1387,7 +1389,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         for (var x;;);
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <For cond=None, count=None, init=<BinOp left=<Identifier value='o'>,
               op='<', right=<BinOp left=<Identifier value='p'>, op='<',
             right=<Identifier value='q'>>>,
@@ -1426,7 +1428,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         for (var x = foo() in (bah())) {};
         """,
         """
-        <Program ?children=[<ForIn item=<VarDecl identifier=<
+        <ES5Program ?children=[<ForIn item=<VarDecl identifier=<
           Identifier value='x'>, initializer=<FunctionCall args=[],
             identifier=<Identifier value='foo'>>>, iterable=<
               FunctionCall args=[], identifier=<
@@ -1452,7 +1454,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <Program ?children=[<
+        <ES5Program ?children=[<
           ExprStatement expr=<Assign left=<DotAccessor identifier=<
             Identifier value='prototype'>, node=<
               Identifier value='Name'>>,
@@ -1493,7 +1495,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         (0).toString();
         """,
         """
-        <Program ?children=[
+        <ES5Program ?children=[
           <ExprStatement expr=<FunctionCall args=[], identifier=<
             DotAccessor identifier=<Identifier value='toString'>,
             node=<Number value='0'>>>>

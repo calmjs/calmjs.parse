@@ -28,7 +28,7 @@ import ply.yacc
 
 from calmjs.parse import asttypes
 from calmjs.parse.exceptions import ECMASyntaxError
-from calmjs.parse.lexer import Lexer
+from calmjs.parse.lexers.es5 import Lexer
 
 # The default values for the `Parser` constructor, passed on to ply; they must
 # be strings
@@ -130,7 +130,7 @@ class Parser(object):
 
     def p_program(self, p):
         """program : source_elements"""
-        p[0] = asttypes.Program(p[1])
+        p[0] = asttypes.ES5Program(p[1])
 
     def p_source_elements(self, p):
         """source_elements : empty

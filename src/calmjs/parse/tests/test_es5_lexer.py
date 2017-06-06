@@ -27,7 +27,7 @@ __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 import unittest
 
-from calmjs.parse.lexer import Lexer
+from calmjs.parse.lexers.es5 import Lexer
 
 from calmjs.parse.testing.util import build_equality_testcase
 

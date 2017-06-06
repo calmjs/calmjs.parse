@@ -29,8 +29,9 @@ import unittest
 
 from calmjs.parse.asttypes import Node
 from calmjs.parse.exceptions import ECMASyntaxError
-from calmjs.parse.parser import Parser
-from calmjs.parse.visitors.nodevisitor import NodeVisitor
+from calmjs.parse.parsers.es5 import Parser
+from calmjs.parse.visitors.es5.nodevisitor import NodeVisitor
+from calmjs.parse.visitors.es5.ecmavisitor import ECMAVisitor
 
 from calmjs.parse.testing.util import build_equality_testcase
 from calmjs.parse.testing.util import build_exception_testcase
@@ -41,7 +42,7 @@ parser = Parser()
 class BaseTestCase(unittest.TestCase):
 
     def test_default(self):
-        self.assertTrue(Node().to_ecma().startswith('GEN: '))
+        self.assertTrue(ECMAVisitor().visit(Node()).startswith('GEN: '))
 
 
 def parse_to_ecma(value):

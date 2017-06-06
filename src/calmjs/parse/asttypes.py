@@ -43,16 +43,19 @@ class Node(object):
     def children(self):
         return getattr(self, '_children_list', [])
 
-    def to_ecma(self):
-        # Can't import at module level as ecmavisitor depends
-        # on asttypes defined here...
-        from calmjs.parse.visitors.ecmavisitor import ECMAVisitor
-        visitor = ECMAVisitor()
-        return visitor.visit(self)
-
 
 class Program(Node):
     pass
+
+
+class ES5Program(Node):
+
+    def to_ecma(self):
+        # Can't import at module level as ecmavisitor depends
+        # on asttypes defined here...
+        from calmjs.parse.visitors.es5.ecmavisitor import ECMAVisitor
+        visitor = ECMAVisitor()
+        return visitor.visit(self)
 
 
 class Block(Node):
