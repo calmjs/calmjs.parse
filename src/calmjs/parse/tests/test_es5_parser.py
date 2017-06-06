@@ -1139,6 +1139,38 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
 
     ), (
+        # delete
+        'delete_keyword',
+        """
+        var obj = {foo: 1};
+        delete obj.foo;
+        """,
+        """
+        <ES5Program ?children=[
+          <VarStatement ?children=[
+            <VarDecl identifier=<Identifier value='obj'>, initializer=<
+              Object properties=[
+                <Assign left=<Identifier value='foo'>, op=':', right=<
+                  Number value='1'>>
+              ]>>
+          ]>,
+          <ExprStatement expr=<UnaryOp op='delete', postfix=False,
+            value=<DotAccessor identifier=<Identifier value='foo'>,
+              node=<Identifier value='obj'>>>>
+        ]>
+        """,
+    ), (
+        'void_keyword',
+        """
+        void 0;
+        """,
+        """
+        <ES5Program ?children=[
+          <ExprStatement expr=<UnaryOp op='void', postfix=False,
+            value=<Number value='0'>>>
+        ]>
+        """,
+    ), (
         # array
         'array_create_access',
         """
@@ -1360,6 +1392,27 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         ]>
         """,
     ), (
+        'instanceof',
+        'x instanceof y',
+        """
+        <ES5Program ?children=[
+          <ExprStatement expr=<BinOp left=<Identifier value='x'>,
+            op='instanceof', right=<Identifier value='y'>>>
+        ]>
+        """,
+    ), (
+        # membership
+        'membership_in',
+        """
+        1 in s;
+        """,
+        """
+        <ES5Program ?children=[
+          <ExprStatement expr=<BinOp left=<Number value='1'>, op='in',
+            right=<Identifier value='s'>>>
+        ]>
+        """,
+    ), (
         # function call in FOR init
         'function_call_in_for_init',
         """
@@ -1501,6 +1554,30 @@ ParsedNodeTypeTestCase = build_equality_testcase(
             node=<Number value='0'>>>>
         ]>
         """,
+    ), (
+        'dot_reserved_word',
+        """
+        e.case;
+        """,
+        """
+        <ES5Program ?children=[<ExprStatement expr=<
+          DotAccessor identifier=<Identifier value='case'>,
+            node=<Identifier value='e'>>>
+        ]>
+        """
+    ), (
+        'dot_reserved_word_nobf',
+        """
+        for (x = e.case;;);
+        """,
+        """
+        <ES5Program ?children=[
+          <For cond=None, count=None, init=<Assign left=<Identifier value='x'>,
+            op='=', right=<DotAccessor identifier=<Identifier value='case'>,
+              node=<Identifier value='e'>>>,
+                statement=<EmptyStatement value=';'>>
+        ]>
+        """
     )])
 )
 
