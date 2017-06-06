@@ -26,6 +26,7 @@ import textwrap
 import unittest
 
 from calmjs.parse import asttypes
+from calmjs.parse import es5
 from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.exceptions import ECMARegexSyntaxError
 from calmjs.parse.parsers.es5 import Parser
@@ -113,8 +114,7 @@ repr_visitor = nodevisitor.ReprVisitor()
 
 
 def parse_to_repr(value):
-    parser = Parser()
-    return repr_visitor.visit(parser.parse(value))
+    return repr_visitor.visit(es5(value))
 
 
 def singleline(s):
