@@ -101,7 +101,7 @@ class ReprVisitor(object):
 
     """
 
-    def visit(self, node, omit=('lexpos', 'lineno')):
+    def visit(self, node, omit=('lexpos', 'lineno'), indent=0, _level=0):
         """
         Accepts the standard node argument, along with an optional omit
         flag - it should be an iterable that lists out all attributes
@@ -112,6 +112,11 @@ class ReprVisitor(object):
         children = node.children()
         ids = {id(child) for child in children}
 
+        indentation = ' ' * (indent * (_level + 1))
+        header = '\n' + indentation if indent else ''
+        joiner = ',\n' + indentation if indent else ', '
+        tailer = '\n' + ' ' * (indent * _level) if indent else ''
+
         for k, v in vars(node).items():
             if k.startswith('_'):
                 continue
@@ -119,22 +124,24 @@ class ReprVisitor(object):
                 ids.remove(id(v))
 
             if isinstance(v, Node):
-                attrs.append((k, self.visit(v)))
+                attrs.append((k, self.visit(v, omit, indent, _level)))
             elif isinstance(v, list):
                 items = []
                 for i in v:
                     if id(i) in ids:
                         ids.remove(id(i))
-                    items.append(self.visit(i))
-                attrs.append((k, '[' + ', '.join(items) + ']'))
+                    items.append(self.visit(i, omit, indent, _level + 1))
+                attrs.append(
+                    (k, '[' + header + joiner.join(items) + tailer + ']'))
             else:
                 attrs.append((k, v.__repr__()))
 
         if ids:
             # for unnamed child nodes.
-            attrs.append(('?children', '[' + ', '.join(
-                self.visit(child) for child in children
-                if id(child) in ids) + ']'))
+            attrs.append(('?children', '[' + header + joiner.join(
+                self.visit(child, omit, indent, _level + 1)
+                for child in children
+                if id(child) in ids) + tailer + ']'))
 
         omit_keys = () if not omit else set(omit)
         return '<%s %s>' % (node.__class__.__name__, ', '.join(
