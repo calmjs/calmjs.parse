@@ -42,6 +42,7 @@ setup(
     install_requires=[
         'setuptools',
         # -*- Extra requirements: -*-
+        'ply>=3.6',
     ],
     entry_points="""
     # -*- Entry points: -*-
