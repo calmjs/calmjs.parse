@@ -30,7 +30,7 @@ import unittest
 from calmjs.parse.asttypes import Node
 from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.parsers.es5 import Parser
-from calmjs.parse.visitors.es5.nodevisitor import NodeVisitor
+from calmjs.parse.visitors.generic import NodeVisitor
 from calmjs.parse.visitors.es5.ecmavisitor import ECMAVisitor
 
 from calmjs.parse.testing.util import build_equality_testcase

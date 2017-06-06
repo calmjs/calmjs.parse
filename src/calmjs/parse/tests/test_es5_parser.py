@@ -30,7 +30,7 @@ from calmjs.parse import es5
 from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.exceptions import ECMARegexSyntaxError
 from calmjs.parse.parsers.es5 import Parser
-from calmjs.parse.visitors.es5 import nodevisitor
+from calmjs.parse.visitors import generic
 
 from calmjs.parse.testing.util import build_equality_testcase
 from calmjs.parse.testing.util import build_exception_testcase
@@ -72,7 +72,7 @@ class ParserTestCase(unittest.TestCase):
         """
         parser = Parser()
         tree = parser.parse(text)
-        for node in nodevisitor.visit(tree):
+        for node in generic.visit(tree):
             if isinstance(node, asttypes.Identifier) and node.value == 'i':
                 node.value = 'hello'
         self.assertMultiLineEqual(
@@ -110,7 +110,7 @@ class ParserTestCase(unittest.TestCase):
         self.assertRaises(ECMASyntaxError, parser.parse, text)
 
 
-repr_visitor = nodevisitor.ReprVisitor()
+repr_visitor = generic.ReprVisitor()
 
 
 def parse_to_repr(value):
