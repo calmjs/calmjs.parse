@@ -4,6 +4,16 @@ calmjs.parse
 A collection of parsers and helper libraries for understanding
 ECMAScript.
 
+.. image:: https://travis-ci.org/calmjs/calmjs.parse.svg?branch=master
+    :target: https://travis-ci.org/calmjs/calmjs.parse
+.. image:: https://ci.appveyor.com/api/projects/status/5dj8dnu9gmj02msu/branch/master?svg=true
+    :target: https://ci.appveyor.com/project/metatoaster/calmjs-parse/branch/master
+.. image:: https://coveralls.io/repos/github/calmjs/calmjs.parse/badge.svg?branch=master
+    :target: https://coveralls.io/github/calmjs/calmjs.parse?branch=master
+
+.. |calmjs.parse| replace:: ``calmjs.parse``
+.. |slimit| replace:: ``slimit``
+.. _slimit: https://pypi.python.org/pypi/slimit
 
 Introduction
 ------------
@@ -22,9 +32,13 @@ other JavaScript based minifier outputs.
 Legal
 -----
 
-The parser portion that was imported from the |slimit| library is
-copyright (c) Ruslan Spivak, and is was licensed under the MIT license
-(specifically the Expat License).
+The |calmjs.parse| package is licensed under the MIT license
+(specifically, the Expat License), which is also the same license that
+the package |slimit| was released under.
+
+The lexer, parser, visitor and the other types definitions portions were
+originally imported from the |slimit| package; |slimit| is copyright (c)
+Ruslan Spivak.
 
 The Calmjs project is copyright (c) 2016 Auckland Bioengineering
 Institute, University of Auckland.

@@ -1,0 +1,90 @@
+sudo: false
+matrix:
+  allow_failures:
+    - os: osx
+    - python: 3.7-dev
+    - python: pypy3.3-5.2-alpha1
+    - env: TRAVIS_NODE_VERSION=7.4
+  include:
+    - language: python
+      python: 2.7
+      env: TRAVIS_NODE_VERSION=0.12
+    - language: python
+      python: 3.3
+      env: TRAVIS_NODE_VERSION=4.6
+    - language: python
+      python: 3.4
+      env: TRAVIS_NODE_VERSION=4.6
+    - language: python
+      python: 3.5
+      env: TRAVIS_NODE_VERSION=6.9
+    - language: python
+      python: 3.6
+      env: TRAVIS_NODE_VERSION=6.9
+    - language: python
+      python: 3.7-dev
+      env: TRAVIS_NODE_VERSION=7.4
+    - language: python
+      python: pypy
+      env: TRAVIS_NODE_VERSION=0.12
+    - language: python
+      python: pypy3
+      env: TRAVIS_NODE_VERSION=6.9
+    - language: python
+      python: pypy3.3-5.2-alpha1
+      env: TRAVIS_NODE_VERSION=7.4
+    # test different versions of Node.js on osx
+    - language: node_js
+      node_js: 4.6
+      os: osx
+      env: TRAVIS_PYTHON_VERSION=3.4.5
+    - language: node_js
+      node_js: 6.9
+      os: osx
+      env: TRAVIS_PYTHON_VERSION=3.5.3
+    - language: node_js
+      node_js: 7.4
+      os: osx
+      env: TRAVIS_PYTHON_VERSION=3.6.0
+
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      brew update || brew update ;
+      brew install pyenv ;
+      brew outdated pyenv || brew upgrade pyenv ;
+      pyenv install $TRAVIS_PYTHON_VERSION ;
+      pyenv global $TRAVIS_PYTHON_VERSION ;
+      eval "$(pyenv init -)" ;
+      python --version ;
+      python -m pip install --user virtualenv ;
+      python -m virtualenv ~/.venv ;
+      source ~/.venv/bin/activate ;
+    else
+      rm -rf ~/.nvm ;
+      git clone https://github.com/creationix/nvm.git ~/.nvm ;
+      (cd ~/.nvm && git checkout `git describe --abbrev=0 --tags` );
+      source ~/.nvm/nvm.sh ;
+      nvm install "$TRAVIS_NODE_VERSION" ;
+    fi
+  - node --version
+  - npm --version
+
+install:
+  - pip install coverage flake8
+  - python setup.py develop
+script:
+  - flake8
+  - coverage run --include=src/* -m unittest calmjs.parse.tests.make_suite
+  - coverage report -m
+after_success:
+  # only submit coverage when testing under linux.
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
+      pip install coveralls ;
+      coveralls ;
+    fi
+branches:
+  only:
+    - testing
+    - master
+    - 1.0.x
+    - 2.0.x
