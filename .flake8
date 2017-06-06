@@ -17,7 +17,7 @@ include =
     src/
 
 exclude =
-    src/calmjs/parse/*tab.py,
+    src/calmjs/parse/parsers/*tab*.py,
     .git,
     .env*,
     env*

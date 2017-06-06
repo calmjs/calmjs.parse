@@ -29,11 +29,11 @@ import ply.yacc
 from calmjs.parse import asttypes
 from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.lexers.es5 import Lexer
+from calmjs.parse.utils import generate_tab_names
 
 # The default values for the `Parser` constructor, passed on to ply; they must
 # be strings
-lextab = '%s.lextab' % __package__
-yacctab = '%s.yacctab' % __package__
+lextab, yacctab = generate_tab_names(__name__)
 
 
 class Parser(object):
