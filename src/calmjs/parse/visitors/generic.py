@@ -81,6 +81,84 @@ class NodeVisitor(object):
                 yield subchild
 
 
+class ConditionalVisitor(object):
+    """
+    A visitor that return only specific nodes that matches a condition.
+    The condition is specified as a function that accept a single Node
+    as the argument, which the function may use to evaluate and return
+    True if the node is to be yielded.
+
+    Example usage:
+
+    >>> from calmjs.parse.asttypes import Assign
+    >>> from calmjs.parse.asttypes import FunctionCall
+    >>> from calmjs.parse.parsers.es5 import Parser
+    >>> from calmjs.parse.visitors.generic import ConditionalVisitor
+    >>> from calmjs.parse.visitors.es5.ecmavisitor import ECMAVisitor
+    >>>
+    >>> text = '''
+    ... var globals = {};
+    ... function x(k, v) {
+    ...     globals[k] = v;
+    ... };
+    ...
+    ... function y(k) {
+    ...     globals[k] = 'yyy';
+    ... };
+    ... '''
+    >>> def assignment(node):
+    ...     return isinstance(node, Assign)
+    ...
+    >>> def function_call(node):
+    ...     return isinstance(node, FunctionCall)
+    ...
+    >>> tree = Parser().parse(text)
+    >>> visitor = ConditionalVisitor()
+    >>> len(list(visitor.generate(tree, assignment)))
+    2
+    >>> len(list(visitor.generate(tree, function_call)))
+    0
+    >>> print(ECMAVisitor().visit(visitor.extract(tree, assignment)))
+    globals[k] = v
+    >>> print(ECMAVisitor().visit(visitor.extract(tree, assignment, skip=1)))
+    globals[k] = 'yyy'
+    >>> visitor.extract(tree, function_call)
+    Traceback (most recent call last):
+    ...
+    TypeError: no match found
+    """
+
+    def generate(self, node, condition):
+        """
+        This method accepts a node and the condition function; a
+        generator will be returned to yield the nodes that got matched
+        by the condition.
+        """
+
+        if not isinstance(node, Node):
+            raise TypeError('not a node')
+
+        for child in node:
+            if condition(child):
+                yield child
+            for subchild in self.generate(child, condition):
+                yield subchild
+
+    def extract(self, node, condition, skip=0):
+        """
+        Extract a single node that matches the provided condition,
+        otherwise a TypeError is raised.  An optional skip parameter can
+        be provided to specify how many matching nodes are to be skipped
+        over.
+        """
+
+        for child in self.generate(node, condition):
+            if not skip:
+                return child
+            skip -= 1
+        raise TypeError('no match found')
+
+
 class ReprVisitor(object):
     """
     Visitor for the generation of an expanded repr-like form

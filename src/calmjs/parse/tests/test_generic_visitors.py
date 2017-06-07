@@ -7,6 +7,14 @@ from calmjs.parse.visitors import generic
 from calmjs.parse import es5
 
 repr_visitor = generic.ReprVisitor()
+conditional = generic.ConditionalVisitor()
+
+
+class ConditionalVisitorTestCase(unittest.TestCase):
+
+    def test_not_node(self):
+        with self.assertRaises(TypeError):
+            list(conditional.generate('not_a_node', lambda x: True))
 
 
 class ReprTestCase(unittest.TestCase):
