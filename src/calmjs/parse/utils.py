@@ -3,6 +3,7 @@
 Various utilities and helpers
 """
 
+import sys
 
 try:
     from pkg_resources import working_set
@@ -10,6 +11,8 @@ try:
     ply_dist = working_set.find(Requirement.parse('ply'))
 except ImportError:  # pragma: no cover
     ply_dist = None
+
+py_major = sys.version_info.major
 
 
 def generate_tab_names(name):
@@ -24,6 +27,7 @@ def generate_tab_names(name):
 
     version = ply_dist.version.replace(
         '.', '_') if ply_dist is not None else 'unknown'
-    lextab = '%s.lextab_%s_%s' % (package_name, module_name, version)
-    yacctab = '%s.yacctab_%s_%s' % (package_name, module_name, version)
+    data = (package_name, module_name, py_major, version)
+    lextab = '%s.lextab_%s_py%d_ply%s' % data
+    yacctab = '%s.yacctab_%s_py%d_ply%s' % data
     return lextab, yacctab

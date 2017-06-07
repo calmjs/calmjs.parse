@@ -22,7 +22,7 @@ test_script:
   # seems like most environments default to cp1252, so this workaround
   # will need to be applied so that the tab files can be correctly
   # created.
-  - python encoding_workaround.py
+  - python -m calmjs.parse.parsers.optimize
   - coverage run --include=src\* -m unittest calmjs.parse.tests.make_suite
   - coverage report -m
 
