@@ -1590,6 +1590,37 @@ ParsedNodeTypeTestCase = build_equality_testcase(
                 statement=<EmptyStatement value=';'>>
         ]>
         """
+    ), (
+        'octal_slimit_issue_70',
+        r"var x = '\071[90m%s';",
+        r"""
+        <ES5Program ?children=[<VarStatement ?children=[
+          <VarDecl identifier=<Identifier value='x'>, initializer=<
+            String value="'\\071[90m%s'">>
+        ]>]>
+        """
+    ), (
+        'special_array_char_slimit_issue_82',
+        r"var x = ['a','\n'];",
+        r"""
+        <ES5Program ?children=[<VarStatement ?children=[
+          <VarDecl identifier=<Identifier value='x'>,
+            initializer=<Array items=[
+              <String value="'a'">,
+              <String value="'\\n'">
+            ]>
+          >
+        ]>]>
+        """
+    ), (
+        'special_string_slimit_issue_82',
+        r"var x = '\n';",
+        r"""
+        <ES5Program ?children=[<VarStatement ?children=[
+          <VarDecl identifier=<Identifier value='x'>,
+            initializer=<String value="'\\n'">>
+        ]>]>
+        """
     )])
 )
 

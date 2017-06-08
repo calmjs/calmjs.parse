@@ -519,6 +519,20 @@ ECMAVisitorTestCase = build_equality_testcase(
         };
         """,
     ), (
+        'dot_accessor_integer',
+        """
+        (0x25).toString();
+        (1e3).toString();
+        (25).toString();
+        """,
+    ), (
+        'attr_accessor_integer',
+        """
+        0x25["toString"]();
+        1e3["toString"]();
+        25["toString"]();
+        """,
+    ), (
 
         #######################################
         # Make sure parentheses are not removed
