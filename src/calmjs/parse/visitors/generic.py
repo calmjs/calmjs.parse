@@ -94,7 +94,7 @@ class ConditionalVisitor(object):
     >>> from calmjs.parse.asttypes import FunctionCall
     >>> from calmjs.parse.parsers.es5 import Parser
     >>> from calmjs.parse.visitors.generic import ConditionalVisitor
-    >>> from calmjs.parse.visitors.es5.ecmavisitor import ECMAVisitor
+    >>> from calmjs.parse.visitors.es5 import PrettyPrinter as ECMAVisitor
     >>>
     >>> text = '''
     ... var globals = {};

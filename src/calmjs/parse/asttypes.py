@@ -53,8 +53,8 @@ class ES5Program(Node):
     def to_ecma(self):
         # Can't import at module level as ecmavisitor depends
         # on asttypes defined here...
-        from calmjs.parse.visitors.es5.ecmavisitor import ECMAVisitor
-        visitor = ECMAVisitor()
+        from calmjs.parse.visitors.es5 import PrettyPrinter
+        visitor = PrettyPrinter()
         return visitor.visit(self)
 
 
