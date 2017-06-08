@@ -111,6 +111,7 @@ class Lexer(object):
     def __init__(self):
         self.prev_token = None
         self.cur_token = None
+        self.cur_token_real = None
         self.next_tokens = []
         self.token_stack = [[None, []]]
         self.build()
@@ -156,9 +157,9 @@ class Lexer(object):
             # division syntax marker that matches section 7.  If so, use
             # the previous token.
             check_token = (
-                self.cur_token
-                if self.cur_token is None or
-                self.cur_token.type not in DIVISION_SYNTAX_MARKERS else
+                self.cur_token_real
+                if self.cur_token_real is None or
+                self.cur_token_real.type not in DIVISION_SYNTAX_MARKERS else
                 self.prev_token
             )
             is_division_allowed = (
@@ -175,8 +176,7 @@ class Lexer(object):
             if is_division_allowed:
                 return self._get_update_token()
             else:
-                self._set_prev_token()
-                self.cur_token = self._read_regex()
+                self._set_tokens(self._read_regex())
                 return self.cur_token
 
     def auto_semi(self, token):
@@ -185,8 +185,12 @@ class Lexer(object):
                 self.next_tokens.append(token)
             return self._create_semi_token(token)
 
-    def _set_prev_token(self):
+    def _set_tokens(self, new_token):
         self.token_stack[-1][0] = self.prev_token = self.cur_token
+        self.cur_token = new_token
+        if (self.cur_token and
+                self.cur_token.type not in DIVISION_SYNTAX_MARKERS):
+            self.cur_token_real = self.cur_token
 
     def _is_prev_token_lt(self):
         return self.prev_token and self.prev_token.type == 'LINE_TERMINATOR'
@@ -198,8 +202,7 @@ class Lexer(object):
         return token
 
     def _get_update_token(self):
-        self._set_prev_token()
-        self.cur_token = self.lexer.token()
+        self._set_tokens(self.lexer.token())
 
         if self.cur_token is not None:
 
@@ -516,4 +519,4 @@ class Lexer(object):
     def t_error(self, token):
         # TODO figure out how to report column instead of lexpos.
         raise ECMASyntaxError('Illegal character %r at %s:%s after %s' % (
-            token.value[0], token.lineno, token.lexpos, self.prev_token))
+            token.value[0], token.lineno, token.lexpos, self.cur_token))
