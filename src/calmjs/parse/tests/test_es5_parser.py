@@ -109,6 +109,18 @@ class ParserTestCase(unittest.TestCase):
         parser = Parser()
         self.assertRaises(ECMASyntaxError, parser.parse, text)
 
+    def test_ecma_262_whitespace_slimt_issue_84(self):
+        text = u'''\uFEFF
+        var foo = function() {
+        // a salad of whitespaces
+        \x09\r\n\x0b\x0c\x20\xa0
+        \u1680\u2000\u2001\u2005\u200A
+        \u2028\u2029\u202F\u205F\u3000
+            return 1;
+        };
+        '''
+        self.assertTrue(bool(Parser().parse(text).children()))
+
 
 repr_visitor = generic.ReprVisitor()
 

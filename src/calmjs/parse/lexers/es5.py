@@ -346,7 +346,18 @@ class Lexer(object):
 
     t_LINE_TERMINATOR = r'[\n\r]+'
 
-    t_ignore = ' \t'
+    t_ignore = (
+        # space, tab, line tab, form feed, nbsp
+        u' \t\x0b\x0c\xa0'
+        # ogham space mark
+        u'\u1680'
+        # en quad .. hair space
+        u'\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A'
+        # line sep, paragraph sep, narrow nbsp, med math, ideographic space
+        u'\u2028\u2029\u202F\u205F\u3000'
+        # unicode bom
+        u'\uFEFF'
+    )
 
     t_NUMBER = r"""
     (?:
