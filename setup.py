@@ -1,6 +1,6 @@
 from setuptools import setup, find_packages
 
-version = '0.0.0'
+version = '0.9.0'
 
 classifiers = """
 Development Status :: 4 - Beta
