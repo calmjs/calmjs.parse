@@ -31,6 +31,7 @@ from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.exceptions import ECMARegexSyntaxError
 from calmjs.parse.parsers.es5 import Parser
 from calmjs.parse.visitors import generic
+from calmjs.parse.visitors.es5 import pretty_print
 
 from calmjs.parse.testing.util import build_equality_testcase
 from calmjs.parse.testing.util import build_exception_testcase
@@ -1629,7 +1630,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
 
 def regenerate(value):
     parser = Parser()
-    return str(parser.parse(value))
+    return pretty_print(parser.parse(value))
 
 
 ParserToECMAASITestCase = build_equality_testcase(
@@ -1927,6 +1928,20 @@ ParserToECMAASITestCase = build_equality_testcase(
         """
         x ? y : z;
         """
+    ), (
+        'bare_strings_issue_62',
+        u"""
+        \xef
+        'use strict';
+        'use strict';
+        'use strict';
+        """,
+        u"""
+        \xef;
+        'use strict';
+        'use strict';
+        'use strict';
+        """,
     )])
 )
 
