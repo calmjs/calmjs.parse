@@ -28,8 +28,10 @@ __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 import unittest
 
 from calmjs.parse.lexers.es5 import Lexer
+from calmjs.parse.exceptions import ECMASyntaxError
 
 from calmjs.parse.testing.util import build_equality_testcase
+from calmjs.parse.testing.util import build_exception_testcase
 
 
 class LexerFailureTestCase(unittest.TestCase):
@@ -326,6 +328,10 @@ world"''',
           "LPAREN (", r'REGEX /"/g', "COMMA ,", r'STRING "\\\""', "RPAREN )",
           "PLUS +", r'STRING "\")"', "SEMI ;"]),
     ), (
+        'regex_division_check',
+        ('a = /a/ / /b/',
+         ['ID a', 'EQ =', 'REGEX /a/', 'DIV /', 'REGEX /b/']),
+    ), (
         'for_regex_slimit_issue_54',
         ('for (;;) /r/;',
          ['FOR for', 'LPAREN (', 'SEMI ;', 'SEMI ;', 'RPAREN )',
@@ -335,5 +341,56 @@ world"''',
         ('for (;;) { x / y }',
          ['FOR for', 'LPAREN (', 'SEMI ;', 'SEMI ;', 'RPAREN )',
           'LBRACE {', 'ID x', 'DIV /', 'ID y', 'RBRACE }']),
+    ), (
+        'for_regex_slimit_issue_54_bracket_accessor_check',
+        ('s = {a:1} + s[2] / 1',
+         ['ID s', 'EQ =', 'LBRACE {', 'ID a', 'COLON :', 'NUMBER 1',
+          'RBRACE }', 'PLUS +', 'ID s', 'LBRACKET [', 'NUMBER 2', 'RBRACKET ]',
+          'DIV /', 'NUMBER 1'])
+    ), (
+        'for_regex_slimit_issue_54_function_parentheses_check',
+        ('s = {a:1} + f(2) / 1',
+         ['ID s', 'EQ =', 'LBRACE {', 'ID a', 'COLON :', 'NUMBER 1',
+          'RBRACE }', 'PLUS +', 'ID f', 'LPAREN (', 'NUMBER 2', 'RPAREN )',
+          'DIV /', 'NUMBER 1'])
+    ), (
+        'for_regex_slimit_issue_54_math_parentheses_check',
+        ('s = {a:1} + (2) / 1',
+         ['ID s', 'EQ =', 'LBRACE {', 'ID a', 'COLON :', 'NUMBER 1',
+          'RBRACE }', 'PLUS +', 'LPAREN (', 'NUMBER 2', 'RPAREN )',
+          'DIV /', 'NUMBER 1'])
+    ), (
+        'for_regex_slimit_issue_54_math_bracket_check',
+        ('s = {a:1} + [2] / 1',
+         ['ID s', 'EQ =', 'LBRACE {', 'ID a', 'COLON :', 'NUMBER 1',
+          'RBRACE }', 'PLUS +', 'LBRACKET [', 'NUMBER 2', 'RBRACKET ]',
+          'DIV /', 'NUMBER 1'])
+    ), (
+        'for_regex_slimit_issue_54_math_braces_check',
+        ('s = {a:2} / 166 / 9',
+         ['ID s', 'EQ =', 'LBRACE {', 'ID a', 'COLON :', 'NUMBER 2',
+          'RBRACE }', 'DIV /', 'NUMBER 166', 'DIV /', 'NUMBER 9'])
+    ), (
+        'do_while_regex',
+        ('do {} while (0) /s/',
+         ['DO do', 'LBRACE {', 'RBRACE }', 'WHILE while', 'LPAREN (',
+          'NUMBER 0', 'RPAREN )', 'REGEX /s/'])
+    ), (
+        'if_regex',
+        ('if (thing) /s/',
+         ['IF if', 'LPAREN (', 'ID thing', 'RPAREN )', 'REGEX /s/'])
+    ), (
+        'identifier_math',
+        ('f (v) /s/g',
+         ['ID f', 'LPAREN (', 'ID v', 'RPAREN )', 'DIV /', 'ID s', 'DIV /',
+          'ID g'])
     )])
+)
+
+
+LexerErrorTestCase = build_exception_testcase(
+    'LexerErrorTestCase', run_lex, [(
+        'extra_ending_braces',
+        '())))',
+    )], ECMASyntaxError,
 )

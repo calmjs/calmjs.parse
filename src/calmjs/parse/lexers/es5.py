@@ -55,6 +55,12 @@ TOKENS_THAT_IMPLY_DIVISON = frozenset([
     'RBRACKET',
 ])
 
+IMPLIED_BLOCK_IDENTIFIER = frozenset([
+    'FOR',
+    'WHILE',
+    'IF',
+])
+
 
 class Lexer(object):
     """A JavaScript lexer.
@@ -99,7 +105,7 @@ class Lexer(object):
         self.prev_token = None
         self.cur_token = None
         self.next_tokens = []
-        self.token_stack = [None]
+        self.token_stack = [[None, []]]
         self.build()
 
     def build(self, **kwargs):
@@ -145,17 +151,17 @@ class Lexer(object):
                 cur_token is not None and
                 cur_token.type in TOKENS_THAT_IMPLY_DIVISON
             ) and (
-                self.token_stack[-1] is None or (
-                    self.token_stack[-1] is self.prev_token or
+                self.token_stack[-1][0] is None or (
                     # if the token on the stack is the same, the
                     # following was done already, so skip it
-                    self.token_stack[-1].type in TOKENS_THAT_IMPLY_DIVISON
+                    self.token_stack[-1][0] is self.prev_token or
+                    self.token_stack[-1][0].type in TOKENS_THAT_IMPLY_DIVISON
                 )
             )
             if is_division_allowed:
                 return self._get_update_token()
             else:
-                self.token_stack[-1] = self.prev_token = self.cur_token
+                self._set_prev_token()
                 self.cur_token = self._read_regex()
                 return self.cur_token
 
@@ -164,6 +170,9 @@ class Lexer(object):
             if token:
                 self.next_tokens.append(token)
             return self._create_semi_token(token)
+
+    def _set_prev_token(self):
+        self.token_stack[-1][0] = self.prev_token = self.cur_token
 
     def _is_prev_token_lt(self):
         return self.prev_token and self.prev_token.type == 'LINE_TERMINATOR'
@@ -175,14 +184,35 @@ class Lexer(object):
         return token
 
     def _get_update_token(self):
-        self.token_stack[-1] = self.prev_token = self.cur_token
+        self._set_prev_token()
         self.cur_token = self.lexer.token()
 
         if self.cur_token is not None:
-            if self.cur_token.type in ('LPAREN', 'LBRACE', 'LBRACKET'):
-                self.token_stack.append(self.cur_token)
-            if self.cur_token.type in ('RPAREN', 'RBRACE', 'RBRACKET'):
-                self.token_stack.pop()
+
+            if self.cur_token.type in ('LPAREN',):
+                # if we encounter a FOR, IF, WHILE, then whatever in
+                # the parentheses are marked.  Otherwise just push
+                # into the inner marker list.
+                if (self.prev_token and
+                        self.prev_token.type in IMPLIED_BLOCK_IDENTIFIER):
+                    self.token_stack.append([self.cur_token, []])
+                else:
+                    self.token_stack[-1][1].append(self.cur_token)
+
+            if self.cur_token.type in ('RPAREN',):
+                # likewise, pop the inner marker first.
+                if self.token_stack[-1][1]:
+                    self.token_stack[-1][1].pop()
+                else:
+                    self.token_stack.pop()
+
+            if not self.token_stack:
+                # TODO actually give up earlier than this with the first
+                # mismatch.
+                raise ECMASyntaxError(
+                    "Mismatched '%s' at line %d" % (
+                        self.cur_token.value, self.cur_token.lineno)
+                )
 
         # insert semicolon before restricted tokens
         # See section 7.9.1 ECMA262
