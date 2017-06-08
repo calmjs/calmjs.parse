@@ -76,7 +76,7 @@ class ParserTestCase(unittest.TestCase):
             if isinstance(node, asttypes.Identifier) and node.value == 'i':
                 node.value = 'hello'
         self.assertMultiLineEqual(
-            tree.to_ecma(),
+            str(tree),
             textwrap.dedent("""
             for (var hello = 0; hello < 10; hello++) {
               var x = 5 + hello;
@@ -1629,7 +1629,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
 
 def regenerate(value):
     parser = Parser()
-    return parser.parse(value).to_ecma()
+    return str(parser.parse(value))
 
 
 ParserToECMAASITestCase = build_equality_testcase(

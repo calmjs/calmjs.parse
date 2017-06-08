@@ -46,7 +46,7 @@ class BaseTestCase(unittest.TestCase):
 
 
 def parse_to_ecma(value):
-    return parser.parse(value).to_ecma()
+    return str(parser.parse(value))
 
 
 def parse_force_parens_to_ecma(value):
@@ -54,7 +54,7 @@ def parse_force_parens_to_ecma(value):
     tree = parser.parse(value)
     for node in NodeVisitor().visit(tree):
         node._parens = True
-    return tree.to_ecma()
+    return str(tree)
 
 
 ECMAVisitorTestCase = build_equality_testcase(
@@ -713,3 +713,28 @@ ECMASyntaxErrorTestCase = build_exception_testcase(
         """,
     )]), ECMASyntaxError
 )
+
+
+class SpecialTestCase(unittest.TestCase):
+    """
+    For catching special case
+    """
+
+    def test_repr_failure_message(self):
+        with self.assertRaises(ECMASyntaxError) as e:
+            parse_to_ecma("""Name.prototype = {
+              set failure(arg1, arg2) {
+                return {1:{2:{3:{4:4}}}};
+              }
+            };""")
+
+        self.assertEqual(e.exception.args[0], textwrap.dedent("""
+        Setter functions must have one argument: <SetPropAssign elements=[
+          <Return expr=<Object properties=[
+            <Assign ...>
+          ]>>
+        ], parameters=[
+          <Identifier value='arg1'>,
+          <Identifier value='arg2'>
+        ], prop_name=<Identifier value='failure'>>
+        """).strip())

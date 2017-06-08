@@ -102,7 +102,7 @@ class PrettyPrinter(object):
             template = '(%s)' % template
         if len(node.parameters) > 1:
             raise ECMASyntaxError(
-                'Setter functions must have one argument: %s' % node)
+                'Setter functions must have one argument: %r' % node)
         params = ','.join(self.visit(param) for param in node.parameters)
         self.indent_level += self.indentation
         body = '\n'.join(
@@ -404,3 +404,12 @@ class PrettyPrinter(object):
 
     def visit_This(self, node):
         return 'this'
+
+    def __call__(self, node):
+        return self.visit(node)
+
+
+def pretty_print(s):
+    # since the printer is stateful, here is a helper method to
+    # instantiate the printing.
+    return PrettyPrinter()(s)

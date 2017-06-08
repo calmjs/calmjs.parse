@@ -26,10 +26,14 @@ __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 import ply.yacc
 
-from calmjs.parse import asttypes
 from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.lexers.es5 import Lexer
+from calmjs.parse.factory import AstTypesFactory
+from calmjs.parse.visitors.es5 import pretty_print
+from calmjs.parse.visitors.generic import ReprVisitor
 from calmjs.parse.utils import generate_tab_names
+
+asttypes = AstTypesFactory(pretty_print, ReprVisitor())
 
 # The default values for the `Parser` constructor, passed on to ply; they must
 # be strings

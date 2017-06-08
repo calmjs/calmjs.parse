@@ -179,12 +179,17 @@ class ReprVisitor(object):
 
     """
 
-    def visit(self, node, omit=('lexpos', 'lineno'), indent=0, _level=0):
+    def visit(
+            self, node, omit=('lexpos', 'lineno'), indent=0, depth=-1,
+            _level=0):
         """
         Accepts the standard node argument, along with an optional omit
         flag - it should be an iterable that lists out all attributes
         that should be omitted from the repr output.
         """
+
+        if not depth:
+            return '<%s ...>' % node.__class__.__name__
 
         attrs = []
         children = node.children()
@@ -202,13 +207,15 @@ class ReprVisitor(object):
                 ids.remove(id(v))
 
             if isinstance(v, Node):
-                attrs.append((k, self.visit(v, omit, indent, _level)))
+                attrs.append((k, self.visit(
+                    v, omit, indent, depth - 1, _level)))
             elif isinstance(v, list):
                 items = []
                 for i in v:
                     if id(i) in ids:
                         ids.remove(id(i))
-                    items.append(self.visit(i, omit, indent, _level + 1))
+                    items.append(self.visit(
+                        i, omit, indent, depth - 1, _level + 1))
                 attrs.append(
                     (k, '[' + header + joiner.join(items) + tailer + ']'))
             else:
@@ -217,7 +224,7 @@ class ReprVisitor(object):
         if ids:
             # for unnamed child nodes.
             attrs.append(('?children', '[' + header + joiner.join(
-                self.visit(child, omit, indent, _level + 1)
+                self.visit(child, omit, indent, depth - 1, _level + 1)
                 for child in children
                 if id(child) in ids) + tailer + ']'))
 
@@ -226,6 +233,9 @@ class ReprVisitor(object):
             '%s=%s' % (k, v) for k, v in sorted(attrs)
             if k not in omit_keys
         ))
+
+    def __call__(self, node, indent=2, depth=3):
+        return self.visit(node, indent=indent, depth=depth)
 
 
 def visit(node):
