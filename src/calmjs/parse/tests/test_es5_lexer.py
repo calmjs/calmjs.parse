@@ -325,5 +325,15 @@ world"''',
           "COMMA ,", r'STRING "\\\\"', "RPAREN )", "PERIOD .", "ID replace",
           "LPAREN (", r'REGEX /"/g', "COMMA ,", r'STRING "\\\""', "RPAREN )",
           "PLUS +", r'STRING "\")"', "SEMI ;"]),
+    ), (
+        'for_regex_slimit_issue_54',
+        ('for (;;) /r/;',
+         ['FOR for', 'LPAREN (', 'SEMI ;', 'SEMI ;', 'RPAREN )',
+          'REGEX /r/', 'SEMI ;']),
+    ), (
+        'for_regex_slimit_issue_54_not_break_division',
+        ('for (;;) { x / y }',
+         ['FOR for', 'LPAREN (', 'SEMI ;', 'SEMI ;', 'RPAREN )',
+          'LBRACE {', 'ID x', 'DIV /', 'ID y', 'RBRACE }']),
     )])
 )

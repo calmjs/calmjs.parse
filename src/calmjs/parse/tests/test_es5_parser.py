@@ -1622,6 +1622,27 @@ ParsedNodeTypeTestCase = build_equality_testcase(
             initializer=<String value="'\\n'">>
         ]>]>
         """
+    ), (
+        'for_in_without_braces',
+        "for (index in [1,2,3]) index",
+        """
+        <ES5Program ?children=[
+          <ForIn item=<Identifier value='index'>, iterable=<Array items=[
+            <Number value='1'>, <Number value='2'>, <Number value='3'>
+          ]>, statement=<ExprStatement expr=<Identifier value='index'>>>
+        ]>
+        """
+    ), (
+        'for_loop_into_regex_slimit_issue_54',
+        # "for (index in [1,2,3]) /^salign$/i.test('salign')",
+        "for (index in [1,2,3]) /^salign$/",
+        """
+        <ES5Program ?children=[
+          <ForIn item=<Identifier value='index'>, iterable=<Array items=[
+            <Number value='1'>, <Number value='2'>, <Number value='3'>
+          ]>, statement=<ExprStatement expr=<Regex value='/^salign$/'>>>
+        ]>
+        """
     )])
 )
 

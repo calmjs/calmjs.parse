@@ -99,6 +99,7 @@ class Lexer(object):
         self.prev_token = None
         self.cur_token = None
         self.next_tokens = []
+        self.token_stack = [None]
         self.build()
 
     def build(self, **kwargs):
@@ -143,11 +144,18 @@ class Lexer(object):
             is_division_allowed = (
                 cur_token is not None and
                 cur_token.type in TOKENS_THAT_IMPLY_DIVISON
+            ) and (
+                self.token_stack[-1] is None or (
+                    self.token_stack[-1] is self.prev_token or
+                    # if the token on the stack is the same, the
+                    # following was done already, so skip it
+                    self.token_stack[-1].type in TOKENS_THAT_IMPLY_DIVISON
+                )
             )
             if is_division_allowed:
                 return self._get_update_token()
             else:
-                self.prev_token = self.cur_token
+                self.token_stack[-1] = self.prev_token = self.cur_token
                 self.cur_token = self._read_regex()
                 return self.cur_token
 
@@ -167,8 +175,15 @@ class Lexer(object):
         return token
 
     def _get_update_token(self):
-        self.prev_token = self.cur_token
+        self.token_stack[-1] = self.prev_token = self.cur_token
         self.cur_token = self.lexer.token()
+
+        if self.cur_token is not None:
+            if self.cur_token.type in ('LPAREN', 'LBRACE', 'LBRACKET'):
+                self.token_stack.append(self.cur_token)
+            if self.cur_token.type in ('RPAREN', 'RBRACE', 'RBRACKET'):
+                self.token_stack.pop()
+
         # insert semicolon before restricted tokens
         # See section 7.9.1 ECMA262
         if (self.cur_token is not None
@@ -177,6 +192,7 @@ class Lexer(object):
             and self.prev_token.type in ['BREAK', 'CONTINUE',
                                          'RETURN', 'THROW']):
             return self._create_semi_token(self.cur_token)
+
         return self.cur_token
 
     def _create_semi_token(self, orig_token):
