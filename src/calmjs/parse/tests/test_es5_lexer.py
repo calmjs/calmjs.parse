@@ -384,7 +384,21 @@ world"''',
         ('f (v) /s/g',
          ['ID f', 'LPAREN (', 'ID v', 'RPAREN )', 'DIV /', 'ID s', 'DIV /',
           'ID g'])
+    ), (
+        'section_7',
+        ("a = b\n/hi/s",
+         ['ID a', 'EQ =', 'ID b', 'DIV /', 'ID hi', 'DIV /', 'ID s'])
+    ), (
+        'section_7_extras',
+        ("a = b\n\n\n/hi/s",
+         ['ID a', 'EQ =', 'ID b', 'DIV /', 'ID hi', 'DIV /', 'ID s'])
     )])
+    # okay this is getting ridiculous how bad ECMA is.
+    # ), (
+    #     'section_7_comments',
+    #     ("a = b\n/** **/\n\n/hi/s",
+    #      ['ID a', 'EQ =', 'ID b', 'DIV /', 'ID hi', 'DIV /', 'ID s'])
+    # )])
 )
 
 

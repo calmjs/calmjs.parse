@@ -62,6 +62,13 @@ IMPLIED_BLOCK_IDENTIFIER = frozenset([
 ])
 
 
+# think of a better name for this, but this is mostly to address section
+# 7 of the spec.
+DIVISION_SYNTAX_MARKERS = frozenset([
+    'LINE_TERMINATOR', 'LINE_COMMENT', 'BLOCK_COMMENT'
+])
+
+
 class Lexer(object):
     """A JavaScript lexer.
 
@@ -138,18 +145,25 @@ class Lexer(object):
 
             if char != '/' or (char == '/' and next_char in ('/', '*')):
                 tok = self._get_update_token()
-                if tok.type in ('LINE_TERMINATOR',
-                                'LINE_COMMENT', 'BLOCK_COMMENT'):
+                if tok.type in DIVISION_SYNTAX_MARKERS:
                     lexer.lineno += len(tok.value.splitlines())
                     continue
                 else:
                     return tok
 
             # current character is '/' which is either division or regex
-            cur_token = self.cur_token
+            # First check that if the previous token is a potential
+            # division syntax marker that matches section 7.  If so, use
+            # the previous token.
+            check_token = (
+                self.cur_token
+                if self.cur_token is None or
+                self.cur_token.type not in DIVISION_SYNTAX_MARKERS else
+                self.prev_token
+            )
             is_division_allowed = (
-                cur_token is not None and
-                cur_token.type in TOKENS_THAT_IMPLY_DIVISON
+                check_token is not None and
+                check_token.type in TOKENS_THAT_IMPLY_DIVISON
             ) and (
                 self.token_stack[-1][0] is None or (
                     # if the token on the stack is the same, the

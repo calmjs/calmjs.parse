@@ -1886,6 +1886,15 @@ ParserToECMAASITestCase = build_equality_testcase(
         q = /default/g;
         """
     ), (
+        'regex_section_7',
+        r"""
+        a = b
+        /hi/g.exec(c).map(d);
+        """,
+        r"""
+        a = b / hi / g.exec(c).map(d);
+        """
+    ), (
         'new_expr',
         r"""
         var T = function() {}
