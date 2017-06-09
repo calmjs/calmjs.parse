@@ -82,10 +82,3 @@ after_success:
       pip install coveralls ;
       coveralls ;
     fi
-branches:
-  only:
-    - testing
-    - master
-    - 0.9.x
-    - 1.0.x
-    - 2.0.x
