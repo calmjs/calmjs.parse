@@ -130,6 +130,22 @@ This step is generally optionally for users who installed this package
 from PyPI via a Python wheel, provided the caveats as outlined in the
 installation section are addressed.
 
+Testing the installation
+~~~~~~~~~~~~~~~~~~~~~~~~
+
+To ensure that the |calmjs.parse| installation is functioning correctly,
+the built-in testsuite can be executed by the following:
+
+.. code:: sh
+
+    $ python -m unittest calmjs.parse.tests.make_suite
+
+If there are failures, please file an issue on the issue tracker with
+the full traceback, and/or the method of installation.  Please also
+remember to include platform specific information, such as Python
+version, operating system environments, the version of |ply| that was
+installed, plus other information related to the issue at hand.
+
 
 Usage
 -----
@@ -168,7 +184,7 @@ immediate access to the parsing feature.  It may be used like so:
 The parser classes are organized under the ``calmjs.parse.parsers``
 module, with each language being under their own module.  A
 corresponding lexer class with the same name is also provided under the
-``calmjs.parse.lexers`` module.  For the monent, only ES5 support is
+``calmjs.parse.lexers`` module.  For the moment, only ES5 support is
 implemented.
 
 AST (Abstract Syntax Tree) visitor classes are defined under the
@@ -226,6 +242,13 @@ A workaround helper script is provided, it may be executed like so:
 
 For more details, refer to the ``Manual optimization`` section of this
 document.
+
+
+Contribute
+----------
+
+- Issue Tracker: https://github.com/calmjs/calmjs.parse/issues
+- Source Code: https://github.com/calmjs/calmjs.parse
 
 
 Legal
