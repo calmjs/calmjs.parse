@@ -1,4 +1,6 @@
+import sys
 from setuptools import setup, find_packages
+from subprocess import call
 
 version = '0.9.0'
 
@@ -40,8 +42,6 @@ setup(
     include_package_data=True,
     zip_safe=False,
     install_requires=[
-        'setuptools',
-        # -*- Extra requirements: -*-
         'ply>=3.6',
     ],
     entry_points="""
@@ -49,3 +49,5 @@ setup(
     """,
     test_suite="calmjs.parse.tests.make_suite",
 )
+
+call([sys.executable, '-m', 'calmjs.parse.parsers.optimize'])
