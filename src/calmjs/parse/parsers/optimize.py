@@ -11,6 +11,7 @@ import codecs
 import sys
 from functools import partial
 from os import unlink
+from os.path import exists
 from ply import lex
 from importlib import import_module
 
@@ -19,7 +20,7 @@ from calmjs.parse.parsers import es5
 
 
 def purge_tabs(module):
-    cleanup = []
+    paths = []
     for entry in ('lextab', 'yacctab'):
         # we assume the specified entries are defined as such
         name = getattr(module, entry)
@@ -36,9 +37,23 @@ def purge_tabs(module):
             # don't need to do anything
             pass
         else:
-            cleanup.append(sys.modules.pop(name).__file__)
+            paths.append(sys.modules.pop(name).__file__)
 
-    for path in cleanup:
+    unlink_modules(verify_paths(paths))
+
+
+def verify_paths(paths):
+    for path in paths:
+        if exists(path):
+            yield path
+        if path[-4:] in ('.pyc', '.pyo'):
+            # find the .py file, too.
+            if exists(path[:-1]):
+                yield path[:-1]
+
+
+def unlink_modules(paths):
+    for path in paths:
         # will raise whatever error, i.e. when insufficient permission
         unlink(path)
 

@@ -5,6 +5,8 @@ import importlib
 import os
 import sys
 
+from shutil import rmtree
+from tempfile import mkdtemp
 from types import ModuleType
 from ply import lex
 from calmjs.parse.parsers import optimize
@@ -23,7 +25,24 @@ class OptimizeTestCase(unittest.TestCase):
         # undo whatever monkey patch that may have happened
         lex.open = open
 
-    def test_cleanup(self):
+    def test_verify_paths(self):
+        tempdir = mkdtemp()
+        self.addCleanup(rmtree, tempdir)
+
+        # create fake module files
+        modules = [os.path.join(tempdir, name) for name in (
+            'foo.pyc', 'bar.pyc', 'foo.py')]
+
+        for module in modules:
+            with open(module, 'w'):
+                pass
+
+        self.assertEqual(
+            sorted(modules),
+            sorted(optimize.verify_paths(modules[:2])),
+        )
+
+    def test_unlink_modules(self):
         # ensure the parser exists
         es5.Parser()
         # should have created the optimized version of the file, if not
@@ -33,7 +52,7 @@ class OptimizeTestCase(unittest.TestCase):
         # unlink has been patched out
         optimize.purge_tabs(es5)
         self.assertNotIn(es5.yacctab, sys.modules)
-        self.assertEqual(len(self.purged), 2)
+        self.assertNotEqual(len(self.purged), 0)
 
     def test_not_imported(self):
         # mock the import failures
@@ -62,7 +81,7 @@ class OptimizeTestCase(unittest.TestCase):
         # do the "real" run, should be twice the number of implemented
         # parsers.
         optimize.reoptimize_all()
-        self.assertEqual(len(self.purged), 2)
+        self.assertNotEqual(len(self.purged), 0)
         self.assertIs(lex.open, open)
 
     def test_reoptimize_monkey_patched(self):
