@@ -220,7 +220,7 @@ For platforms or systems that do not have utf8 configured as the default
 encoding, the automatic table generation may fail when constructing a
 parser instance.  An example:
 
-.. code:: python-doctest
+.. code:: python
 
     >>> from calmjs.parse.parsers import es5
     >>> parser = es5.Parser()
@@ -232,7 +232,7 @@ parser instance.  An example:
         tf.write('_lexstatere   = %s\n' % repr(tabre))
       File "c:\python35\lib\encodings\cp1252.py", line 19, in encode
         return codecs.charmap_encode(input,self.errors,encoding_table)[0]
-    UnicodeEncodeError: 'charmap' codec can't encode character '\u02c1' in position 2488: character maps to <undefined>
+    UnicodeEncodeError: 'charmap' codec ...
 
 A workaround helper script is provided, it may be executed like so:
 
@@ -240,7 +240,7 @@ A workaround helper script is provided, it may be executed like so:
 
     $ python -m calmjs.parse.parsers.optimize
 
-For more details, refer to the ``Manual optimization`` section of this
+For more details, refer to the `Manual optimization`_ section of this
 document.
 
 
