@@ -1,6 +1,26 @@
+import atexit
 import sys
 from setuptools import setup, find_packages
+from setuptools.command.develop import develop
+from setuptools.command.install import install
 from subprocess import call
+
+
+class DevelopHook(develop):
+    """For hooking the optimizer when setup exits"""
+    def __init__(self, *a, **kw):
+        develop.__init__(self, *a, **kw)
+        atexit.register(
+            call, [sys.executable, '-m', 'calmjs.parse.parsers.optimize'])
+
+
+class InstallHook(install):
+    """For hooking the optimizer when setup exits"""
+    def __init__(self, *a, **kw):
+        install.__init__(self, *a, **kw)
+        atexit.register(
+            call, [sys.executable, '-m', 'calmjs.parse.parsers.optimize'])
+
 
 version = '0.9.0'
 
@@ -41,13 +61,14 @@ setup(
     namespace_packages=['calmjs'],
     include_package_data=True,
     zip_safe=False,
+    cmdclass={
+        'develop': DevelopHook,
+        'install': InstallHook,
+    },
     install_requires=[
         'ply>=3.6',
     ],
-    entry_points="""
-    # -*- Entry points: -*-
-    """,
+    entry_points={
+    },
     test_suite="calmjs.parse.tests.make_suite",
 )
-
-call([sys.executable, '-m', 'calmjs.parse.parsers.optimize'])
