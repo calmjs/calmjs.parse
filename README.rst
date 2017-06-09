@@ -4,12 +4,12 @@ calmjs.parse
 A collection of parsers and helper libraries for understanding
 ECMAScript; a partial fork of |slimit|_.
 
-.. image:: https://travis-ci.org/calmjs/calmjs.parse.svg?branch=0.9.x
+.. image:: https://travis-ci.org/calmjs/calmjs.parse.svg?branch=0.9.0
     :target: https://travis-ci.org/calmjs/calmjs.parse
-.. image:: https://ci.appveyor.com/api/projects/status/5dj8dnu9gmj02msu/branch/0.9.x?svg=true
-    :target: https://ci.appveyor.com/project/metatoaster/calmjs-parse/branch/0.9.x
-.. image:: https://coveralls.io/repos/github/calmjs/calmjs.parse/badge.svg?branch=0.9.x
-    :target: https://coveralls.io/github/calmjs/calmjs.parse?branch=0.9.x
+.. image:: https://ci.appveyor.com/api/projects/status/5dj8dnu9gmj02msu/branch/0.9.0?svg=true
+    :target: https://ci.appveyor.com/project/metatoaster/calmjs-parse/branch/0.9.0
+.. image:: https://coveralls.io/repos/github/calmjs/calmjs.parse/badge.svg?branch=0.9.0
+    :target: https://coveralls.io/github/calmjs/calmjs.parse?branch=0.9.0
 
 .. |calmjs.parse| replace:: ``calmjs.parse``
 .. |ply| replace:: ``ply``
