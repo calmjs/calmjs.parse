@@ -197,7 +197,6 @@ class VarStatement(Node):
 class VarDecl(Node):
     def __init__(self, identifier, initializer=None):
         self.identifier = identifier
-        self.identifier._mangle_candidate = True
         self.initializer = initializer
 
     def children(self):
@@ -374,8 +373,6 @@ class Try(Node):
 class Catch(Node):
     def __init__(self, identifier, elements):
         self.identifier = identifier
-        # CATCH identifiers are subject to name mangling. we need to mark them.
-        self.identifier._mangle_candidate = True
         self.elements = elements
 
     def children(self):
@@ -400,15 +397,6 @@ class FuncBase(Node):
         self.identifier = identifier
         self.parameters = parameters if parameters is not None else []
         self.elements = elements if elements is not None else []
-        self._init_ids()
-
-    def _init_ids(self):
-        # function declaration/expression name and parameters are identifiers
-        # and therefore are subject to name mangling. we need to mark them.
-        if self.identifier is not None:
-            self.identifier._mangle_candidate = True
-        for param in self.parameters:
-            param._mangle_candidate = True
 
     def children(self):
         return [self.identifier] + self.parameters + self.elements
