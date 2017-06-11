@@ -22,7 +22,7 @@ class InstallHook(install):
             call, [sys.executable, '-m', 'calmjs.parse.parsers.optimize'])
 
 
-version = '0.9.0'
+version = '1.0.0'
 
 classifiers = """
 Development Status :: 4 - Beta
