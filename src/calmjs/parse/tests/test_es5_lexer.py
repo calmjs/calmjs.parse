@@ -26,6 +26,7 @@
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 import unittest
+import textwrap
 
 from calmjs.parse.lexers.es5 import Lexer
 from calmjs.parse.exceptions import ECMASyntaxError
@@ -406,4 +407,65 @@ LexerErrorTestCase = build_exception_testcase(
         'extra_ending_braces',
         '())))',
     )], ECMASyntaxError,
+)
+
+
+def run_lex_pos(value):
+    lexer = Lexer()
+    lexer.input(textwrap.dedent(value).strip())
+    return [
+        '%s %d:%d' % (token.value, token.lineno, token.lexpos)
+        for token in lexer
+    ]
+
+
+LexerPosTestCase = build_equality_testcase(
+    'LexerPosTestCase', run_lex_pos, [(
+        'single_line',
+        """
+        var foo = bar;  // line 1
+        """, [
+            'var 1:0', 'foo 1:4', '= 1:8', 'bar 1:10', '; 1:13'
+        ]
+    ), (
+        'multi_line',
+        """
+        var foo = bar;  // line 1
+
+
+        var bar = baz;  // line 4
+        """, [
+            'var 1:0', 'foo 1:4', '= 1:8', 'bar 1:10', '; 1:13',
+            'var 4:28', 'bar 4:32', '= 4:36', 'baz 4:38', '; 4:41',
+        ]
+    ), (
+        'inline_comment',
+        """
+        // this is a comment  // line 1
+        var foo = bar;  // line 2
+
+        // another one  // line 4
+        var bar = baz;  // line 5
+        """, [
+            'var 2:32', 'foo 2:36', '= 2:40', 'bar 2:42', '; 2:45',
+            'var 5:85', 'bar 5:89', '= 5:93', 'baz 5:95', '; 5:98',
+        ]
+    ), (
+        'block_comment',
+        """
+        /*
+        This is a block comment
+        */
+        var foo = bar;  // line 4
+
+        /* block single line */ // line 6
+        var bar = baz;  // line 7
+
+        /* oops */bar();  // line 9
+        """, [
+            'var 4:30', 'foo 4:34', '= 4:38', 'bar 4:40', '; 4:43',
+            'var 7:91', 'bar 7:95', '= 7:99', 'baz 7:101', '; 7:104',
+            'bar 9:128', '( 9:131', ') 9:132', '; 9:133',
+        ]
+    )]
 )

@@ -147,7 +147,11 @@ class Lexer(object):
             if char != '/' or (char == '/' and next_char in ('/', '*')):
                 tok = self._get_update_token()
                 if tok.type in DIVISION_SYNTAX_MARKERS:
-                    lexer.lineno += len(tok.value.splitlines())
+                    if tok.type == 'LINE_TERMINATOR':
+                        lexer.lineno += len(tok.value.splitlines())
+                    elif tok.type == 'BLOCK_COMMENT':
+                        # only grab the middle bits.
+                        lexer.lineno += len(tok.value.splitlines()) - 1
                     continue
                 else:
                     return tok
