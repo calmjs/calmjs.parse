@@ -52,7 +52,7 @@ class Parser(object):
 
     def __init__(self, lex_optimize=True, lextab=lextab,
                  yacc_optimize=True, yacctab=yacctab, yacc_debug=False,
-                 yacc_tracking=True):
+                 yacc_tracking=True, asttypes=asttypes):
         # A warning: in order for line numbers and column numbers be
         # tracked correctly, ``yacc_tracking`` MUST be turned ON.  As
         # this parser was initially implemented with a number of manual
@@ -78,6 +78,8 @@ class Parser(object):
         self.parser = ply.yacc.yacc(
             module=self, optimize=yacc_optimize,
             debug=yacc_debug, tabmodule=yacctab, start='program')
+
+        self.asttypes = asttypes
 
         # https://github.com/rspivak/slimit/issues/29
         # lexer.auto_semi can cause a loop in a parser
@@ -158,7 +160,7 @@ class Parser(object):
 
     def p_program(self, p):
         """program : source_elements"""
-        p[0] = asttypes.ES5Program(p[1])
+        p[0] = self.asttypes.ES5Program(p[1])
         p[0].setpos(p)  # require yacc_tracking
 
     def p_source_elements(self, p):
@@ -207,7 +209,7 @@ class Parser(object):
     # also function_declaration inside blocks
     def p_block(self, p):
         """block : LBRACE source_elements RBRACE"""
-        p[0] = asttypes.Block(p[2])
+        p[0] = self.asttypes.Block(p[2])
         p[0].setpos(p)
 
     def p_literal(self, p):
@@ -223,32 +225,32 @@ class Parser(object):
         """boolean_literal : TRUE
                            | FALSE
         """
-        p[0] = asttypes.Boolean(p[1])
+        p[0] = self.asttypes.Boolean(p[1])
         p[0].setpos(p)
 
     def p_null_literal(self, p):
         """null_literal : NULL"""
-        p[0] = asttypes.Null(p[1])
+        p[0] = self.asttypes.Null(p[1])
         p[0].setpos(p)
 
     def p_numeric_literal(self, p):
         """numeric_literal : NUMBER"""
-        p[0] = asttypes.Number(p[1])
+        p[0] = self.asttypes.Number(p[1])
         p[0].setpos(p)
 
     def p_string_literal(self, p):
         """string_literal : STRING"""
-        p[0] = asttypes.String(p[1])
+        p[0] = self.asttypes.String(p[1])
         p[0].setpos(p)
 
     def p_regex_literal(self, p):
         """regex_literal : REGEX"""
-        p[0] = asttypes.Regex(p[1])
+        p[0] = self.asttypes.Regex(p[1])
         p[0].setpos(p)
 
     def p_identifier(self, p):
         """identifier : ID"""
-        p[0] = asttypes.Identifier(p[1])
+        p[0] = self.asttypes.Identifier(p[1])
         p[0].setpos(p)
 
     # Because reserved words can be used as identifiers under certain
@@ -291,7 +293,7 @@ class Parser(object):
                          | IMPORT
                          | SUPER
         """
-        p[0] = asttypes.Identifier(p[1])
+        p[0] = self.asttypes.Identifier(p[1])
         p[0].setpos(p)
 
     def p_identifier_name(self, p):
@@ -315,7 +317,7 @@ class Parser(object):
 
     def p_primary_expr_no_brace_2(self, p):
         """primary_expr_no_brace : THIS"""
-        p[0] = asttypes.This()
+        p[0] = self.asttypes.This()
         p[0].setpos(p)
 
     def p_primary_expr_no_brace_3(self, p):
@@ -331,7 +333,7 @@ class Parser(object):
 
     def p_array_literal_1(self, p):
         """array_literal : LBRACKET elision_opt RBRACKET"""
-        p[0] = asttypes.Array(items=p[2])
+        p[0] = self.asttypes.Array(items=p[2])
         p[0].setpos(p)
 
     def p_array_literal_2(self, p):
@@ -341,7 +343,7 @@ class Parser(object):
         items = p[2]
         if len(p) == 6:
             items.extend(p[4])
-        p[0] = asttypes.Array(items=items)
+        p[0] = self.asttypes.Array(items=items)
         p[0].setpos(p)
 
     def p_element_list(self, p):
@@ -368,10 +370,10 @@ class Parser(object):
                    | elision COMMA
         """
         if len(p) == 2:
-            p[0] = [asttypes.Elision(p[1])]
+            p[0] = [self.asttypes.Elision(p[1])]
             p[0][0].setpos(p)
         else:
-            p[1].append(asttypes.Elision(p[2]))
+            p[1].append(self.asttypes.Elision(p[2]))
             p[1][-1].setpos(p, 2)
             p[0] = p[1]
 
@@ -381,9 +383,9 @@ class Parser(object):
                           | LBRACE property_list COMMA RBRACE
         """
         if len(p) == 3:
-            p[0] = asttypes.Object()
+            p[0] = self.asttypes.Object()
         else:
-            p[0] = asttypes.Object(properties=p[2])
+            p[0] = self.asttypes.Object(properties=p[2])
         p[0].setpos(p)
 
     def p_property_list(self, p):
@@ -405,13 +407,13 @@ class Parser(object):
                    LBRACE function_body RBRACE
         """
         if len(p) == 4:
-            p[0] = asttypes.Assign(left=p[1], op=p[2], right=p[3])
+            p[0] = self.asttypes.Assign(left=p[1], op=p[2], right=p[3])
             p[0].setpos(p, 2)
         elif len(p) == 8:
-            p[0] = asttypes.GetPropAssign(prop_name=p[2], elements=p[6])
+            p[0] = self.asttypes.GetPropAssign(prop_name=p[2], elements=p[6])
             p[0].setpos(p)
         else:
-            p[0] = asttypes.SetPropAssign(
+            p[0] = self.asttypes.SetPropAssign(
                 prop_name=p[2], parameters=p[4], elements=p[7])
             p[0].setpos(p)
 
@@ -435,13 +437,13 @@ class Parser(object):
             return
 
         if p[1] == 'new':
-            p[0] = asttypes.NewExpr(p[2], p[3])
+            p[0] = self.asttypes.NewExpr(p[2], p[3])
             p[0].setpos(p)
         elif p[2] == '.':
-            p[0] = asttypes.DotAccessor(p[1], p[3])
+            p[0] = self.asttypes.DotAccessor(p[1], p[3])
             p[0].setpos(p, 2)
         else:
-            p[0] = asttypes.BracketAccessor(p[1], p[3])
+            p[0] = self.asttypes.BracketAccessor(p[1], p[3])
             p[0].setpos(p, 2)
 
     def p_member_expr_nobf(self, p):
@@ -456,13 +458,13 @@ class Parser(object):
             return
 
         if p[1] == 'new':
-            p[0] = asttypes.NewExpr(p[2], p[3])
+            p[0] = self.asttypes.NewExpr(p[2], p[3])
             p[0].setpos(p, 1)
         elif p[2] == '.':
-            p[0] = asttypes.DotAccessor(p[1], p[3])
+            p[0] = self.asttypes.DotAccessor(p[1], p[3])
             p[0].setpos(p, 2)
         else:
-            p[0] = asttypes.BracketAccessor(p[1], p[3])
+            p[0] = self.asttypes.BracketAccessor(p[1], p[3])
             p[0].setpos(p, 2)
 
     def p_new_expr(self, p):
@@ -472,7 +474,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.NewExpr(p[2])
+            p[0] = self.asttypes.NewExpr(p[2])
             p[0].setpos(p)
 
     def p_new_expr_nobf(self, p):
@@ -482,7 +484,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.NewExpr(p[2])
+            p[0] = self.asttypes.NewExpr(p[2])
             p[0].setpos(p)
 
     def p_call_expr(self, p):
@@ -492,13 +494,13 @@ class Parser(object):
                      | call_expr PERIOD identifier_name
         """
         if len(p) == 3:
-            p[0] = asttypes.FunctionCall(p[1], p[2])
+            p[0] = self.asttypes.FunctionCall(p[1], p[2])
             p[0].setpos(p)  # require yacc_tracking
         elif len(p) == 4:
-            p[0] = asttypes.DotAccessor(p[1], p[3])
+            p[0] = self.asttypes.DotAccessor(p[1], p[3])
             p[0].setpos(p, 2)
         else:
-            p[0] = asttypes.BracketAccessor(p[1], p[3])
+            p[0] = self.asttypes.BracketAccessor(p[1], p[3])
             p[0].setpos(p, 2)
 
     def p_call_expr_nobf(self, p):
@@ -508,13 +510,13 @@ class Parser(object):
                           | call_expr_nobf PERIOD identifier_name
         """
         if len(p) == 3:
-            p[0] = asttypes.FunctionCall(p[1], p[2])
+            p[0] = self.asttypes.FunctionCall(p[1], p[2])
             p[0].setpos(p)  # require yacc_tracking
         elif len(p) == 4:
-            p[0] = asttypes.DotAccessor(p[1], p[3])
+            p[0] = self.asttypes.DotAccessor(p[1], p[3])
             p[0].setpos(p, 2)
         else:
-            p[0] = asttypes.BracketAccessor(p[1], p[3])
+            p[0] = self.asttypes.BracketAccessor(p[1], p[3])
             p[0].setpos(p, 2)
 
     def p_arguments(self, p):
@@ -555,7 +557,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.UnaryOp(op=p[2], value=p[1], postfix=True)
+            p[0] = self.asttypes.UnaryOp(op=p[2], value=p[1], postfix=True)
             p[0].setpos(p, 2)
 
     def p_postfix_expr_nobf(self, p):
@@ -566,7 +568,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.UnaryOp(op=p[2], value=p[1], postfix=True)
+            p[0] = self.asttypes.UnaryOp(op=p[2], value=p[1], postfix=True)
             p[0].setpos(p, 2)
 
     # 11.4 Unary Operators
@@ -593,7 +595,7 @@ class Parser(object):
                              | BNOT unary_expr
                              | NOT unary_expr
         """
-        p[0] = asttypes.UnaryOp(p[1], p[2])
+        p[0] = self.asttypes.UnaryOp(p[1], p[2])
         p[0].setpos(p)
 
     # 11.5 Multiplicative Operators
@@ -606,7 +608,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_multiplicative_expr_nobf(self, p):
@@ -618,7 +620,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     # 11.6 Additive Operators
@@ -630,7 +632,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_additive_expr_nobf(self, p):
@@ -641,7 +643,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     # 11.7 Bitwise Shift Operators
@@ -654,7 +656,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_shift_expr_nobf(self, p):
@@ -666,7 +668,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     # 11.8 Relational Operators
@@ -682,7 +684,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_relational_expr_noin(self, p):
@@ -696,7 +698,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_relational_expr_nobf(self, p):
@@ -711,7 +713,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     # 11.9 Equality Operators
@@ -725,7 +727,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_equality_expr_noin(self, p):
@@ -738,7 +740,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_equality_expr_nobf(self, p):
@@ -751,7 +753,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     # 11.10 Binary Bitwise Operators
@@ -762,7 +764,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_bitwise_and_expr_noin(self, p):
@@ -773,7 +775,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_bitwise_and_expr_nobf(self, p):
@@ -784,7 +786,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_bitwise_xor_expr(self, p):
@@ -794,7 +796,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_bitwise_xor_expr_noin(self, p):
@@ -806,7 +808,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_bitwise_xor_expr_nobf(self, p):
@@ -818,7 +820,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_bitwise_or_expr(self, p):
@@ -828,7 +830,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_bitwise_or_expr_noin(self, p):
@@ -840,7 +842,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_bitwise_or_expr_nobf(self, p):
@@ -852,7 +854,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     # 11.11 Binary Logical Operators
@@ -863,7 +865,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_logical_and_expr_noin(self, p):
@@ -874,7 +876,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_logical_and_expr_nobf(self, p):
@@ -885,7 +887,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_logical_or_expr(self, p):
@@ -895,7 +897,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_logical_or_expr_noin(self, p):
@@ -905,7 +907,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_logical_or_expr_nobf(self, p):
@@ -915,7 +917,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0] = self.asttypes.BinOp(op=p[2], left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     # 11.12 Conditional Operator ( ? : )
@@ -928,7 +930,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.Conditional(
+            p[0] = self.asttypes.Conditional(
                 predicate=p[1], consequent=p[3], alternative=p[5])
             p[0].setpos(p, 2)
 
@@ -942,7 +944,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.Conditional(
+            p[0] = self.asttypes.Conditional(
                 predicate=p[1], consequent=p[3], alternative=p[5])
             p[0].setpos(p, 2)
 
@@ -955,7 +957,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.Conditional(
+            p[0] = self.asttypes.Conditional(
                 predicate=p[1], consequent=p[3], alternative=p[5])
             p[0].setpos(p, 2)
 
@@ -969,7 +971,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.Assign(left=p[1], op=p[2], right=p[3])
+            p[0] = self.asttypes.Assign(left=p[1], op=p[2], right=p[3])
             p[0].setpos(p, 2)  # require yacc_tracking
 
     def p_assignment_expr_noin(self, p):
@@ -981,7 +983,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.Assign(left=p[1], op=p[2], right=p[3])
+            p[0] = self.asttypes.Assign(left=p[1], op=p[2], right=p[3])
             p[0].setpos(p, 2)  # require yacc_tracking
 
     def p_assignment_expr_nobf(self, p):
@@ -993,7 +995,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.Assign(left=p[1], op=p[2], right=p[3])
+            p[0] = self.asttypes.Assign(left=p[1], op=p[2], right=p[3])
             p[0].setpos(p, 2)  # require yacc_tracking
 
     def p_assignment_operator(self, p):
@@ -1020,7 +1022,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.Comma(left=p[1], right=p[3])
+            p[0] = self.asttypes.Comma(left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_expr_noin(self, p):
@@ -1030,7 +1032,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.Comma(left=p[1], right=p[3])
+            p[0] = self.asttypes.Comma(left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     def p_expr_nobf(self, p):
@@ -1040,7 +1042,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = asttypes.Comma(left=p[1], right=p[3])
+            p[0] = self.asttypes.Comma(left=p[1], right=p[3])
             p[0].setpos(p, 2)
 
     # 12.2 Variable Statement
@@ -1048,7 +1050,7 @@ class Parser(object):
         """variable_statement : VAR variable_declaration_list SEMI
                               | VAR variable_declaration_list auto_semi
         """
-        p[0] = asttypes.VarStatement(p[2])
+        p[0] = self.asttypes.VarStatement(p[2])
         p[0].setpos(p)
 
     def p_variable_declaration_list(self, p):
@@ -1080,9 +1082,9 @@ class Parser(object):
                                 | identifier initializer
         """
         if len(p) == 2:
-            p[0] = asttypes.VarDecl(p[1])
+            p[0] = self.asttypes.VarDecl(p[1])
         else:
-            p[0] = asttypes.VarDecl(p[1], p[2])
+            p[0] = self.asttypes.VarDecl(p[1], p[2])
         p[0].setpos(p)  # require yacc_tracking
 
     def p_variable_declaration_noin(self, p):
@@ -1090,9 +1092,9 @@ class Parser(object):
                                      | identifier initializer_noin
         """
         if len(p) == 2:
-            p[0] = asttypes.VarDecl(p[1])
+            p[0] = self.asttypes.VarDecl(p[1])
         else:
-            p[0] = asttypes.VarDecl(p[1], p[2])
+            p[0] = self.asttypes.VarDecl(p[1], p[2])
         p[0].setpos(p)  # require yacc_tracking
 
     def p_initializer(self, p):
@@ -1106,7 +1108,7 @@ class Parser(object):
     # 12.3 Empty Statement
     def p_empty_statement(self, p):
         """empty_statement : SEMI"""
-        p[0] = asttypes.EmptyStatement(p[1])
+        p[0] = self.asttypes.EmptyStatement(p[1])
         p[0].setpos(p)
 
     # 12.4 Expression Statement
@@ -1114,18 +1116,18 @@ class Parser(object):
         """expr_statement : expr_nobf SEMI
                           | expr_nobf auto_semi
         """
-        p[0] = asttypes.ExprStatement(p[1])
+        p[0] = self.asttypes.ExprStatement(p[1])
         p[0].setpos(p)  # require yacc_tracking
 
     # 12.5 The if Statement
     def p_if_statement_1(self, p):
         """if_statement : IF LPAREN expr RPAREN statement"""
-        p[0] = asttypes.If(predicate=p[3], consequent=p[5])
+        p[0] = self.asttypes.If(predicate=p[3], consequent=p[5])
         p[0].setpos(p)
 
     def p_if_statement_2(self, p):
         """if_statement : IF LPAREN expr RPAREN statement ELSE statement"""
-        p[0] = asttypes.If(
+        p[0] = self.asttypes.If(
             predicate=p[3], consequent=p[5], alternative=p[7])
         p[0].setpos(p)
 
@@ -1136,12 +1138,12 @@ class Parser(object):
             : DO statement WHILE LPAREN expr RPAREN SEMI
             | DO statement WHILE LPAREN expr RPAREN auto_semi
         """
-        p[0] = asttypes.DoWhile(predicate=p[5], statement=p[2])
+        p[0] = self.asttypes.DoWhile(predicate=p[5], statement=p[2])
         p[0].setpos(p)
 
     def p_iteration_statement_2(self, p):
         """iteration_statement : WHILE LPAREN expr RPAREN statement"""
-        p[0] = asttypes.While(predicate=p[3], statement=p[5])
+        p[0] = self.asttypes.While(predicate=p[3], statement=p[5])
         p[0].setpos(p)
 
     def p_iteration_statement_3(self, p):
@@ -1153,12 +1155,12 @@ class Parser(object):
                   expr_opt RPAREN statement
         """
         if len(p) == 10:
-            p[0] = asttypes.For(
+            p[0] = self.asttypes.For(
                 init=p[3], cond=p[5], count=p[7], statement=p[9])
         else:
-            init = asttypes.VarStatement(p[4])
+            init = self.asttypes.VarStatement(p[4])
             init.setpos(p, 3)
-            p[0] = asttypes.For(
+            p[0] = self.asttypes.For(
                 init=init, cond=p[6], count=p[8], statement=p[10])
         p[0].setpos(p)
 
@@ -1167,7 +1169,7 @@ class Parser(object):
         iteration_statement \
             : FOR LPAREN left_hand_side_expr IN expr RPAREN statement
         """
-        p[0] = asttypes.ForIn(item=p[3], iterable=p[5], statement=p[7])
+        p[0] = self.asttypes.ForIn(item=p[3], iterable=p[5], statement=p[7])
         p[0].setpos(p)
 
     def p_iteration_statement_5(self, p):
@@ -1175,9 +1177,9 @@ class Parser(object):
         iteration_statement : \
             FOR LPAREN VAR identifier IN expr RPAREN statement
         """
-        vardecl = asttypes.VarDecl(p[4])
+        vardecl = self.asttypes.VarDecl(p[4])
         vardecl.setpos(p, 3)
-        p[0] = asttypes.ForIn(item=vardecl, iterable=p[6], statement=p[8])
+        p[0] = self.asttypes.ForIn(item=vardecl, iterable=p[6], statement=p[8])
         p[0].setpos(p)
 
     def p_iteration_statement_6(self, p):
@@ -1185,9 +1187,9 @@ class Parser(object):
         iteration_statement \
           : FOR LPAREN VAR identifier initializer_noin IN expr RPAREN statement
         """
-        vardecl = asttypes.VarDecl(identifier=p[4], initializer=p[5])
+        vardecl = self.asttypes.VarDecl(identifier=p[4], initializer=p[5])
         vardecl.setpos(p, 3)
-        p[0] = asttypes.ForIn(item=vardecl, iterable=p[7], statement=p[9])
+        p[0] = self.asttypes.ForIn(item=vardecl, iterable=p[7], statement=p[9])
         p[0].setpos(p)
 
     def p_expr_opt(self, p):
@@ -1207,14 +1209,14 @@ class Parser(object):
         """continue_statement : CONTINUE SEMI
                               | CONTINUE auto_semi
         """
-        p[0] = asttypes.Continue()
+        p[0] = self.asttypes.Continue()
         p[0].setpos(p)
 
     def p_continue_statement_2(self, p):
         """continue_statement : CONTINUE identifier SEMI
                               | CONTINUE identifier auto_semi
         """
-        p[0] = asttypes.Continue(p[2])
+        p[0] = self.asttypes.Continue(p[2])
         p[0].setpos(p)
 
     # 12.8 The break Statement
@@ -1222,14 +1224,14 @@ class Parser(object):
         """break_statement : BREAK SEMI
                            | BREAK auto_semi
         """
-        p[0] = asttypes.Break()
+        p[0] = self.asttypes.Break()
         p[0].setpos(p)
 
     def p_break_statement_2(self, p):
         """break_statement : BREAK identifier SEMI
                            | BREAK identifier auto_semi
         """
-        p[0] = asttypes.Break(p[2])
+        p[0] = self.asttypes.Break(p[2])
         p[0].setpos(p)
 
     # 12.9 The return Statement
@@ -1237,20 +1239,20 @@ class Parser(object):
         """return_statement : RETURN SEMI
                             | RETURN auto_semi
         """
-        p[0] = asttypes.Return()
+        p[0] = self.asttypes.Return()
         p[0].setpos(p)
 
     def p_return_statement_2(self, p):
         """return_statement : RETURN expr SEMI
                             | RETURN expr auto_semi
         """
-        p[0] = asttypes.Return(expr=p[2])
+        p[0] = self.asttypes.Return(expr=p[2])
         p[0].setpos(p)
 
     # 12.10 The with Statement
     def p_with_statement(self, p):
         """with_statement : WITH LPAREN expr RPAREN statement"""
-        p[0] = asttypes.With(expr=p[3], statement=p[5])
+        p[0] = self.asttypes.With(expr=p[3], statement=p[5])
         p[0].setpos(p)
 
     # 12.11 The switch Statement
@@ -1260,12 +1262,12 @@ class Parser(object):
         default = None
         # iterate over return values from case_block
         for item in p[5]:
-            if isinstance(item, asttypes.Default):
+            if isinstance(item, self.asttypes.Default):
                 default = item
             elif isinstance(item, list):
                 cases.extend(item)
 
-        p[0] = asttypes.Switch(expr=p[3], cases=cases, default=default)
+        p[0] = self.asttypes.Switch(expr=p[3], cases=cases, default=default)
         p[0].setpos(p)
 
     def p_case_block(self, p):
@@ -1294,18 +1296,18 @@ class Parser(object):
 
     def p_case_clause(self, p):
         """case_clause : CASE expr COLON source_elements"""
-        p[0] = asttypes.Case(expr=p[2], elements=p[4])
+        p[0] = self.asttypes.Case(expr=p[2], elements=p[4])
         p[0].setpos(p)
 
     def p_default_clause(self, p):
         """default_clause : DEFAULT COLON source_elements"""
-        p[0] = asttypes.Default(elements=p[3])
+        p[0] = self.asttypes.Default(elements=p[3])
         p[0].setpos(p)
 
     # 12.12 Labelled Statements
     def p_labelled_statement(self, p):
         """labelled_statement : identifier COLON statement"""
-        p[0] = asttypes.Label(identifier=p[1], statement=p[3])
+        p[0] = self.asttypes.Label(identifier=p[1], statement=p[3])
         p[0].setpos(p, 2)
 
     # 12.13 The throw Statement
@@ -1313,33 +1315,33 @@ class Parser(object):
         """throw_statement : THROW expr SEMI
                            | THROW expr auto_semi
         """
-        p[0] = asttypes.Throw(expr=p[2])
+        p[0] = self.asttypes.Throw(expr=p[2])
         p[0].setpos(p)
 
     # 12.14 The try Statement
     def p_try_statement_1(self, p):
         """try_statement : TRY block catch"""
-        p[0] = asttypes.Try(statements=p[2], catch=p[3])
+        p[0] = self.asttypes.Try(statements=p[2], catch=p[3])
         p[0].setpos(p)
 
     def p_try_statement_2(self, p):
         """try_statement : TRY block finally"""
-        p[0] = asttypes.Try(statements=p[2], fin=p[3])
+        p[0] = self.asttypes.Try(statements=p[2], fin=p[3])
         p[0].setpos(p)
 
     def p_try_statement_3(self, p):
         """try_statement : TRY block catch finally"""
-        p[0] = asttypes.Try(statements=p[2], catch=p[3], fin=p[4])
+        p[0] = self.asttypes.Try(statements=p[2], catch=p[3], fin=p[4])
         p[0].setpos(p)
 
     def p_catch(self, p):
         """catch : CATCH LPAREN identifier RPAREN block"""
-        p[0] = asttypes.Catch(identifier=p[3], elements=p[5])
+        p[0] = self.asttypes.Catch(identifier=p[3], elements=p[5])
         p[0].setpos(p)
 
     def p_finally(self, p):
         """finally : FINALLY block"""
-        p[0] = asttypes.Finally(elements=p[2])
+        p[0] = self.asttypes.Finally(elements=p[2])
         p[0].setpos(p)
 
     # 12.15 The debugger statement
@@ -1347,7 +1349,7 @@ class Parser(object):
         """debugger_statement : DEBUGGER SEMI
                               | DEBUGGER auto_semi
         """
-        p[0] = asttypes.Debugger(p[1])
+        p[0] = self.asttypes.Debugger(p[1])
         p[0].setpos(p)
 
     # 13 Function Definition
@@ -1359,10 +1361,10 @@ class Parser(object):
                  function_body RBRACE
         """
         if len(p) == 8:
-            p[0] = asttypes.FuncDecl(
+            p[0] = self.asttypes.FuncDecl(
                 identifier=p[2], parameters=None, elements=p[6])
         else:
-            p[0] = asttypes.FuncDecl(
+            p[0] = self.asttypes.FuncDecl(
                 identifier=p[2], parameters=p[4], elements=p[7])
         p[0].setpos(p)
 
@@ -1374,10 +1376,10 @@ class Parser(object):
                 LBRACE function_body RBRACE
         """
         if len(p) == 7:
-            p[0] = asttypes.FuncExpr(
+            p[0] = self.asttypes.FuncExpr(
                 identifier=None, parameters=None, elements=p[5])
         else:
-            p[0] = asttypes.FuncExpr(
+            p[0] = self.asttypes.FuncExpr(
                 identifier=None, parameters=p[3], elements=p[6])
         p[0].setpos(p)
 
@@ -1389,10 +1391,10 @@ class Parser(object):
                 LBRACE function_body RBRACE
         """
         if len(p) == 8:
-            p[0] = asttypes.FuncExpr(
+            p[0] = self.asttypes.FuncExpr(
                 identifier=p[2], parameters=None, elements=p[6])
         else:
-            p[0] = asttypes.FuncExpr(
+            p[0] = self.asttypes.FuncExpr(
                 identifier=p[2], parameters=p[4], elements=p[7])
         p[0].setpos(p)
 
