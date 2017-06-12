@@ -114,6 +114,7 @@ class Lexer(object):
         self.cur_token_real = None
         self.next_tokens = []
         self.token_stack = [[None, []]]
+        self.last_newline_lexpos = 0
         self.build()
 
     def build(self, **kwargs):
@@ -122,6 +123,19 @@ class Lexer(object):
 
     def input(self, text):
         self.lexer.input(text)
+
+    def _set_pos(self, token):
+        lines = 0
+        if token.type == 'LINE_TERMINATOR':
+            lines = len(token.value.splitlines())
+        elif token.type == 'BLOCK_COMMENT':
+            # block comment can potentially finish within one line, so
+            # it may not actually contain newlines - i.e. any trailing
+            # tokens will not be present, so subtract one from count.
+            lines = len(token.value.splitlines()) - 1
+        self.lexer.lineno += lines
+        if lines:
+            self.last_newline_lexpos = self.lexer.lexpos
 
     def token(self):
         if self.next_tokens:
@@ -139,7 +153,7 @@ class Lexer(object):
             except IndexError:
                 tok = self._get_update_token()
                 if tok is not None and tok.type == 'LINE_TERMINATOR':
-                    lexer.lineno += len(tok.value.splitlines())
+                    self._set_pos(tok)
                     continue
                 else:
                     return tok
@@ -147,11 +161,7 @@ class Lexer(object):
             if char != '/' or (char == '/' and next_char in ('/', '*')):
                 tok = self._get_update_token()
                 if tok.type in DIVISION_SYNTAX_MARKERS:
-                    if tok.type == 'LINE_TERMINATOR':
-                        lexer.lineno += len(tok.value.splitlines())
-                    elif tok.type == 'BLOCK_COMMENT':
-                        # only grab the middle bits.
-                        lexer.lineno += len(tok.value.splitlines()) - 1
+                    self._set_pos(tok)
                     continue
                 else:
                     return tok
@@ -244,6 +254,9 @@ class Lexer(object):
                                          'RETURN', 'THROW']):
             return self._create_semi_token(self.cur_token)
 
+        if self.cur_token:
+            self.cur_token.colno = (
+                self.cur_token.lexpos - self.last_newline_lexpos + 1)
         return self.cur_token
 
     def _create_semi_token(self, orig_token):
@@ -252,10 +265,17 @@ class Lexer(object):
         token.value = ';'
         if orig_token is not None:
             token.lineno = orig_token.lineno
+            # TODO figure out whether/how to normalize this with the
+            # actual length of the original token...
+            # Though, if actual use case boils down to error reporting,
+            # line number is sufficient, and leaving it as 0 means it
+            # shouldn't get dealt with during source map generation.
+            token.colno = 0
             token.lexpos = orig_token.lexpos
         else:
             token.lineno = 0
             token.lexpos = 0
+            token.colno = 0
         return token
 
     # iterator protocol

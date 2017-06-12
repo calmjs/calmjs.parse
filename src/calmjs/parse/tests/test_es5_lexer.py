@@ -413,10 +413,14 @@ LexerErrorTestCase = build_exception_testcase(
 def run_lex_pos(value):
     lexer = Lexer()
     lexer.input(textwrap.dedent(value).strip())
-    return [
+    tokens = list(lexer)
+    return ([
         '%s %d:%d' % (token.value, token.lineno, token.lexpos)
-        for token in lexer
-    ]
+        for token in tokens
+    ], [
+        '%s %d:%d' % (token.value, token.lineno, token.colno)
+        for token in tokens
+    ])
 
 
 LexerPosTestCase = build_equality_testcase(
@@ -424,9 +428,11 @@ LexerPosTestCase = build_equality_testcase(
         'single_line',
         """
         var foo = bar;  // line 1
-        """, [
+        """, ([
             'var 1:0', 'foo 1:4', '= 1:8', 'bar 1:10', '; 1:13'
-        ]
+        ], [
+            'var 1:1', 'foo 1:5', '= 1:9', 'bar 1:11', '; 1:14',
+        ])
     ), (
         'multi_line',
         """
@@ -434,10 +440,13 @@ LexerPosTestCase = build_equality_testcase(
 
 
         var bar = baz;  // line 4
-        """, [
+        """, ([
             'var 1:0', 'foo 1:4', '= 1:8', 'bar 1:10', '; 1:13',
             'var 4:28', 'bar 4:32', '= 4:36', 'baz 4:38', '; 4:41',
-        ]
+        ], [
+            'var 1:1', 'foo 1:5', '= 1:9', 'bar 1:11', '; 1:14',
+            'var 4:1', 'bar 4:5', '= 4:9', 'baz 4:11', '; 4:14',
+        ])
     ), (
         'inline_comment',
         """
@@ -446,10 +455,13 @@ LexerPosTestCase = build_equality_testcase(
 
         // another one  // line 4
         var bar = baz;  // line 5
-        """, [
+        """, ([
             'var 2:32', 'foo 2:36', '= 2:40', 'bar 2:42', '; 2:45',
             'var 5:85', 'bar 5:89', '= 5:93', 'baz 5:95', '; 5:98',
-        ]
+        ], [
+            'var 2:1', 'foo 2:5', '= 2:9', 'bar 2:11', '; 2:14',
+            'var 5:1', 'bar 5:5', '= 5:9', 'baz 5:11', '; 5:14',
+        ])
     ), (
         'block_comment',
         """
@@ -462,10 +474,18 @@ LexerPosTestCase = build_equality_testcase(
         var bar = baz;  // line 7
 
         /* oops */bar();  // line 9
-        """, [
+
+          foo();
+        """, ([
             'var 4:30', 'foo 4:34', '= 4:38', 'bar 4:40', '; 4:43',
             'var 7:91', 'bar 7:95', '= 7:99', 'baz 7:101', '; 7:104',
             'bar 9:128', '( 9:131', ') 9:132', '; 9:133',
-        ]
+            'foo 11:149', '( 11:152', ') 11:153', '; 11:154',
+        ], [
+            'var 4:1', 'foo 4:5', '= 4:9', 'bar 4:11', '; 4:14',
+            'var 7:1', 'bar 7:5', '= 7:9', 'baz 7:11', '; 7:14',
+            'bar 9:11', '( 9:14', ') 9:15', '; 9:16',
+            'foo 11:3', '( 11:6', ') 11:7', '; 11:8',
+        ])
     )]
 )
