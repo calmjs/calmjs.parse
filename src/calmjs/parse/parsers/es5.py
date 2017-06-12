@@ -32,6 +32,7 @@ from calmjs.parse.factory import AstTypesFactory
 from calmjs.parse.visitors.es5 import pretty_print
 from calmjs.parse.visitors.generic import ReprVisitor
 from calmjs.parse.utils import generate_tab_names
+from calmjs.parse.utils import format_lex_token
 
 asttypes = AstTypesFactory(pretty_print, ReprVisitor())
 
@@ -90,11 +91,23 @@ class Parser(object):
         self._error_tokens[key] = True
 
     def _raise_syntax_error(self, token):
-        raise ECMASyntaxError(
-            'Unexpected token (%s, %r) at %s:%s between %s and %s' % (
-                token.type, token.value, token.lineno, token.lexpos,
-                self.lexer.prev_token, self.lexer.token()
-            ))
+        prev_token = self.lexer.prev_token
+        next_token = self.lexer.token()
+        if next_token and prev_token:
+            raise ECMASyntaxError(
+                'Unexpected %s between %s and %s' % (
+                    format_lex_token(token),
+                    format_lex_token(prev_token),
+                    format_lex_token(next_token),
+                ))
+        elif prev_token:
+            raise ECMASyntaxError(
+                'Unexpected %s after %s' % (
+                    format_lex_token(token),
+                    format_lex_token(prev_token),
+                ))
+        else:
+            raise ECMASyntaxError('Unexpected %s' % format_lex_token(token))
 
     def parse(self, text, debug=False):
         return self.parser.parse(

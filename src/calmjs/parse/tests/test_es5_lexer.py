@@ -32,7 +32,6 @@ from calmjs.parse.lexers.es5 import Lexer
 from calmjs.parse.exceptions import ECMASyntaxError
 
 from calmjs.parse.testing.util import build_equality_testcase
-from calmjs.parse.testing.util import build_exception_testcase
 
 
 class LexerFailureTestCase(unittest.TestCase):
@@ -402,12 +401,12 @@ world"''',
 )
 
 
-LexerErrorTestCase = build_exception_testcase(
-    'LexerErrorTestCase', run_lex, [(
-        'extra_ending_braces',
-        '())))',
-    )], ECMASyntaxError,
-)
+class LexerErrorTestCase(unittest.TestCase):
+
+    def test_extra_ending_braces(self):
+        with self.assertRaises(ECMASyntaxError) as e:
+            run_lex('\n\n())))')
+        self.assertEqual(str(e.exception), "Mismatched ')' at 3:3")
 
 
 def run_lex_pos(value):
@@ -486,6 +485,18 @@ LexerPosTestCase = build_equality_testcase(
             'var 7:1', 'bar 7:5', '= 7:9', 'baz 7:11', '; 7:14',
             'bar 9:11', '( 9:14', ') 9:15', '; 9:16',
             'foo 11:3', '( 11:6', ') 11:7', '; 11:8',
+        ])
+    ), (
+        'syntax_error_heading_comma',
+        """
+        var a;
+        , b;
+        """, ([
+            'var 1:0', 'a 1:4', '; 1:5',
+            ', 2:7', 'b 2:9', '; 2:10'
+        ], [
+            'var 1:1', 'a 1:5', '; 1:6',
+            ', 2:1', 'b 2:3', '; 2:4'
         ])
     )]
 )

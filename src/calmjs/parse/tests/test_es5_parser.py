@@ -49,7 +49,7 @@ class ParserTestCase(unittest.TestCase):
             parser.parse('var\x01 blagh = 1;')
         self.assertEqual(
             e.exception.args[0],
-            "Illegal character '\\x01' at 1:3 after LexToken(VAR,'var',1,0)"
+            "Illegal character '\\x01' at 1:4 after 'var' at 1:1"
         )
 
     # XXX: function expression ?
@@ -91,7 +91,7 @@ class ParserTestCase(unittest.TestCase):
         function add(x, y) {
           return x + y;
         }
-        """)
+        """).strip()
         parser = Parser()
         tree = parser.parse(text)
         self.assertTrue(bool(tree.children()))
@@ -105,10 +105,40 @@ class ParserTestCase(unittest.TestCase):
 
     # https://github.com/rspivak/slimit/issues/29
     def test_that_parsing_eventually_stops(self):
-        text = """var a;
-        , b;"""
+        text = textwrap.dedent("""
+        var a;
+        , b;
+        """).strip()
         parser = Parser()
-        self.assertRaises(ECMASyntaxError, parser.parse, text)
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            str(e.exception),
+            "Unexpected ',' at 2:1 between '\\n' at 1:7 and 'b' at 2:3")
+
+    def test_bare_start(self):
+        text = textwrap.dedent("""
+        <
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            str(e.exception),
+            "Unexpected '<' at 1:1")
+
+    def test_previous_token(self):
+        # XXX do note that the auto-semi _looks_ like a real token and
+        # so it shouldn't be flagged if it isn't there.
+        text = textwrap.dedent("""
+        throw;
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            str(e.exception),
+            "Unexpected ';' at 1:6 after 'throw' at 1:1")
 
     def test_ecma_262_whitespace_slimt_issue_84(self):
         text = u'''\uFEFF

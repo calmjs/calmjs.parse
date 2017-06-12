@@ -36,6 +36,7 @@ from calmjs.parse.unicode_chars import (
     COMBINING_MARK,
     CONNECTOR_PUNCTUATION,
 )
+from calmjs.parse.utils import format_lex_token
 
 # See "Regular Expression Literals" at
 # http://www.mozilla.org/js/language/js20-2002-04/rationale/syntax.html
@@ -241,8 +242,11 @@ class Lexer(object):
                 # TODO actually give up earlier than this with the first
                 # mismatch.
                 raise ECMASyntaxError(
-                    "Mismatched '%s' at line %d" % (
-                        self.cur_token.value, self.cur_token.lineno)
+                    "Mismatched '%s' at %d:%d" % (
+                        self.cur_token.value,
+                        self.cur_token.lineno,
+                        self._get_colno(self.cur_token),
+                    )
                 )
 
         # insert semicolon before restricted tokens
@@ -254,10 +258,17 @@ class Lexer(object):
                                          'RETURN', 'THROW']):
             return self._create_semi_token(self.cur_token)
 
-        if self.cur_token:
-            self.cur_token.colno = (
-                self.cur_token.lexpos - self.last_newline_lexpos + 1)
-        return self.cur_token
+        return self._set_colno(self.cur_token)
+
+    def _set_colno(self, token):
+        if token:
+            token.colno = self._get_colno(token)
+        return token
+
+    def _get_colno(self, token):
+        # have a 1 offset to map nicer to commonly used/configured
+        # text editors.
+        return token.lexpos - self.last_newline_lexpos + 1
 
     def _create_semi_token(self, orig_token):
         token = ply.lex.LexToken()
@@ -374,8 +385,8 @@ class Lexer(object):
 
     def t_regex_error(self, token):
         raise ECMARegexSyntaxError(
-            "Error parsing regular expression '%s' at %s" % (
-                token.value, token.lineno)
+            "Error parsing regular expression '%s' at %s:%s" % (
+                token.value, token.lineno, self._get_colno(token))
         )
 
     # Punctuators
@@ -541,6 +552,9 @@ class Lexer(object):
         return token
 
     def t_error(self, token):
-        # TODO figure out how to report column instead of lexpos.
-        raise ECMASyntaxError('Illegal character %r at %s:%s after %s' % (
-            token.value[0], token.lineno, token.lexpos, self.cur_token))
+        raise ECMASyntaxError(
+            'Illegal character %r at %s:%s after %s' % (
+                token.value[0], token.lineno, self._get_colno(token),
+                format_lex_token(self.cur_token),
+            )
+        )
