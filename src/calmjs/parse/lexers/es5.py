@@ -425,7 +425,7 @@ class Lexer(object):
     t_NUMBER = r"""
     (?:
         0[xX][0-9a-fA-F]+              # hex_integer_literal
-     |  0[0-7]+                        # or octal_integer_literal (spec B.1.1)
+     |  0[0-7]+                        # or octal_integer_literal
      |  (?:                            # or decimal_literal
             (?:0|[1-9][0-9]*)          # decimal_integer_literal
             \.                         # dot
@@ -450,7 +450,7 @@ class Lexer(object):
                 | \\[a-zA-Z!-\/:-@\[-`{-~] # or escaped characters
                 | \\x[0-9a-fA-F]{2}        # or hex_escape_sequence
                 | \\u[0-9a-fA-F]{4}        # or unicode_escape_sequence
-                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence (spec B.1.2)
+                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3})  # or octal_escape_sequence
             )*?                            # zero or many times
             (?: \\\n                       # multiline ?
               (?:
@@ -458,7 +458,7 @@ class Lexer(object):
                 | \\[a-zA-Z!-\/:-@\[-`{-~] # or escaped characters
                 | \\x[0-9a-fA-F]{2}        # or hex_escape_sequence
                 | \\u[0-9a-fA-F]{4}        # or unicode_escape_sequence
-                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence (spec B.1.2)
+                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence
               )*?                          # zero or many times
             )*
         ")                                 # closing double quote
@@ -469,7 +469,7 @@ class Lexer(object):
                 | \\[a-zA-Z!-\/:-@\[-`{-~] # or escaped characters
                 | \\x[0-9a-fA-F]{2}        # or hex_escape_sequence
                 | \\u[0-9a-fA-F]{4}        # or unicode_escape_sequence
-                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence (spec B.1.2)
+                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence
             )*?                            # zero or many times
             (?: \\\n                       # multiline ?
               (?:
@@ -477,7 +477,7 @@ class Lexer(object):
                 | \\[a-zA-Z!-\/:-@\[-`{-~] # or escaped characters
                 | \\x[0-9a-fA-F]{2}        # or hex_escape_sequence
                 | \\u[0-9a-fA-F]{4}        # or unicode_escape_sequence
-                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence (spec B.1.2)
+                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence
               )*?                          # zero or many times
             )*
         ')                                 # closing single quote

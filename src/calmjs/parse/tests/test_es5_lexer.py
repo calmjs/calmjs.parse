@@ -222,7 +222,8 @@ world"''',
         'regex_mozilla_example_1',
         # next two are from
         # http://www.mozilla.org/js/language/js20-2002-04/rationale/syntax.html#regular-expressions
-        ("""for (var x = a in foo && "</x>" || mot ? z:/x:3;x<5;y</g/i) {xyz(x++);}""",
+        ('for (var x = a in foo && "</x>" || mot ? z:/x:3;x<5;y</g/i) '
+         '{xyz(x++);}',
          ["FOR for", "LPAREN (", "VAR var", "ID x", "EQ =", "ID a", "IN in",
           "ID foo", "AND &&", 'STRING "</x>"', "OR ||", "ID mot", "CONDOP ?",
           "ID z", "COLON :", "REGEX /x:3;x<5;y</g", "DIV /", "ID i",
@@ -231,7 +232,8 @@ world"''',
          ),
     ), (
         'regex_mozilla_example_2',
-        ("""for (var x = a in foo && "</x>" || mot ? z/x:3;x<5;y</g/i) {xyz(x++);}""",
+        ('for (var x = a in foo && "</x>" || mot ? z/x:3;x<5;y</g/i) '
+         '{xyz(x++);}',
          ["FOR for", "LPAREN (", "VAR var", "ID x", "EQ =", "ID a", "IN in",
           "ID foo", "AND &&", 'STRING "</x>"', "OR ||", "ID mot", "CONDOP ?",
           "ID z", "DIV /", "ID x", "COLON :", "NUMBER 3", "SEMI ;", "ID x",
@@ -250,7 +252,9 @@ world"''',
 
     ), (
         'regex_stress_test_1',
-        # Stress cases from http://stackoverflow.com/questions/5533925/what-javascript-constructs-does-jslex-incorrectly-lex/5573409#5573409
+        # Stress cases from
+        # http://stackoverflow.com/questions/5533925/
+        # what-javascript-constructs-does-jslex-incorrectly-lex/5573409#5573409
         (r"""/\[/""", [r"""REGEX /\[/"""]),
     ), (
         'regex_stress_test_2',
