@@ -26,12 +26,12 @@
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 import unittest
+import textwrap
 
 from calmjs.parse.lexers.es5 import Lexer
 from calmjs.parse.exceptions import ECMASyntaxError
 
 from calmjs.parse.testing.util import build_equality_testcase
-from calmjs.parse.testing.util import build_exception_testcase
 
 
 class LexerFailureTestCase(unittest.TestCase):
@@ -401,9 +401,102 @@ world"''',
 )
 
 
-LexerErrorTestCase = build_exception_testcase(
-    'LexerErrorTestCase', run_lex, [(
-        'extra_ending_braces',
-        '())))',
-    )], ECMASyntaxError,
+class LexerErrorTestCase(unittest.TestCase):
+
+    def test_extra_ending_braces(self):
+        with self.assertRaises(ECMASyntaxError) as e:
+            run_lex('\n\n())))')
+        self.assertEqual(str(e.exception), "Mismatched ')' at 3:3")
+
+
+def run_lex_pos(value):
+    lexer = Lexer()
+    lexer.input(textwrap.dedent(value).strip())
+    tokens = list(lexer)
+    return ([
+        '%s %d:%d' % (token.value, token.lineno, token.lexpos)
+        for token in tokens
+    ], [
+        '%s %d:%d' % (token.value, token.lineno, token.colno)
+        for token in tokens
+    ])
+
+
+LexerPosTestCase = build_equality_testcase(
+    'LexerPosTestCase', run_lex_pos, [(
+        'single_line',
+        """
+        var foo = bar;  // line 1
+        """, ([
+            'var 1:0', 'foo 1:4', '= 1:8', 'bar 1:10', '; 1:13'
+        ], [
+            'var 1:1', 'foo 1:5', '= 1:9', 'bar 1:11', '; 1:14',
+        ])
+    ), (
+        'multi_line',
+        """
+        var foo = bar;  // line 1
+
+
+        var bar = baz;  // line 4
+        """, ([
+            'var 1:0', 'foo 1:4', '= 1:8', 'bar 1:10', '; 1:13',
+            'var 4:28', 'bar 4:32', '= 4:36', 'baz 4:38', '; 4:41',
+        ], [
+            'var 1:1', 'foo 1:5', '= 1:9', 'bar 1:11', '; 1:14',
+            'var 4:1', 'bar 4:5', '= 4:9', 'baz 4:11', '; 4:14',
+        ])
+    ), (
+        'inline_comment',
+        """
+        // this is a comment  // line 1
+        var foo = bar;  // line 2
+
+        // another one  // line 4
+        var bar = baz;  // line 5
+        """, ([
+            'var 2:32', 'foo 2:36', '= 2:40', 'bar 2:42', '; 2:45',
+            'var 5:85', 'bar 5:89', '= 5:93', 'baz 5:95', '; 5:98',
+        ], [
+            'var 2:1', 'foo 2:5', '= 2:9', 'bar 2:11', '; 2:14',
+            'var 5:1', 'bar 5:5', '= 5:9', 'baz 5:11', '; 5:14',
+        ])
+    ), (
+        'block_comment',
+        """
+        /*
+        This is a block comment
+        */
+        var foo = bar;  // line 4
+
+        /* block single line */ // line 6
+        var bar = baz;  // line 7
+
+        /* oops */bar();  // line 9
+
+          foo();
+        """, ([
+            'var 4:30', 'foo 4:34', '= 4:38', 'bar 4:40', '; 4:43',
+            'var 7:91', 'bar 7:95', '= 7:99', 'baz 7:101', '; 7:104',
+            'bar 9:128', '( 9:131', ') 9:132', '; 9:133',
+            'foo 11:149', '( 11:152', ') 11:153', '; 11:154',
+        ], [
+            'var 4:1', 'foo 4:5', '= 4:9', 'bar 4:11', '; 4:14',
+            'var 7:1', 'bar 7:5', '= 7:9', 'baz 7:11', '; 7:14',
+            'bar 9:11', '( 9:14', ') 9:15', '; 9:16',
+            'foo 11:3', '( 11:6', ') 11:7', '; 11:8',
+        ])
+    ), (
+        'syntax_error_heading_comma',
+        """
+        var a;
+        , b;
+        """, ([
+            'var 1:0', 'a 1:4', '; 1:5',
+            ', 2:7', 'b 2:9', '; 2:10'
+        ], [
+            'var 1:1', 'a 1:5', '; 1:6',
+            ', 2:1', 'b 2:3', '; 2:4'
+        ])
+    )]
 )

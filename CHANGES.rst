@@ -1,6 +1,25 @@
 Changelog
 =========
 
+0.9.1 - Unreleased
+------------------
+
+- Corrected the line number reporting for the lexer, and correct the
+  propagation of that to the parser and the Node subclasses.  Fixes the
+  incorrect implementation added by `moses-palmer/slimit@8f9a39c7769
+  <https://github.com/moses-palmer/slimit/commit/8f9a39c7769>`_ (where
+  the line numbers are tabulated incorrectly when comments are present,
+  and also the yacc tracking added by `moses-palmer/slimit@6aa92d68e0
+  <https://github.com/moses-palmer/slimit/commit/6aa92d68e0>`_ (where
+  the custom lexer class does not provide the position attributes
+  required by ply).
+- Implemented bookkeeping of column number.
+- The repr form of Node now shows the line/col number info by default;
+  the visit method of the ReprVisitor class have not been changed, only
+  the invocation of it via the callable form has as that is the call
+  target for __repr__.  This is a good time to mention that named
+  methods afford the most control for usage as documented already.
+
 0.9.0 - 2017-06-09
 ------------------
 

@@ -728,13 +728,16 @@ class SpecialTestCase(unittest.TestCase):
               }
             };""")
 
-        self.assertEqual(e.exception.args[0], textwrap.dedent("""
-        Setter functions must have one argument: <SetPropAssign elements=[
-          <Return expr=<Object properties=[
+        tree = textwrap.dedent("""
+        <SetPropAssign @164:15 elements=[
+          <Return @165:17 expr=<Object @165:24 properties=[
             <Assign ...>
           ]>>
         ], parameters=[
-          <Identifier value='arg1'>,
-          <Identifier value='arg2'>
-        ], prop_name=<Identifier value='failure'>>
-        """).strip())
+          <Identifier @164:27 value='arg1'>,
+          <Identifier @164:33 value='arg2'>
+        ], prop_name=<Identifier @164:19 value='failure'>>
+        """).strip()
+        self.assertEqual(
+            e.exception.args[0],
+            "Setter functions must have one argument: %s" % tree)
