@@ -177,6 +177,14 @@ class ReprVisitor(object):
     >>> print(visitor.visit(tree))
     <ES5Program ?children=[<VarStatement ?children=[...]>]>
 
+    Standard call is the repr mode - if stable output is desired, the
+    always use the visit method.
+
+    >>> print(visitor(tree))
+    <ES5Program @1:1 ?children=[
+      <VarStatement @1:1 ?children=[...]>
+    ]>
+
     """
 
     def visit(
@@ -239,8 +247,8 @@ class ReprVisitor(object):
             if k not in omit_keys
         ))
 
-    def __call__(self, node, indent=2, depth=3):
-        return self.visit(node, indent=indent, depth=depth)
+    def __call__(self, node, indent=2, depth=3, pos=True):
+        return self.visit(node, indent=indent, depth=depth, pos=pos)
 
 
 def visit(node):

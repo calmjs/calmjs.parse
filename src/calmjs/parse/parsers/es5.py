@@ -485,6 +485,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.NewExpr(p[2])
+            p[0].setpos(p)
 
     def p_call_expr(self, p):
         """call_expr : member_expr arguments
@@ -1158,6 +1159,7 @@ class Parser(object):
                 init=p[3], cond=p[5], count=p[7], statement=p[9])
         else:
             init = asttypes.VarStatement(p[4])
+            init.setpos(p, 3)
             p[0] = asttypes.For(
                 init=init, cond=p[6], count=p[8], statement=p[10])
         p[0].setpos(p)

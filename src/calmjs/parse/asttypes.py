@@ -387,7 +387,7 @@ class Finally(Node):
         self.elements = elements
 
     def children(self):
-        return self.elements
+        return [self.elements]
 
 
 class Debugger(Node):

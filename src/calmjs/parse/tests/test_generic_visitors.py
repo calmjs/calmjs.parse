@@ -27,14 +27,14 @@ class ReprTestCase(unittest.TestCase):
           a: 1,
           b: 2
         };
-        """)))
+        """)), pos=True)
         self.assertEqual(
-            result, "<ES5Program ?children=[<VarStatement "
-            "?children=[<VarDecl identifier=<Identifier value='o'>, "
-            "initializer=<Object properties=[<Assign left=<Identifier "
-            "value='a'>, op=':', right=<Number value='1'>>, <Assign "
-            "left=<Identifier value='b'>, op=':', "
-            "right=<Number value='2'>>]>>]>]>"
+            result, "<ES5Program @2:1 ?children=[<VarStatement @2:1 "
+            "?children=[<VarDecl @2:5 identifier=<Identifier @2:5 value='o'>, "
+            "initializer=<Object @2:9 properties=[<Assign @3:4 left="
+            "<Identifier @3:3 value='a'>, op=':', right=<Number @3:6 "
+            "value='1'>>, <Assign @4:4 left=<Identifier @4:3 value='b'>, "
+            "op=':', right=<Number @4:6 value='2'>>]>>]>]>"
         )
 
     def test_indented_omitted(self):
@@ -151,7 +151,7 @@ class ReprTestCase(unittest.TestCase):
         """).strip(), result)
 
     def test_call(self):
-        result = repr_visitor(es5(textwrap.dedent("""
+        src = textwrap.dedent("""
         var j = {
           a: 1,
           b: {
@@ -161,17 +161,23 @@ class ReprTestCase(unittest.TestCase):
         };
         var k = 'hello world';
         var f = 'foobar';
+        """).strip()
+        result = repr_visitor(es5(src))
+        self.assertEqual(repr(es5(src)), result)
+
+    def test_repr(self):
+        result = repr(es5(textwrap.dedent("""
+        var j = null;
+
+          var  k = this;
         """).strip()))
         self.assertEqual(textwrap.dedent("""
-        <ES5Program ?children=[
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier ...>, initializer=<Object ...>>
+        <ES5Program @1:1 ?children=[
+          <VarStatement @1:1 ?children=[
+            <VarDecl @1:5 identifier=<Identifier ...>, initializer=<Null ...>>
           ]>,
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier ...>, initializer=<String ...>>
-          ]>,
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier ...>, initializer=<String ...>>
+          <VarStatement @3:3 ?children=[
+            <VarDecl @3:8 identifier=<Identifier ...>, initializer=<This ...>>
           ]>
         ]>
         """).strip(), result)
