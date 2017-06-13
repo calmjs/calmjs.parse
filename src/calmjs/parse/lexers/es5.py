@@ -110,13 +110,26 @@ class Lexer(object):
     http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-262.pdf
     """
     def __init__(self):
+        self.lexer = None
         self.prev_token = None
         self.cur_token = None
         self.cur_token_real = None
         self.next_tokens = []
         self.token_stack = [[None, []]]
-        self.last_newline_lexpos = 0
+        self.newline_idx = [0]
         self.build()
+
+    @property
+    def lineno(self):
+        return self.lexer.lineno if self.lexer else 0
+
+    @property
+    def lexpos(self):
+        return self.lexer.lexpos if self.lexer else 0
+
+    @property
+    def last_newline_lexpos(self):
+        return self.newline_idx[-1]
 
     def build(self, **kwargs):
         """Build the lexer."""
@@ -126,17 +139,13 @@ class Lexer(object):
         self.lexer.input(text)
 
     def _set_pos(self, token):
-        lines = 0
-        if token.type == 'LINE_TERMINATOR':
-            lines = len(token.value.splitlines())
-        elif token.type == 'BLOCK_COMMENT':
-            # block comment can potentially finish within one line, so
-            # it may not actually contain newlines - i.e. any trailing
-            # tokens will not be present, so subtract one from count.
-            lines = len(token.value.splitlines()) - 1
-        self.lexer.lineno += lines
-        if lines:
-            self.last_newline_lexpos = self.lexer.lexpos
+        lines = token.value.splitlines(True)
+        lexpos = token.lexpos
+        for line in lines:
+            if line[-1:] in '\r\n':
+                lexpos += len(line)
+                self.lexer.lineno += 1
+                self.newline_idx.append(lexpos)
 
     def token(self):
         if self.next_tokens:
@@ -269,6 +278,15 @@ class Lexer(object):
         # have a 1 offset to map nicer to commonly used/configured
         # text editors.
         return token.lexpos - self.last_newline_lexpos + 1
+
+    def lookup_colno(self, lineno, lexpos):
+        """
+        Look up a colno from the lineno and lexpos.
+        """
+
+        # have a 1 offset to map nicer to commonly used/configured
+        # text editors.
+        return lexpos - self.newline_idx[lineno - 1] + 1
 
     def _create_semi_token(self, orig_token):
         token = ply.lex.LexToken()

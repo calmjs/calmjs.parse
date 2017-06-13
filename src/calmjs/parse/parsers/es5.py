@@ -52,7 +52,18 @@ class Parser(object):
 
     def __init__(self, lex_optimize=True, lextab=lextab,
                  yacc_optimize=True, yacctab=yacctab, yacc_debug=False,
-                 yacc_tracking=False):
+                 yacc_tracking=True):
+        # A warning: in order for line numbers and column numbers be
+        # tracked correctly, ``yacc_tracking`` MUST be turned ON.  As
+        # this parser was initially implemented with a number of manual
+        # tracking features that was also added to the lexer,
+        # construction of the Node subclasses may require the calling of
+        # the `setpos` method with an index to the YaccProduction slice
+        # index that contain the tracked token.  The indexes were
+        # generally determined with yacc_tracking OFF, through the
+        # manual tracking that got added, before turning it back ON for
+        # standard usage.
+
         self.lex_optimize = lex_optimize
         self.lextab = lextab
         self.yacc_optimize = yacc_optimize
@@ -148,6 +159,7 @@ class Parser(object):
     def p_program(self, p):
         """program : source_elements"""
         p[0] = asttypes.ES5Program(p[1])
+        p[0].setpos(p)  # require yacc_tracking
 
     def p_source_elements(self, p):
         """source_elements : empty
@@ -196,6 +208,7 @@ class Parser(object):
     def p_block(self, p):
         """block : LBRACE source_elements RBRACE"""
         p[0] = asttypes.Block(p[2])
+        p[0].setpos(p)
 
     def p_literal(self, p):
         """literal : null_literal
@@ -211,26 +224,32 @@ class Parser(object):
                            | FALSE
         """
         p[0] = asttypes.Boolean(p[1])
+        p[0].setpos(p)
 
     def p_null_literal(self, p):
         """null_literal : NULL"""
         p[0] = asttypes.Null(p[1])
+        p[0].setpos(p)
 
     def p_numeric_literal(self, p):
         """numeric_literal : NUMBER"""
         p[0] = asttypes.Number(p[1])
+        p[0].setpos(p)
 
     def p_string_literal(self, p):
         """string_literal : STRING"""
         p[0] = asttypes.String(p[1])
+        p[0].setpos(p)
 
     def p_regex_literal(self, p):
         """regex_literal : REGEX"""
         p[0] = asttypes.Regex(p[1])
+        p[0].setpos(p)
 
     def p_identifier(self, p):
         """identifier : ID"""
         p[0] = asttypes.Identifier(p[1])
+        p[0].setpos(p)
 
     # Because reserved words can be used as identifiers under certain
     # conditions...
@@ -273,6 +292,7 @@ class Parser(object):
                          | SUPER
         """
         p[0] = asttypes.Identifier(p[1])
+        p[0].setpos(p)
 
     def p_identifier_name(self, p):
         """identifier_name : identifier
@@ -298,6 +318,7 @@ class Parser(object):
     def p_primary_expr_no_brace_2(self, p):
         """primary_expr_no_brace : THIS"""
         p[0] = asttypes.This()
+        p[0].setpos(p)
 
     def p_primary_expr_no_brace_3(self, p):
         """primary_expr_no_brace : literal
@@ -313,6 +334,7 @@ class Parser(object):
     def p_array_literal_1(self, p):
         """array_literal : LBRACKET elision_opt RBRACKET"""
         p[0] = asttypes.Array(items=p[2])
+        p[0].setpos(p)
 
     def p_array_literal_2(self, p):
         """array_literal : LBRACKET element_list RBRACKET
@@ -322,6 +344,7 @@ class Parser(object):
         if len(p) == 6:
             items.extend(p[4])
         p[0] = asttypes.Array(items=items)
+        p[0].setpos(p)
 
     def p_element_list(self, p):
         """element_list : elision_opt assignment_expr
@@ -348,8 +371,10 @@ class Parser(object):
         """
         if len(p) == 2:
             p[0] = [asttypes.Elision(p[1])]
+            p[0][0].setpos(p)
         else:
             p[1].append(asttypes.Elision(p[2]))
+            p[1][-1].setpos(p, 2)
             p[0] = p[1]
 
     def p_object_literal(self, p):
@@ -361,6 +386,7 @@ class Parser(object):
             p[0] = asttypes.Object()
         else:
             p[0] = asttypes.Object(properties=p[2])
+        p[0].setpos(p)
 
     def p_property_list(self, p):
         """property_list : property_assignment
@@ -382,11 +408,14 @@ class Parser(object):
         """
         if len(p) == 4:
             p[0] = asttypes.Assign(left=p[1], op=p[2], right=p[3])
+            p[0].setpos(p, 2)
         elif len(p) == 8:
             p[0] = asttypes.GetPropAssign(prop_name=p[2], elements=p[6])
+            p[0].setpos(p)
         else:
             p[0] = asttypes.SetPropAssign(
                 prop_name=p[2], parameters=p[4], elements=p[7])
+            p[0].setpos(p)
 
     def p_property_name(self, p):
         """property_name : identifier_name
@@ -405,12 +434,17 @@ class Parser(object):
         """
         if len(p) == 2:
             p[0] = p[1]
-        elif p[1] == 'new':
+            return
+
+        if p[1] == 'new':
             p[0] = asttypes.NewExpr(p[2], p[3])
+            p[0].setpos(p)
         elif p[2] == '.':
             p[0] = asttypes.DotAccessor(p[1], p[3])
+            p[0].setpos(p, 2)
         else:
             p[0] = asttypes.BracketAccessor(p[1], p[3])
+            p[0].setpos(p, 2)
 
     def p_member_expr_nobf(self, p):
         """member_expr_nobf : primary_expr_no_brace
@@ -421,12 +455,17 @@ class Parser(object):
         """
         if len(p) == 2:
             p[0] = p[1]
-        elif p[1] == 'new':
+            return
+
+        if p[1] == 'new':
             p[0] = asttypes.NewExpr(p[2], p[3])
+            p[0].setpos(p, 1)
         elif p[2] == '.':
             p[0] = asttypes.DotAccessor(p[1], p[3])
+            p[0].setpos(p, 2)
         else:
             p[0] = asttypes.BracketAccessor(p[1], p[3])
+            p[0].setpos(p, 2)
 
     def p_new_expr(self, p):
         """new_expr : member_expr
@@ -436,6 +475,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.NewExpr(p[2])
+            p[0].setpos(p)
 
     def p_new_expr_nobf(self, p):
         """new_expr_nobf : member_expr_nobf
@@ -454,10 +494,13 @@ class Parser(object):
         """
         if len(p) == 3:
             p[0] = asttypes.FunctionCall(p[1], p[2])
+            p[0].setpos(p)  # require yacc_tracking
         elif len(p) == 4:
             p[0] = asttypes.DotAccessor(p[1], p[3])
+            p[0].setpos(p, 2)
         else:
             p[0] = asttypes.BracketAccessor(p[1], p[3])
+            p[0].setpos(p, 2)
 
     def p_call_expr_nobf(self, p):
         """call_expr_nobf : member_expr_nobf arguments
@@ -467,10 +510,13 @@ class Parser(object):
         """
         if len(p) == 3:
             p[0] = asttypes.FunctionCall(p[1], p[2])
+            p[0].setpos(p)  # require yacc_tracking
         elif len(p) == 4:
             p[0] = asttypes.DotAccessor(p[1], p[3])
+            p[0].setpos(p, 2)
         else:
             p[0] = asttypes.BracketAccessor(p[1], p[3])
+            p[0].setpos(p, 2)
 
     def p_arguments(self, p):
         """arguments : LPAREN RPAREN
@@ -511,6 +557,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.UnaryOp(op=p[2], value=p[1], postfix=True)
+            p[0].setpos(p, 2)
 
     def p_postfix_expr_nobf(self, p):
         """postfix_expr_nobf : left_hand_side_expr_nobf
@@ -521,6 +568,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.UnaryOp(op=p[2], value=p[1], postfix=True)
+            p[0].setpos(p, 2)
 
     # 11.4 Unary Operators
     def p_unary_expr(self, p):
@@ -547,6 +595,7 @@ class Parser(object):
                              | NOT unary_expr
         """
         p[0] = asttypes.UnaryOp(p[1], p[2])
+        p[0].setpos(p)
 
     # 11.5 Multiplicative Operators
     def p_multiplicative_expr(self, p):
@@ -559,6 +608,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_multiplicative_expr_nobf(self, p):
         """multiplicative_expr_nobf : unary_expr_nobf
@@ -570,6 +620,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     # 11.6 Additive Operators
     def p_additive_expr(self, p):
@@ -581,6 +632,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_additive_expr_nobf(self, p):
         """additive_expr_nobf : multiplicative_expr_nobf
@@ -591,6 +643,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     # 11.7 Bitwise Shift Operators
     def p_shift_expr(self, p):
@@ -603,6 +656,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_shift_expr_nobf(self, p):
         """shift_expr_nobf : additive_expr_nobf
@@ -614,6 +668,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     # 11.8 Relational Operators
     def p_relational_expr(self, p):
@@ -629,6 +684,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_relational_expr_noin(self, p):
         """relational_expr_noin : shift_expr
@@ -642,6 +698,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_relational_expr_nobf(self, p):
         """relational_expr_nobf : shift_expr_nobf
@@ -656,6 +713,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     # 11.9 Equality Operators
     def p_equality_expr(self, p):
@@ -669,6 +727,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_equality_expr_noin(self, p):
         """equality_expr_noin : relational_expr_noin
@@ -681,6 +740,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_equality_expr_nobf(self, p):
         """equality_expr_nobf : relational_expr_nobf
@@ -693,6 +753,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     # 11.10 Binary Bitwise Operators
     def p_bitwise_and_expr(self, p):
@@ -703,6 +764,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_bitwise_and_expr_noin(self, p):
         """bitwise_and_expr_noin \
@@ -713,6 +775,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_bitwise_and_expr_nobf(self, p):
         """bitwise_and_expr_nobf \
@@ -723,6 +786,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_bitwise_xor_expr(self, p):
         """bitwise_xor_expr : bitwise_and_expr
@@ -732,6 +796,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_bitwise_xor_expr_noin(self, p):
         """
@@ -743,6 +808,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_bitwise_xor_expr_nobf(self, p):
         """
@@ -754,6 +820,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_bitwise_or_expr(self, p):
         """bitwise_or_expr : bitwise_xor_expr
@@ -763,6 +830,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_bitwise_or_expr_noin(self, p):
         """
@@ -774,6 +842,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_bitwise_or_expr_nobf(self, p):
         """
@@ -785,6 +854,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     # 11.11 Binary Logical Operators
     def p_logical_and_expr(self, p):
@@ -795,6 +865,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_logical_and_expr_noin(self, p):
         """
@@ -805,6 +876,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_logical_and_expr_nobf(self, p):
         """
@@ -815,6 +887,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_logical_or_expr(self, p):
         """logical_or_expr : logical_and_expr
@@ -824,6 +897,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_logical_or_expr_noin(self, p):
         """logical_or_expr_noin : logical_and_expr_noin
@@ -833,6 +907,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_logical_or_expr_nobf(self, p):
         """logical_or_expr_nobf : logical_and_expr_nobf
@@ -842,6 +917,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.BinOp(op=p[2], left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     # 11.12 Conditional Operator ( ? : )
     def p_conditional_expr(self, p):
@@ -855,6 +931,7 @@ class Parser(object):
         else:
             p[0] = asttypes.Conditional(
                 predicate=p[1], consequent=p[3], alternative=p[5])
+            p[0].setpos(p, 2)
 
     def p_conditional_expr_noin(self, p):
         """
@@ -868,6 +945,7 @@ class Parser(object):
         else:
             p[0] = asttypes.Conditional(
                 predicate=p[1], consequent=p[3], alternative=p[5])
+            p[0].setpos(p, 2)
 
     def p_conditional_expr_nobf(self, p):
         """
@@ -880,6 +958,7 @@ class Parser(object):
         else:
             p[0] = asttypes.Conditional(
                 predicate=p[1], consequent=p[3], alternative=p[5])
+            p[0].setpos(p, 2)
 
     # 11.13 Assignment Operators
     def p_assignment_expr(self, p):
@@ -892,6 +971,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.Assign(left=p[1], op=p[2], right=p[3])
+            p[0].setpos(p, 2)  # require yacc_tracking
 
     def p_assignment_expr_noin(self, p):
         """
@@ -903,6 +983,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.Assign(left=p[1], op=p[2], right=p[3])
+            p[0].setpos(p, 2)  # require yacc_tracking
 
     def p_assignment_expr_nobf(self, p):
         """
@@ -914,6 +995,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.Assign(left=p[1], op=p[2], right=p[3])
+            p[0].setpos(p, 2)  # require yacc_tracking
 
     def p_assignment_operator(self, p):
         """assignment_operator : EQ
@@ -940,6 +1022,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.Comma(left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_expr_noin(self, p):
         """expr_noin : assignment_expr_noin
@@ -949,6 +1032,7 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.Comma(left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     def p_expr_nobf(self, p):
         """expr_nobf : assignment_expr_nobf
@@ -958,13 +1042,15 @@ class Parser(object):
             p[0] = p[1]
         else:
             p[0] = asttypes.Comma(left=p[1], right=p[3])
+            p[0].setpos(p, 2)
 
     # 12.2 Variable Statement
     def p_variable_statement(self, p):
         """variable_statement : VAR variable_declaration_list SEMI
                               | VAR variable_declaration_list auto_semi
         """
-        p[0] = asttypes.VarStatement(p[2], p=p)
+        p[0] = asttypes.VarStatement(p[2])
+        p[0].setpos(p)
 
     def p_variable_declaration_list(self, p):
         """
@@ -995,18 +1081,20 @@ class Parser(object):
                                 | identifier initializer
         """
         if len(p) == 2:
-            p[0] = asttypes.VarDecl(p[1], p=p)
+            p[0] = asttypes.VarDecl(p[1])
         else:
-            p[0] = asttypes.VarDecl(p[1], p[2], p=p)
+            p[0] = asttypes.VarDecl(p[1], p[2])
+        p[0].setpos(p)  # require yacc_tracking
 
     def p_variable_declaration_noin(self, p):
         """variable_declaration_noin : identifier
                                      | identifier initializer_noin
         """
         if len(p) == 2:
-            p[0] = asttypes.VarDecl(p[1], p=p)
+            p[0] = asttypes.VarDecl(p[1])
         else:
-            p[0] = asttypes.VarDecl(p[1], p[2], p=p)
+            p[0] = asttypes.VarDecl(p[1], p[2])
+        p[0].setpos(p)  # require yacc_tracking
 
     def p_initializer(self, p):
         """initializer : EQ assignment_expr"""
@@ -1020,6 +1108,7 @@ class Parser(object):
     def p_empty_statement(self, p):
         """empty_statement : SEMI"""
         p[0] = asttypes.EmptyStatement(p[1])
+        p[0].setpos(p)
 
     # 12.4 Expression Statement
     def p_expr_statement(self, p):
@@ -1027,15 +1116,19 @@ class Parser(object):
                           | expr_nobf auto_semi
         """
         p[0] = asttypes.ExprStatement(p[1])
+        p[0].setpos(p)  # require yacc_tracking
 
     # 12.5 The if Statement
     def p_if_statement_1(self, p):
         """if_statement : IF LPAREN expr RPAREN statement"""
         p[0] = asttypes.If(predicate=p[3], consequent=p[5])
+        p[0].setpos(p)
 
     def p_if_statement_2(self, p):
         """if_statement : IF LPAREN expr RPAREN statement ELSE statement"""
-        p[0] = asttypes.If(predicate=p[3], consequent=p[5], alternative=p[7])
+        p[0] = asttypes.If(
+            predicate=p[3], consequent=p[5], alternative=p[7])
+        p[0].setpos(p)
 
     # 12.6 Iteration Statements
     def p_iteration_statement_1(self, p):
@@ -1045,10 +1138,12 @@ class Parser(object):
             | DO statement WHILE LPAREN expr RPAREN auto_semi
         """
         p[0] = asttypes.DoWhile(predicate=p[5], statement=p[2])
+        p[0].setpos(p)
 
     def p_iteration_statement_2(self, p):
         """iteration_statement : WHILE LPAREN expr RPAREN statement"""
         p[0] = asttypes.While(predicate=p[3], statement=p[5])
+        p[0].setpos(p)
 
     def p_iteration_statement_3(self, p):
         """
@@ -1065,6 +1160,7 @@ class Parser(object):
             init = asttypes.VarStatement(p[4])
             p[0] = asttypes.For(
                 init=init, cond=p[6], count=p[8], statement=p[10])
+        p[0].setpos(p)
 
     def p_iteration_statement_4(self, p):
         """
@@ -1072,23 +1168,27 @@ class Parser(object):
             : FOR LPAREN left_hand_side_expr IN expr RPAREN statement
         """
         p[0] = asttypes.ForIn(item=p[3], iterable=p[5], statement=p[7])
+        p[0].setpos(p)
 
     def p_iteration_statement_5(self, p):
         """
         iteration_statement : \
             FOR LPAREN VAR identifier IN expr RPAREN statement
         """
-        p[0] = asttypes.ForIn(
-            item=asttypes.VarDecl(p[4], p=p), iterable=p[6], statement=p[8])
+        vardecl = asttypes.VarDecl(p[4])
+        vardecl.setpos(p, 3)
+        p[0] = asttypes.ForIn(item=vardecl, iterable=p[6], statement=p[8])
+        p[0].setpos(p)
 
     def p_iteration_statement_6(self, p):
         """
         iteration_statement \
           : FOR LPAREN VAR identifier initializer_noin IN expr RPAREN statement
         """
-        p[0] = asttypes.ForIn(
-            item=asttypes.VarDecl(identifier=p[4], initializer=p[5], p=p),
-            iterable=p[7], statement=p[9])
+        vardecl = asttypes.VarDecl(identifier=p[4], initializer=p[5])
+        vardecl.setpos(p, 3)
+        p[0] = asttypes.ForIn(item=vardecl, iterable=p[7], statement=p[9])
+        p[0].setpos(p)
 
     def p_expr_opt(self, p):
         """expr_opt : empty
@@ -1108,12 +1208,14 @@ class Parser(object):
                               | CONTINUE auto_semi
         """
         p[0] = asttypes.Continue()
+        p[0].setpos(p)
 
     def p_continue_statement_2(self, p):
         """continue_statement : CONTINUE identifier SEMI
                               | CONTINUE identifier auto_semi
         """
         p[0] = asttypes.Continue(p[2])
+        p[0].setpos(p)
 
     # 12.8 The break Statement
     def p_break_statement_1(self, p):
@@ -1121,12 +1223,14 @@ class Parser(object):
                            | BREAK auto_semi
         """
         p[0] = asttypes.Break()
+        p[0].setpos(p)
 
     def p_break_statement_2(self, p):
         """break_statement : BREAK identifier SEMI
                            | BREAK identifier auto_semi
         """
         p[0] = asttypes.Break(p[2])
+        p[0].setpos(p)
 
     # 12.9 The return Statement
     def p_return_statement_1(self, p):
@@ -1134,17 +1238,20 @@ class Parser(object):
                             | RETURN auto_semi
         """
         p[0] = asttypes.Return()
+        p[0].setpos(p)
 
     def p_return_statement_2(self, p):
         """return_statement : RETURN expr SEMI
                             | RETURN expr auto_semi
         """
         p[0] = asttypes.Return(expr=p[2])
+        p[0].setpos(p)
 
     # 12.10 The with Statement
     def p_with_statement(self, p):
         """with_statement : WITH LPAREN expr RPAREN statement"""
         p[0] = asttypes.With(expr=p[3], statement=p[5])
+        p[0].setpos(p)
 
     # 12.11 The switch Statement
     def p_switch_statement(self, p):
@@ -1159,6 +1266,7 @@ class Parser(object):
                 cases.extend(item)
 
         p[0] = asttypes.Switch(expr=p[3], cases=cases, default=default)
+        p[0].setpos(p)
 
     def p_case_block(self, p):
         """
@@ -1187,15 +1295,18 @@ class Parser(object):
     def p_case_clause(self, p):
         """case_clause : CASE expr COLON source_elements"""
         p[0] = asttypes.Case(expr=p[2], elements=p[4])
+        p[0].setpos(p)
 
     def p_default_clause(self, p):
         """default_clause : DEFAULT COLON source_elements"""
         p[0] = asttypes.Default(elements=p[3])
+        p[0].setpos(p)
 
     # 12.12 Labelled Statements
     def p_labelled_statement(self, p):
         """labelled_statement : identifier COLON statement"""
         p[0] = asttypes.Label(identifier=p[1], statement=p[3])
+        p[0].setpos(p, 2)
 
     # 12.13 The throw Statement
     def p_throw_statement(self, p):
@@ -1203,27 +1314,33 @@ class Parser(object):
                            | THROW expr auto_semi
         """
         p[0] = asttypes.Throw(expr=p[2])
+        p[0].setpos(p)
 
     # 12.14 The try Statement
     def p_try_statement_1(self, p):
         """try_statement : TRY block catch"""
         p[0] = asttypes.Try(statements=p[2], catch=p[3])
+        p[0].setpos(p)
 
     def p_try_statement_2(self, p):
         """try_statement : TRY block finally"""
         p[0] = asttypes.Try(statements=p[2], fin=p[3])
+        p[0].setpos(p)
 
     def p_try_statement_3(self, p):
         """try_statement : TRY block catch finally"""
         p[0] = asttypes.Try(statements=p[2], catch=p[3], fin=p[4])
+        p[0].setpos(p)
 
     def p_catch(self, p):
         """catch : CATCH LPAREN identifier RPAREN block"""
         p[0] = asttypes.Catch(identifier=p[3], elements=p[5])
+        p[0].setpos(p)
 
     def p_finally(self, p):
         """finally : FINALLY block"""
         p[0] = asttypes.Finally(elements=p[2])
+        p[0].setpos(p)
 
     # 12.15 The debugger statement
     def p_debugger_statement(self, p):
@@ -1231,6 +1348,7 @@ class Parser(object):
                               | DEBUGGER auto_semi
         """
         p[0] = asttypes.Debugger(p[1])
+        p[0].setpos(p)
 
     # 13 Function Definition
     def p_function_declaration(self, p):
@@ -1246,6 +1364,7 @@ class Parser(object):
         else:
             p[0] = asttypes.FuncDecl(
                 identifier=p[2], parameters=p[4], elements=p[7])
+        p[0].setpos(p)
 
     def p_function_expr_1(self, p):
         """
@@ -1260,6 +1379,7 @@ class Parser(object):
         else:
             p[0] = asttypes.FuncExpr(
                 identifier=None, parameters=p[3], elements=p[6])
+        p[0].setpos(p)
 
     def p_function_expr_2(self, p):
         """
@@ -1274,6 +1394,7 @@ class Parser(object):
         else:
             p[0] = asttypes.FuncExpr(
                 identifier=p[2], parameters=p[4], elements=p[7])
+        p[0].setpos(p)
 
     def p_formal_parameter_list(self, p):
         """formal_parameter_list : identifier

@@ -26,14 +26,34 @@ __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 
 class Node(object):
-    def __init__(self, children=None, p=None):
+    def __init__(self, children=None):
         self._children_list = [] if children is None else children
-        self.setpos(p)
+        self.lexpos = self.lineno = self.colno = None
 
-    def setpos(self, p):
-        self.lexpos = None if p is None else p.lexpos(1)
-        self.lineno = None if p is None else p.lineno(1)
-        # print 'setpos', self, p, self.lexpos, self.lineno
+    def setpos(self, p, idx=1):
+        self.lexpos = p.lexpos(idx)
+        self.lineno = p.lineno(idx)
+        # YaccProduction does not provide helpers for colno, so query
+        # for a helper out of class and see if it helps...
+        self.colno = (
+            p.lexer.lookup_colno(self.lineno, self.lexpos) if callable(
+                getattr(p.lexer, 'lookup_colno', None)) else 0
+        )
+
+        # the very ugly debugger invocation for locating the special
+        # cases that are required
+
+        # if not self.lexpos and not self.lineno:
+        #     print('setpos', self.__class__.__name__, p.stack,
+        #           self.lexpos, self.lineno, self.colno)
+        #     # uncomment when yacc_tracking is True
+        #     # import pdb;pdb.set_trace()
+        #     # uncomment when yacc_tracking is False
+        #     # import sys
+        #     # from traceback import extract_stack
+        #     # _src = extract_stack(sys._getframe(1), 1)[0].line
+        #     # if '# require yacc_tracking' not in _src:
+        #     #     import pdb;pdb.set_trace()
 
     def __iter__(self):
         for child in self.children():
@@ -175,11 +195,10 @@ class VarStatement(Node):
 
 
 class VarDecl(Node):
-    def __init__(self, identifier, initializer=None, p=None):
+    def __init__(self, identifier, initializer=None):
         self.identifier = identifier
         self.identifier._mangle_candidate = True
         self.initializer = initializer
-        self.setpos(p)
 
     def children(self):
         return [self.identifier, self.initializer]
