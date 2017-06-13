@@ -177,10 +177,21 @@ class ReprVisitor(object):
     >>> print(visitor.visit(tree))
     <ES5Program ?children=[<VarStatement ?children=[...]>]>
 
+    Standard call is the repr mode - if stable output is desired, the
+    always use the visit method.
+
+    >>> print(visitor(tree))
+    <ES5Program @1:1 ?children=[
+      <VarStatement @1:1 ?children=[...]>
+    ]>
+
     """
 
     def visit(
-            self, node, omit=('lexpos', 'lineno'), indent=0, depth=-1,
+            self, node, omit=(
+                'lexpos', 'lineno', 'colno', 'rowno'),
+            indent=0, depth=-1,
+            pos=False,
             _level=0):
         """
         Accepts the standard node argument, along with an optional omit
@@ -208,14 +219,14 @@ class ReprVisitor(object):
 
             if isinstance(v, Node):
                 attrs.append((k, self.visit(
-                    v, omit, indent, depth - 1, _level)))
+                    v, omit, indent, depth - 1, pos, _level)))
             elif isinstance(v, list):
                 items = []
                 for i in v:
                     if id(i) in ids:
                         ids.remove(id(i))
                     items.append(self.visit(
-                        i, omit, indent, depth - 1, _level + 1))
+                        i, omit, indent, depth - 1, pos, _level + 1))
                 attrs.append(
                     (k, '[' + header + joiner.join(items) + tailer + ']'))
             else:
@@ -224,18 +235,20 @@ class ReprVisitor(object):
         if ids:
             # for unnamed child nodes.
             attrs.append(('?children', '[' + header + joiner.join(
-                self.visit(child, omit, indent, depth - 1, _level + 1)
+                self.visit(child, omit, indent, depth - 1, pos, _level + 1)
                 for child in children
                 if id(child) in ids) + tailer + ']'))
 
+        position = '@%d:%d ' % (node.lineno, node.colno) if pos else ''
+
         omit_keys = () if not omit else set(omit)
-        return '<%s %s>' % (node.__class__.__name__, ', '.join(
+        return '<%s %s%s>' % (node.__class__.__name__, position, ', '.join(
             '%s=%s' % (k, v) for k, v in sorted(attrs)
             if k not in omit_keys
         ))
 
-    def __call__(self, node, indent=2, depth=3):
-        return self.visit(node, indent=indent, depth=depth)
+    def __call__(self, node, indent=2, depth=3, pos=True):
+        return self.visit(node, indent=indent, depth=depth, pos=pos)
 
 
 def visit(node):
