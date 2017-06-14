@@ -20,6 +20,9 @@ class Names(object):
         source map name field (optional 5th element).
         """
 
+        if name is None:
+            return
+
         if name not in self._names:
             # add the name if it isn't already tracked
             self._names[name] = len(self._names)
@@ -56,19 +59,24 @@ class Bookkeeper(object):
         Set the current position
         """
 
+        chk = attr[:1] == '_'
+        attr = attr[1:] if chk else attr
+
         if not isinstance(value, int):
             raise TypeError("assignment must be of type 'int'")
 
-        if not self._hasattr(attr):
+        if not self._hasattr(attr) or chk:
             self._curr[attr] = self._prev[attr] = value
         else:
             self._curr[attr], self._prev[attr] = value, self._curr[attr]
 
     def __getattr__(self, attr):
+        chk = attr[:1] == '_'
+        attr = attr[1:] if chk else attr
         if not self._hasattr(attr):
             raise AttributeError("'%s' object has no attribute %r" % (
                 self.__class__.__name__, attr))
-        return self._curr[attr] - self._prev[attr]
+        return self._curr[attr] if chk else self._curr[attr] - self._prev[attr]
 
     def __delattr__(self, attr):
         if not self._hasattr(attr):
@@ -109,6 +117,9 @@ def normalize_mapping_line(mapping_line):
         record[:] = [0, 0, 0, 0]
         return result
 
+    if not mapping_line:
+        return []
+
     # first element
     result = [mapping_line[0]]
     # initial values
@@ -137,3 +148,123 @@ def normalize_mapping_line(mapping_line):
             record_next = len(segment) == 5
 
     return result
+
+
+def write(source, stream, names=None, book=None, normalize=True):
+    """
+    Given a source iterable, write it to the stream object by using its
+    write method.  Returns a 2-tuple, where the first element is the
+    mapping, second element is the list of original string references.
+
+    Arguments:
+
+    source
+        the source iterable
+    stream
+        an io.IOBase compatible stream object
+    names
+        an Names instance; if none is provided an instance will be
+        created for internal use
+    book
+        A Bookkeeper instance; if none is provided an instance will be
+        created for internal use
+
+    The source iterable is of this format
+
+    A fragment tuple must contain the following
+
+    - The string to write to the stream
+    - Original starting line of the string; None if not present
+    - Original starting column fo the line; None if not present
+    - Original string that this fragment represents (i.e. for the case
+      where this string fragment was an identifier but got mangled into
+      an alternative form); use None if this was not the case.
+
+    If multiple files are to be tracked, it is recommended to provide a
+    shared Names instance.
+    """
+
+    # There was consideration to include a filename index argument, but
+    # given that the line and column are *relative*, i.e. they are
+    # global values that exists for the duration of the interpretation
+    # of the mapping, and so it is better to have this function focus on
+    # one file at a time.  A separate function can be provided to
+    # generate a new tuple to replace the first one, such that it will
+    # set the line/column numbers back to zero based on what is
+    # available in this file, plus incrementing the index for the source
+    # file itself.
+
+    if names is None:
+        names = Names()
+
+    if book is None:
+        book = default_book()
+
+    # declare state variables and local helpers
+    mapping = []
+
+    def push_line():
+        # should normalize the current line if possible.
+        mapping.append([])
+        book._sink_column = 0
+
+    # finalize initial states; the most recent list (mapping[-1]) is
+    # the current line
+    push_line()
+    # if support for multiple files are to be provided by this function,
+    # this will be tracked using Names instead; setting the filename
+    # index to 0 as explained previously.
+    filename = 0
+    p_line_len = 0
+
+    for chunk, lineno, colno, original_name in source:
+        lines = chunk.splitlines(True)
+        for line in lines:
+            stream.write(line)
+
+            # setting source_* first, as the provided values are the
+            # absolute positional values
+            # assume line is unchanged otherwise
+            if lineno:
+                book.source_line = lineno
+            # assume these untagged chunks follow the previous tagged
+            # chunks, so increment the column count by that previous
+            # length
+            book.source_column = (
+                book._source_column + p_line_len if colno is None else colno)
+
+            name_id = names.update(original_name)
+            if original_name is not None:
+                mapping[-1].append((
+                    book.sink_column, filename,
+                    book.source_line, book.source_column,
+                    name_id
+                ))
+            else:
+                mapping[-1].append((
+                    book.sink_column, filename,
+                    book.source_line, book.source_column
+                ))
+
+            # doing this last to update the position for the next line
+            # or chunk for the relative values based on what was added
+            if line[-1:] in '\r\n':
+                # Note: this HAS to be an edge case and should never
+                # happen, but this has the potential to muck things up.
+                # Since the parent only provided the start, will need
+                # to manually track the chunks internal to here.
+                # This normally shouldn't happen with sane parsers
+                # and lexers, but this assumes that no further symbols
+                # aside from the new lines got inserted.
+                # TODO if this is that exceptional, log a warning?
+                colno += len(line.rstrip())
+                p_line_len = 0
+                push_line()
+            else:
+                p_line_len = len(line)
+                book.sink_column = book._sink_column + p_line_len
+
+    # normalize everything
+    if normalize:
+        mapping = [normalize_mapping_line(ml) for ml in mapping]
+    return list(names), mapping

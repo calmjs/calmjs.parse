@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import unittest
+from io import StringIO
 
 from calmjs.parse import sourcemap
 
@@ -29,6 +30,15 @@ class NameTestCase(unittest.TestCase):
         self.assertEqual(
             list(names), ['hello', 'world', 'goodbye', 'person', 'people'])
 
+    def test_null(self):
+        names = sourcemap.Names()
+        self.assertIs(names.update(None), None)
+        self.assertEqual(names.update('hello'), 0)
+        self.assertEqual(names.update('hello'), 0)
+        self.assertIs(names.update(None), None)
+        self.assertEqual(names.update('goodbye'), 1)
+        self.assertEqual(names.update('goodbye'), 0)
+
 
 class BookkeeperTestCase(unittest.TestCase):
 
@@ -54,23 +64,41 @@ class BookkeeperTestCase(unittest.TestCase):
         book.foo = 123
         self.assertEqual(book.foo, 0)
         self.assertEqual(book.foo, 0)
+        self.assertEqual(book._foo, 123)
         book.foo = 124
         self.assertEqual(book.foo, 1)
         self.assertEqual(book.foo, 1)
+        self.assertEqual(book._foo, 124)
         book.foo = 1
         self.assertEqual(book.foo, -123)
         self.assertEqual(book.foo, -123)
+        self.assertEqual(book._foo, 1)
         book.foo = 1
         self.assertEqual(book.foo, 0)
         self.assertEqual(book.foo, 0)
+        self.assertEqual(book._foo, 1)
         book.foo = 1
         self.assertEqual(book.foo, 0)
         self.assertEqual(book.foo, 0)
+        self.assertEqual(book._foo, 1)
         book.foo = 2
         book.foo = 2
         self.assertEqual(book.foo, 0)
+        self.assertEqual(book._foo, 2)
 
-    def test_reset(self):
+    def test_private_reset(self):
+        book = sourcemap.Bookkeeper()
+        book.foo = 123
+        book.foo = 124
+        self.assertEqual(book.foo, 1)
+        book._foo = 1
+        self.assertEqual(book.foo, 0)
+        self.assertEqual(book._foo, 1)
+        book._foo = 124
+        self.assertEqual(book.foo, 0)
+        self.assertEqual(book._foo, 124)
+
+    def test_del_reset(self):
         book = sourcemap.Bookkeeper()
         book.foo = 123
         book.foo = 124
@@ -92,6 +120,12 @@ class BookkeeperTestCase(unittest.TestCase):
 
 
 class NormalizeRunningTestCase(unittest.TestCase):
+
+    def test_empty(self):
+        remapped = sourcemap.normalize_mapping_line([])
+        self.assertEqual([], remapped)
+        remapped = sourcemap.normalize_mapping_line([[]])
+        self.assertEqual([[]], remapped)
 
     def test_unmodified(self):
         # this is a typical canonical example
@@ -191,3 +225,82 @@ class NormalizeRunningTestCase(unittest.TestCase):
             (1, 0, 0, 7),
             (2, 0, 0, 4),
         ], remapped)
+
+
+class SourceMapTestCase(unittest.TestCase):
+
+    def test_source_map_basic(self):
+        stream = StringIO()
+
+        fragments = [
+            ('console', 1, 1, None),
+            ('.', 1, 8, None),
+            ('log', 1, 9, None),
+            ('(', 1, 12, None),
+            ('"hello world"', 1, 13, None),
+            (')', 1, 26, None),
+            (';', 1, 27, None),
+        ]
+
+        names, mapping = sourcemap.write(fragments, stream)
+        self.assertEqual(stream.getvalue(), 'console.log("hello world");')
+        self.assertEqual(names, [])
+        self.assertEqual(mapping, [
+            [(0, 0, 0, 0)],
+        ])
+
+    def test_source_map_inferred(self):
+        stream = StringIO()
+
+        # Note the None values, as that signifies inferred elements.
+        fragments = [
+            ('console', 1, 1, None),
+            ('.', 1, 8, None),
+            ('log', 1, 9, None),
+            ('(', None, None, None),
+            ('"hello world"', 1, 13, None),
+            (')', None, None, None),
+            (';', None, None, None),
+        ]
+
+        names, mapping = sourcemap.write(fragments, stream)
+        self.assertEqual(stream.getvalue(), 'console.log("hello world");')
+        self.assertEqual(names, [])
+        self.assertEqual(mapping, [
+            [(0, 0, 0, 0)],
+        ])
+
+    def test_source_map_inferred_newline(self):
+        stream = StringIO()
+        # Note the None values, as that signifies inferred elements.
+        fragments = [
+            ('console.log(\n  "hello world");', 1, 1, None),
+        ]
+        names, mapping = sourcemap.write(fragments, stream)
+        self.assertEqual(stream.getvalue(), 'console.log(\n  "hello world");')
+        self.assertEqual(names, [])
+        self.assertEqual([
+            [(0, 0, 0, 0)],
+            [(0, 0, 0, 12)],
+        ], mapping)
+        # TODO validate logging output if the warnings are done
+
+    def test_source_map_renamed(self):
+        stream = StringIO()
+
+        fragments = [
+            ('a', 1, 1, 'console'),
+            ('.', 1, 8, None),
+            ('b', 1, 9, 'log'),
+            ('(', 1, 12, None),
+            ('"hello world"', 1, 13, None),
+            (')', 1, 26, None),
+            (';', 1, 27, None),
+        ]
+
+        names, mapping = sourcemap.write(fragments, stream)
+        self.assertEqual(stream.getvalue(), 'a.b("hello world");')
+        self.assertEqual(names, ['console', 'log'])
+        self.assertEqual(mapping, [
+            [(0, 0, 0, 0, 0), (1, 0, 0, 7), (1, 0, 0, 1, 1), (1, 0, 0, 3)]
+        ])
