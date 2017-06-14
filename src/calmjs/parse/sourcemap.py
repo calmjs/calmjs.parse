@@ -91,3 +91,49 @@ def default_book():
     book.source_line = 1
     book.source_column = 1
     return book
+
+
+def normalize_mapping_line(mapping_line):
+    """
+    Often times the position will remain stable, such that the naive
+    process will end up with many redundant values; this function will
+    iterate through the line and remove all extra values.
+    """
+
+    def regenerate(segment):
+        if len(segment) == 5:
+            result = (record[0], segment[1], segment[2], record[3], segment[4])
+        else:
+            result = (record[0], segment[1], segment[2], record[3])
+        # reset the record
+        record[:] = [0, 0, 0, 0]
+        return result
+
+    # first element
+    result = [mapping_line[0]]
+    # initial values
+    record = [0, 0, 0, 0]
+    record_next = len(mapping_line[0]) == 5
+    for segment in mapping_line[1:]:
+        # if the line has not changed, and that the increases of both
+        # columns are the same, accumulate the column counter and drop
+        # the segment.
+
+        # accumulate the current record first
+        # XXX no support for the 1-tuple segment because this is not
+        # currently implemented yet
+        record[0] += segment[0]
+        record[3] += segment[3]
+
+        # 5-tuples are always special case with the remapped identifier
+        # name element, and to mark the termination the next token must
+        # also be explicitly written (in our case, regenerated).  If the
+        # filename or source line relative position changed (idx 1 and
+        # 2), regenerate it too.  Finally, if the column offsets differ
+        # between source and sink, regenerate.
+        if len(segment) == 5 or record_next or segment[1] or segment[2] or (
+                record[0] != record[3]):
+            result.append(regenerate(segment))
+            record_next = len(segment) == 5
+
+    return result
