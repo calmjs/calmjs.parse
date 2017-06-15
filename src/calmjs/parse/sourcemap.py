@@ -3,6 +3,11 @@
 Source map helpers
 """
 
+from __future__ import unicode_literals
+import logging
+
+logger = logging.getLogger(__name__)
+
 
 class Names(object):
     """
@@ -101,12 +106,20 @@ def default_book():
     return book
 
 
-def normalize_mapping_line(mapping_line):
+def normalize_mapping_line(mapping_line, previous_source_column=0):
     """
     Often times the position will remain stable, such that the naive
     process will end up with many redundant values; this function will
     iterate through the line and remove all extra values.
     """
+
+    if not mapping_line:
+        return [], previous_source_column
+
+    # Note that while the local record here is also done as a 4-tuple,
+    # element 1 and 2 are never used since they are always provided by
+    # the segments in the mapping line; they are defined for consistency
+    # reasons.
 
     def regenerate(segment):
         if len(segment) == 5:
@@ -114,26 +127,45 @@ def normalize_mapping_line(mapping_line):
         else:
             result = (record[0], segment[1], segment[2], record[3])
         # reset the record
+        # XXX this is insufficient, we need to know exactly where the
+        # record is, because for pretty-printing of a long line into
+        # proper indentation, this will reset the positions wrongly
         record[:] = [0, 0, 0, 0]
         return result
 
-    if not mapping_line:
-        return []
+    # first element of the line; sink column (0th element) is always
+    # the absolute value, so always use the provided value sourced from
+    # the original mapping_line; the source column (3rd element) is
+    # never reset, so if a previous counter exists (which is specified
+    # by the optional argument), make use of it to generate the initial
+    # normalized segment.
+    record = [0, 0, 0, previous_source_column]
+    result = []
+    regen_next = True
 
-    # first element
-    result = [mapping_line[0]]
-    # initial values
-    record = [0, 0, 0, 0]
-    record_next = len(mapping_line[0]) == 5
-    for segment in mapping_line[1:]:
+    for segment in mapping_line:
+        if not segment:
+            # ignore empty records
+            continue
         # if the line has not changed, and that the increases of both
         # columns are the same, accumulate the column counter and drop
         # the segment.
 
         # accumulate the current record first
-        # XXX no support for the 1-tuple segment because this is not
-        # currently implemented yet
         record[0] += segment[0]
+        if len(segment) == 1:
+            # Mark the termination, as 1-tuple determines the end of the
+            # previous symbol and denote that whatever follows are not
+            # in any previous source files.  So if it isn't recorded,
+            # make note of this if it wasn't done already.
+            if result and len(result[-1]) != 1:
+                result.append((record[0],))
+                record[0] = 0
+                # the next complete segment will require regeneration
+                regen_next = True
+            # skip the remaining processing.
+            continue
+
         record[3] += segment[3]
 
         # 5-tuples are always special case with the remapped identifier
@@ -142,12 +174,13 @@ def normalize_mapping_line(mapping_line):
         # filename or source line relative position changed (idx 1 and
         # 2), regenerate it too.  Finally, if the column offsets differ
         # between source and sink, regenerate.
-        if len(segment) == 5 or record_next or segment[1] or segment[2] or (
+        if len(segment) == 5 or regen_next or segment[1] or segment[2] or (
                 record[0] != record[3]):
             result.append(regenerate(segment))
-            record_next = len(segment) == 5
+            regen_next = len(segment) == 5
 
-    return result
+    # must return the consumed/omitted values.
+    return result, record[3]
 
 
 def write(source, stream, names=None, book=None, normalize=True):
@@ -218,6 +251,8 @@ def write(source, stream, names=None, book=None, normalize=True):
     p_line_len = 0
 
     for chunk, lineno, colno, original_name in source:
+        # note that lineno/colno are assumed to be both provided or none
+        # provided.
         lines = chunk.splitlines(True)
         for line in lines:
             stream.write(line)
@@ -234,17 +269,26 @@ def write(source, stream, names=None, book=None, normalize=True):
                 book._source_column + p_line_len if colno is None else colno)
 
             name_id = names.update(original_name)
-            if original_name is not None:
-                mapping[-1].append((
-                    book.sink_column, filename,
-                    book.source_line, book.source_column,
-                    name_id
-                ))
-            else:
-                mapping[-1].append((
-                    book.sink_column, filename,
-                    book.source_line, book.source_column
-                ))
+            # Note that if this segment is the beginning of a line, and
+            # that NO source colno/linecol were provided, it could be an
+            # indentation.
+            # it should not be added as the first segment.
+            # This is often the case with
+            # indentation, where pretty printed (or regenerated sources)
+            # output will like not have white spaces be tracked in the
+            # source AST.
+            if not (not mapping[-1] and colno is None and not line.strip()):
+                if original_name is not None:
+                    mapping[-1].append((
+                        book.sink_column, filename,
+                        book.source_line, book.source_column,
+                        name_id
+                    ))
+                else:
+                    mapping[-1].append((
+                        book.sink_column, filename,
+                        book.source_line, book.source_column
+                    ))
 
             # doing this last to update the position for the next line
             # or chunk for the relative values based on what was added
@@ -256,15 +300,31 @@ def write(source, stream, names=None, book=None, normalize=True):
                 # This normally shouldn't happen with sane parsers
                 # and lexers, but this assumes that no further symbols
                 # aside from the new lines got inserted.
-                # TODO if this is that exceptional, log a warning?
-                colno += len(line.rstrip())
+                colno = None if colno is None else colno + len(line.rstrip())
                 p_line_len = 0
                 push_line()
+
+                if line is not lines[-1]:
+                    logger.warning(
+                        'text in the generated document at line %d may be '
+                        'mapped incorrectly due to trailing newline character '
+                        'in provided text fragment.', len(mapping)
+                    )
+                    logger.info(
+                        'text in source fragments should not have trailing '
+                        'characters after a new line, they should be split '
+                        'off into a separate fragment.'
+                    )
             else:
                 p_line_len = len(line)
                 book.sink_column = book._sink_column + p_line_len
 
     # normalize everything
     if normalize:
-        mapping = [normalize_mapping_line(ml) for ml in mapping]
+        column = 0
+        result = []
+        for ml in mapping:
+            new_ml, column = normalize_mapping_line(ml, column)
+            result.append(new_ml)
+        mapping = result
     return list(names), mapping

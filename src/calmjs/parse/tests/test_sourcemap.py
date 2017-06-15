@@ -1,8 +1,12 @@
 # -*- coding: utf-8 -*-
+from __future__ import unicode_literals
+
 import unittest
+import textwrap
 from io import StringIO
 
 from calmjs.parse import sourcemap
+from calmjs.parse.testing.util import setup_logger
 
 
 class NameTestCase(unittest.TestCase):
@@ -122,15 +126,79 @@ class BookkeeperTestCase(unittest.TestCase):
 class NormalizeRunningTestCase(unittest.TestCase):
 
     def test_empty(self):
-        remapped = sourcemap.normalize_mapping_line([])
+        remapped, column = sourcemap.normalize_mapping_line([])
         self.assertEqual([], remapped)
-        remapped = sourcemap.normalize_mapping_line([[]])
-        self.assertEqual([[]], remapped)
+        self.assertEqual(0, column)
+        remapped, column = sourcemap.normalize_mapping_line([()])
+        # that nonsensical empty element should be dropped
+        self.assertEqual([], remapped)
+        self.assertEqual(0, column)
+
+        # ensure that previous column also returned
+        remapped, column = sourcemap.normalize_mapping_line([], 4)
+        self.assertEqual([], remapped)
+        self.assertEqual(4, column)
+
+    def test_single_elements_only(self):
+        remapped, column = sourcemap.normalize_mapping_line([
+            (0,),
+            (4,),
+        ])
+        # leading elements are simply not going to be recorded
+        self.assertEqual([], remapped)
+        self.assertEqual(0, column)
+
+    def test_leading_single_elements(self):
+        remapped, column = sourcemap.normalize_mapping_line([
+            (0,),
+            (4,),
+            (4,),
+            (0, 0, 0, 0),
+        ])
+        # they would be merged down to the actual real node, since there
+        # was nothing to stop.
+        self.assertEqual([(8, 0, 0, 0)], remapped)
+        self.assertEqual(0, column)
+
+    def test_trailing_single_elements(self):
+        remapped, column = sourcemap.normalize_mapping_line([
+            (0,),
+            (4,),
+            (4,),
+            (0, 0, 0, 0),
+            (4,),
+            (4,),
+            (4,),
+        ])
+        # the first trailing node would be kept, remaining are discarded
+        self.assertEqual([(8, 0, 0, 0), (4,)], remapped)
+        self.assertEqual(0, column)
+
+    def test_interspersed_single_elements(self):
+        # example how this might look:
+        # source
+        #     XXXX(YYYZZZ)
+        # sink (? marks ignored)
+        #     ????????XXXX????(YYYZZZ)??????????
+        remapped, column = sourcemap.normalize_mapping_line([
+            (4,),
+            (4,),
+            # symbol runs for 4 characters
+            (0, 0, 0, 0),
+            (4,),
+            # next two symbols run for a total of 8 characters, after
+            # another 4 column gap.
+            (4, 0, 0, 4),
+            (4, 0, 0, 4),
+            (4,),
+        ])
+        self.assertEqual([(8, 0, 0, 0), (4,), (4, 0, 0, 4), (8,)], remapped)
+        self.assertEqual(4, column)
 
     def test_unmodified(self):
         # this is a typical canonical example
         # console.log("hello world");
-        remapped = sourcemap.normalize_mapping_line([
+        remapped, column = sourcemap.normalize_mapping_line([
             (0, 0, 0, 0),
             (7, 0, 0, 7),
             (1, 0, 0, 1),
@@ -140,10 +208,11 @@ class NormalizeRunningTestCase(unittest.TestCase):
             (1, 0, 0, 1),
         ])
         self.assertEqual([(0, 0, 0, 0)], remapped)
+        self.assertEqual(26, column)
 
     def test_unmodified_offsetted(self):
         # simulate the removal of indentation
-        remapped = sourcemap.normalize_mapping_line([
+        remapped, column = sourcemap.normalize_mapping_line([
             (0, 0, 0, 2),
             (7, 0, 0, 7),
             (1, 0, 0, 1),
@@ -153,9 +222,10 @@ class NormalizeRunningTestCase(unittest.TestCase):
             (1, 0, 0, 1),
         ])
         self.assertEqual([(0, 0, 0, 2)], remapped)
+        self.assertEqual(26, column)
 
     def test_five_segment(self):
-        remapped = sourcemap.normalize_mapping_line([
+        remapped, column = sourcemap.normalize_mapping_line([
             (0, 0, 0, 0),
             (7, 0, 0, 7, 0),
             (1, 0, 0, 1),
@@ -173,9 +243,10 @@ class NormalizeRunningTestCase(unittest.TestCase):
             (1, 0, 0, 1),
             (17, 0, 0, 17, 1),  # this finally got collapsed
         ], remapped)
+        self.assertEqual(0, column)
 
     def test_file_changed(self):
-        remapped = sourcemap.normalize_mapping_line([
+        remapped, column = sourcemap.normalize_mapping_line([
             (0, 0, 0, 0),
             (7, 0, 0, 7),
             (1, 0, 0, 1),
@@ -189,9 +260,10 @@ class NormalizeRunningTestCase(unittest.TestCase):
             (9, 1, 0, 9),
             (2, -1, 0, 2),
         ], remapped)
+        self.assertEqual(1, column)
 
     def test_line_changed(self):
-        remapped = sourcemap.normalize_mapping_line([
+        remapped, column = sourcemap.normalize_mapping_line([
             (0, 0, 0, 0),
             (7, 0, 0, 7),
             (1, 0, 0, 1),
@@ -209,9 +281,10 @@ class NormalizeRunningTestCase(unittest.TestCase):
             (8, 0, 1, 8),
             (19, 0, 1, 19),
         ], remapped)
+        self.assertEqual(5, column)
 
     def test_column_offset(self):
-        remapped = sourcemap.normalize_mapping_line([
+        remapped, column = sourcemap.normalize_mapping_line([
             (0, 0, 0, 0),
             (1, 0, 0, 7),
             (1, 0, 0, 1),
@@ -225,6 +298,24 @@ class NormalizeRunningTestCase(unittest.TestCase):
             (1, 0, 0, 7),
             (2, 0, 0, 4),
         ], remapped)
+        self.assertEqual(15, column)
+
+    def test_with_previous_source(self):
+        remapped, column = sourcemap.normalize_mapping_line([
+            (0, 0, 0, 0),
+            (1, 0, 0, 7),
+            (1, 0, 0, 1),
+            (1, 0, 0, 3),
+            (1, 0, 0, 1),
+            (13, 0, 0, 13),
+            (1, 0, 0, 1),
+        ], 4)
+        self.assertEqual([
+            (0, 0, 0, 4),
+            (1, 0, 0, 7),
+            (2, 0, 0, 4),
+        ], remapped)
+        self.assertEqual(15, column)
 
 
 class SourceMapTestCase(unittest.TestCase):
@@ -270,7 +361,120 @@ class SourceMapTestCase(unittest.TestCase):
             [(0, 0, 0, 0)],
         ])
 
-    def test_source_map_inferred_newline(self):
+    def test_source_map_known_standard_newline(self):
+        # for cases where pretty printing happened
+        # e.g. (function() { console.log("hello world"); })()
+        # with all values known.
+        err = setup_logger(self, sourcemap.logger)
+        stream = StringIO()
+        fragments = [
+            ('(', 1, 1, None),
+            ('function', 1, 2, None),
+            ('(', 1, 10, None),
+            (') ', 1, 11, None),
+            ('{\n', 1, 13, None),
+            # may be another special case here, to normalize the _first_
+            # fragment
+            ('  ', None, None, None),
+            ('console', 1, 15, None),
+            ('.', 1, 22, None),
+            ('log', 1, 23, None),
+            ('(', 1, 26, None),
+            ('"hello world"', 1, 27, None),
+            (')', 1, 40, None),
+            (';\n', 1, 41, None),
+            ('}', 1, 43, None),
+            (')', 1, 44, None),
+            ('(', 1, 45, None),
+            (')', 1, 46, None),
+            (';', 1, 47, None),
+        ]
+        names, mapping = sourcemap.write(fragments, stream, normalize=False)
+        self.assertEqual(stream.getvalue(), textwrap.dedent("""
+        (function() {
+          console.log("hello world");
+        })();
+        """).strip())
+        self.assertEqual(names, [])
+        self.assertEqual([[
+            (0, 0, 0, 0), (1, 0, 0, 1), (8, 0, 0, 8), (1, 0, 0, 1),
+            (2, 0, 0, 2)
+        ], [
+            (2, 0, 0, 2), (7, 0, 0, 7), (1, 0, 0, 1), (3, 0, 0, 3),
+            (1, 0, 0, 1), (13, 0, 0, 13), (1, 0, 0, 1)
+        ], [
+            (0, 0, 0, 2), (1, 0, 0, 1), (1, 0, 0, 1), (1, 0, 0, 1),
+            (1, 0, 0, 1)
+        ]], mapping)
+        self.assertNotIn("WARNING", err.getvalue())
+        # the normalized version should also have the correct offsets
+        names, mapping = sourcemap.write(fragments, stream)
+        self.assertEqual(
+            [[(0, 0, 0, 0)], [(2, 0, 0, 14)], [(0, 0, 0, 28)]], mapping)
+
+    def test_source_map_inferred_standard_newline(self):
+        # for cases where pretty printing happened
+        # e.g. (function() { console.log("hello world"); })()
+        err = setup_logger(self, sourcemap.logger)
+        stream = StringIO()
+        fragments = [
+            ('(', 1, 1, None),
+            ('function', 1, 2, None),
+            ('(', 1, 10, None),
+            (') ', 1, 11, None),
+            ('{\n', 1, 13, None),
+            # may be another special case here, to normalize the _first_
+            # fragment
+            ('  ', None, None, None),
+            ('console', 1, 15, None),
+            ('.', 1, 22, None),
+            ('log', 1, 23, None),
+            ('(', None, None, None),
+            ('"hello world"', 1, 27, None),
+            (')', None, None, None),
+            (';\n', None, None, None),
+            # note that the AST will need to record/provide the ending
+            # value to this if the usage on a newline is to be supported
+            # like so, otherwise all unmarked symbols will be clobbered
+            # in an indeterminate manner, given that there could be
+            # arbitrary amount of white spaces before the following
+            # ending characters in the original source text.
+            # In other words, if '}' is not tagged with (1,43), (or the
+            # position that it was from, the generated source map will
+            # guaranteed to be wrong as the starting column cannot be
+            # correctly inferred without the original text.
+            ('}', 1, 43, None),    # this one cannot be inferred.
+            (')', 1, None, None),  # this one can be.
+            ('(', 1, 45, None),    # next starting symbol
+            (')', 1, 46, None),
+            (';', None, None, None),
+        ]
+        names, mapping = sourcemap.write(fragments, stream, normalize=False)
+        self.assertEqual(stream.getvalue(), textwrap.dedent("""
+        (function() {
+          console.log("hello world");
+        })();
+        """).strip())
+        self.assertEqual(names, [])
+        self.assertEqual([[
+            (0, 0, 0, 0), (1, 0, 0, 1), (8, 0, 0, 8), (1, 0, 0, 1),
+            (2, 0, 0, 2)
+        ], [
+            (2, 0, 0, 2), (7, 0, 0, 7), (1, 0, 0, 1), (3, 0, 0, 3),
+            (1, 0, 0, 1), (13, 0, 0, 13), (1, 0, 0, 1)
+        ], [
+            (0, 0, 0, 2), (1, 0, 0, 1), (1, 0, 0, 1), (1, 0, 0, 1),
+            (1, 0, 0, 1)
+        ]], mapping)
+        self.assertNotIn("WARNING", err.getvalue())
+        names, mapping = sourcemap.write(fragments, stream)
+        # the normalized version should also have the correct offsets
+        names, mapping = sourcemap.write(fragments, stream)
+        self.assertEqual(
+            [[(0, 0, 0, 0)], [(2, 0, 0, 14)], [(0, 0, 0, 28)]], mapping)
+
+    def test_source_map_inferred_trailing_newline(self):
+        err = setup_logger(self, sourcemap.logger)
         stream = StringIO()
         # Note the None values, as that signifies inferred elements.
         fragments = [
@@ -283,7 +487,8 @@ class SourceMapTestCase(unittest.TestCase):
             [(0, 0, 0, 0)],
             [(0, 0, 0, 12)],
         ], mapping)
-        # TODO validate logging output if the warnings are done
+        self.assertIn(
+            "WARNING text in the generated document at line 2", err.getvalue())
 
     def test_source_map_renamed(self):
         stream = StringIO()

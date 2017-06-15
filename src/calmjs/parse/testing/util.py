@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 import unittest
+import logging
+from io import StringIO
 
 
 def build_testcase(name, f, manifest, create_test_method, **default_attrs):
@@ -71,3 +73,14 @@ def build_exception_testcase(name, f, manifest, exception=None):
         (label, argument, exception)
         for label, argument in manifest
     ), create_test_method)
+
+
+def setup_logger(testcase, logger):
+    testcase.addCleanup(logger.setLevel, logger.level)
+    stream = StringIO()
+    handler = logging.StreamHandler(stream)
+    handler.setFormatter(logging.Formatter('%(levelname)s %(message)s'))
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
+    testcase.addCleanup(logger.removeHandler, handler)
+    return stream
