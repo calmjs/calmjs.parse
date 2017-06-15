@@ -1,8 +1,11 @@
 # -*- coding: utf-8 -*-
 import unittest
 
+from logging import getLogger
+
 from calmjs.parse.testing.util import build_equality_testcase
 from calmjs.parse.testing.util import build_exception_testcase
+from calmjs.parse.testing.util import setup_logger
 
 
 def run(self):
@@ -57,3 +60,22 @@ class BuilderExceptionTestCase(unittest.TestCase):
         # Naturally, the final test will not raise it.
         with self.assertRaises(AssertionError):
             testcase.test_str_to_int_fail3()
+
+
+class SetupLoggerTestCase(unittest.TestCase):
+
+    def test_build_exception_testcase(self):
+        class DemoTestCase(unittest.TestCase):
+            def runTest(self):
+                """Dummy run method for PY2"""
+
+        testcase = DemoTestCase()
+        logger = getLogger('demo_test_case')
+        original_level = logger.level
+        original_handlers = len(logger.handlers)
+        setup_logger(testcase, logger)
+        self.assertNotEqual(original_level, logger.level)
+        self.assertNotEqual(original_handlers, len(logger.handlers))
+        testcase.doCleanups()
+        self.assertEqual(original_level, logger.level)
+        self.assertEqual(original_handlers, len(logger.handlers))
