@@ -501,6 +501,43 @@ ParsedNodeTypeSourcemapCompatTestCase = build_equality_testcase(
             statement=<EmptyStatement @1:19 value=';'>>
         ]>
         """
+    ), (
+        'iteration_var_in_obj',
+        """
+        for (var p in obj) {
+          p = 1;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<ForIn @1:1 item=<
+          VarDeclNoIn @1:6 identifier=<Identifier @1:10 value='p'>,
+            initializer=None>, iterable=<Identifier @1:15 value='obj'>,
+          statement=<Block @1:20 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='p'>, op='=', right=<
+                Number @2:7 value='1'>>>
+          ]>
+        >]>
+        """,
+    ), (
+        'for_initializer_noin',
+        """
+        for (var x = foo() in (bah())) {};
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ForIn @1:1 item=<VarDeclNoIn @1:6 identifier=<
+                Identifier @1:10 value='x'>,
+              initializer=<FunctionCall @1:14 args=[
+              ],
+              identifier=<Identifier @1:14 value='foo'>>>,
+            iterable=<GroupingOp @1:23 expr=<FunctionCall @1:24 args=[],
+              identifier=<Identifier @1:24 value='bah'>>>,
+            statement=<Block @1:32 >>,
+          <EmptyStatement @1:34 value=';'>
+        ]>
+        """,
+
     )])
 )
 

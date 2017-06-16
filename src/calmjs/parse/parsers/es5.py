@@ -1207,7 +1207,10 @@ class Parser(object):
         iteration_statement : \
             FOR LPAREN VAR identifier IN expr RPAREN statement
         """
-        vardecl = self.asttypes.VarDecl(p[4])
+        if self._sourcemap_compat:
+            vardecl = self.asttypes.VarDeclNoIn(identifier=p[4])
+        else:
+            vardecl = self.asttypes.VarDecl(p[4])
         vardecl.setpos(p, 3)
         p[0] = self.asttypes.ForIn(item=vardecl, iterable=p[6], statement=p[8])
         p[0].setpos(p)
@@ -1217,7 +1220,11 @@ class Parser(object):
         iteration_statement \
           : FOR LPAREN VAR identifier initializer_noin IN expr RPAREN statement
         """
-        vardecl = self.asttypes.VarDecl(identifier=p[4], initializer=p[5])
+        if self._sourcemap_compat:
+            vardecl = self.asttypes.VarDeclNoIn(
+                identifier=p[4], initializer=p[5])
+        else:
+            vardecl = self.asttypes.VarDecl(identifier=p[4], initializer=p[5])
         vardecl.setpos(p, 3)
         p[0] = self.asttypes.ForIn(item=vardecl, iterable=p[7], statement=p[9])
         p[0].setpos(p)

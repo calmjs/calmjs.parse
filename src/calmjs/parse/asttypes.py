@@ -203,6 +203,12 @@ class VarDecl(Node):
         return [self.identifier, self.initializer]
 
 
+class VarDeclNoIn(VarDecl):
+    """
+    Specialized for the ForIn Node.
+    """
+
+
 class UnaryOp(Node):
     def __init__(self, op, value, postfix=False):
         self.op = op
