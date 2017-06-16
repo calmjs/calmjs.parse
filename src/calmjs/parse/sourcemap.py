@@ -257,18 +257,6 @@ def write(source, stream, names=None, book=None, normalize=True):
         for line in lines:
             stream.write(line)
 
-            # setting source_* first, as the provided values are the
-            # absolute positional values
-            # assume line is unchanged otherwise
-            if lineno:
-                book.source_line = lineno
-            # assume these untagged chunks follow the previous tagged
-            # chunks, so increment the column count by that previous
-            # length
-            if colno is not None:
-                book.source_column = (
-                    book._source_column + p_line_len if colno == 0 else colno)
-
             name_id = names.update(original_name)
 
             # Two separate checks are done.  As per specification, if
@@ -283,8 +271,20 @@ def write(source, stream, names=None, book=None, normalize=True):
 
             if lineno is None or colno is None:
                 mapping[-1].append((book.sink_column,))
-            elif not (not mapping[-1] and (
-                    lineno == 0 or colno == 0) and not line.strip()):
+            else:
+                # only track lineno if specified
+                if lineno:
+                    book.source_line = lineno
+
+                # if the provided colno is to be implied, calculate it
+                # based on the previous line length plus the previous
+                # real source column value, otherwise standard value
+                # for tracking.
+                if colno:
+                    book.source_column = colno
+                else:
+                    book.source_column = book._source_column + p_line_len
+
                 if original_name is not None:
                     mapping[-1].append((
                         book.sink_column, filename,

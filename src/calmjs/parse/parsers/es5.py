@@ -328,6 +328,8 @@ class Parser(object):
 
     def p_primary_expr_no_brace_4(self, p):
         """primary_expr_no_brace : LPAREN expr RPAREN"""
+        # Define a new type for this???
+        # Call it a GroupingOperator???
         p[2]._parens = True
         p[0] = p[2]
 

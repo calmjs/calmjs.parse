@@ -375,7 +375,7 @@ class SourceMapTestCase(unittest.TestCase):
             ('{\n', 1, 13, None),
             # may be another special case here, to normalize the _first_
             # fragment
-            ('  ', 0, 0, None),
+            ('  ', None, None, None),
             ('console', 1, 15, None),
             ('.', 1, 22, None),
             ('log', 1, 23, None),
@@ -400,7 +400,7 @@ class SourceMapTestCase(unittest.TestCase):
             (0, 0, 0, 0), (1, 0, 0, 1), (8, 0, 0, 8), (1, 0, 0, 1),
             (2, 0, 0, 2)
         ], [
-            (2, 0, 0, 2), (7, 0, 0, 7), (1, 0, 0, 1), (3, 0, 0, 3),
+            (0,), (2, 0, 0, 2), (7, 0, 0, 7), (1, 0, 0, 1), (3, 0, 0, 3),
             (1, 0, 0, 1), (13, 0, 0, 13), (1, 0, 0, 1)
         ], [
             (0, 0, 0, 2), (1, 0, 0, 1), (1, 0, 0, 1), (1, 0, 0, 1),
@@ -425,7 +425,7 @@ class SourceMapTestCase(unittest.TestCase):
             ('{\n', 1, 13, None),
             # may be another special case here, to normalize the _first_
             # fragment
-            ('  ', 0, 0, None),
+            ('  ', None, None, None),
             ('console', 1, 15, None),
             ('.', 1, 22, None),
             ('log', 1, 23, None),
@@ -460,7 +460,7 @@ class SourceMapTestCase(unittest.TestCase):
             (0, 0, 0, 0), (1, 0, 0, 1), (8, 0, 0, 8), (1, 0, 0, 1),
             (2, 0, 0, 2)
         ], [
-            (2, 0, 0, 2), (7, 0, 0, 7), (1, 0, 0, 1), (3, 0, 0, 3),
+            (0,), (2, 0, 0, 2), (7, 0, 0, 7), (1, 0, 0, 1), (3, 0, 0, 3),
             (1, 0, 0, 1), (13, 0, 0, 13), (1, 0, 0, 1)
         ], [
             (0, 0, 0, 2), (1, 0, 0, 1), (1, 0, 0, 1), (1, 0, 0, 1),
@@ -510,26 +510,38 @@ class SourceMapTestCase(unittest.TestCase):
             [(0, 0, 0, 0, 0), (1, 0, 0, 7), (1, 0, 0, 1, 1), (1, 0, 0, 3)]
         ])
 
-    def test_source_map_inferred_initial_indent(self):
-        # shouldn't happen, but test for it.
+    def test_source_map_wrongly_inferred_initial_indents(self):
+        # it should still be able to correct it
+        # this is why indentation should simply be omitted and replace
+        # both the line/col counter to None
         stream = StringIO()
-
         fragments = [
-            ('  ', 0, 0, None),
-            ('console', 1, 3, None),
-            ('.', 1, 10, None),
-            ('log', 1, 11, None),
+            (' ', 0, 0, None),  # was two spaces, now single space.
+            (' ', 0, 0, None),
+            ('console', 1, 5, None),
+            ('.', 1, 12, None),
+            ('log', 1, 13, None),
             ('(', 0, 0, None),
-            ('"hello world"', 1, 15, None),
+            ('(', 0, 0, None),
+            ('"hello world"', 1, 18, None),
+            (')', 0, 0, None),
             (')', 0, 0, None),
             (';', 0, 0, None),
         ]
 
-        names, mapping = sourcemap.write(fragments, stream)
-        self.assertEqual(stream.getvalue(), '  console.log("hello world");')
+        names, mapping = sourcemap.write(fragments, stream, normalize=False)
+        self.assertEqual(stream.getvalue(), '  console.log(("hello world"));')
         self.assertEqual(names, [])
+        self.assertEqual(mapping, [[
+            (0, 0, 0, 0), (1, 0, 0, 1),
+            (1, 0, 0, 3), (7, 0, 0, 7), (1, 0, 0, 1), (3, 0, 0, 3),
+            (1, 0, 0, 1), (1, 0, 0, 1), (13, 0, 0, 13), (1, 0, 0, 1),
+            (1, 0, 0, 1),
+        ]])
+
+        names, mapping = sourcemap.write(fragments, stream)
         self.assertEqual(mapping, [
-            [(2, 0, 0, 2)],
+            [(0, 0, 0, 0), (2, 0, 0, 4)],
         ])
 
     def test_source_map_unmapped_initial_indent(self):
