@@ -40,6 +40,8 @@ asttypes = AstTypesFactory(pretty_print, ReprVisitor())
 # be strings
 lextab, yacctab = generate_tab_names(__name__)
 
+_sourcemap_compat = False
+
 
 class Parser(object):
     """JavaScript parser(ECMA-262 5th edition grammar).
@@ -80,6 +82,7 @@ class Parser(object):
             debug=yacc_debug, tabmodule=yacctab, start='program')
 
         self.asttypes = asttypes
+        self._sourcemap_compat = _sourcemap_compat
 
         # https://github.com/rspivak/slimit/issues/29
         # lexer.auto_semi can cause a loop in a parser
@@ -330,8 +333,16 @@ class Parser(object):
         """primary_expr_no_brace : LPAREN expr RPAREN"""
         # Define a new type for this???
         # Call it a GroupingOperator???
-        p[2]._parens = True
-        p[0] = p[2]
+        if self._sourcemap_compat:
+            # don't bother nesting grouping operators
+            if isinstance(p[2], self.asttypes.GroupingOp):
+                p[0] = p[2]
+            else:
+                p[0] = self.asttypes.GroupingOp(expr=p[2])
+                p[0].setpos(p)
+        else:
+            p[2]._parens = True
+            p[0] = p[2]
 
     def p_array_literal_1(self, p):
         """array_literal : LBRACKET elision_opt RBRACKET"""

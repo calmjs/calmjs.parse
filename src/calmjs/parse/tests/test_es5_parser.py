@@ -167,6 +167,87 @@ def singleline(s):
     return ''.join(clean(t) for t in textwrap.dedent(s).splitlines())
 
 
+class WithGroupingOpTestCase(unittest.TestCase):
+    """
+    Making use of grouping operator
+    """
+
+    def setUp(self):
+        self.parser = Parser()
+        # set the private flag
+        self.parser._sourcemap_compat = True
+        self.maxDiff = None
+
+    def test_to_be_removed(self):
+        # if this test fails, remove this entire class because this is a
+        # temporary feature.
+        parser = Parser()
+        self.assertTrue(hasattr(parser, '_sourcemap_compat'))
+
+    def test_parse_closure_scope(self):
+        tree = self.parser.parse(textwrap.dedent("""
+        (function() {
+          x = 5;
+        }());
+        """).strip())
+        self.assertEqual(repr_visitor.visit(tree, pos=True), singleline("""
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<GroupingOp @1:1 expr=<
+            FunctionCall @1:2 args=[], identifier=<
+              FuncExpr @1:2 elements=[
+                <ExprStatement @2:3 expr=<Assign @2:5 left=<
+                  Identifier @2:3 value='x'>, op='=',
+                  right=<Number @2:7 value='5'>>>
+              ],
+              identifier=None, parameters=[]>>>>
+        ]>
+        """))
+
+    def test_dot_accessor_int(self):
+        tree = self.parser.parse(textwrap.dedent("""
+        (0).toString();
+        """).strip())
+
+        self.assertEqual(repr_visitor.visit(tree, pos=True), singleline("""
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=[], identifier=<
+            DotAccessor @1:4 identifier=<Identifier @1:5 value='toString'>,
+            node=<GroupingOp @1:1 expr=<Number @1:2 value='0'>>>>>
+        ]>
+        """))
+
+    def test_logical_or_expr_nobf(self):
+        tree = self.parser.parse(textwrap.dedent("""
+        (true || true) || (false && false);
+        """).strip())
+
+        self.assertEqual(repr_visitor.visit(tree, pos=True), singleline("""
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:16 left=<
+              GroupingOp @1:1 expr=<BinOp @1:7 left=<
+                Boolean @1:2 value='true'>, op='||', right=<
+                Boolean @1:10 value='true'>>>,
+            op='||', right=<
+              GroupingOp @1:19 expr=<BinOp @1:26 left=<
+                Boolean @1:20 value='false'>, op='&&', right=<
+                Boolean @1:29 value='false'>>>>>
+        ]>
+        """))
+
+    def test_excesssive_grouping_normalized(self):
+        tree = self.parser.parse(textwrap.dedent("""
+        ((((value)))).toString();
+        """).strip())
+        self.assertEqual(repr_visitor.visit(tree, pos=True), singleline("""
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=[],
+            identifier=<DotAccessor @1:14 identifier=<
+              Identifier @1:15 value='toString'>,
+              node=<GroupingOp @1:4 expr=<Identifier @1:5 value='value'>>>>>
+        ]>
+        """))
+
+
 ParsedNodeTypeTestCase = build_equality_testcase(
     'ParsedNodeTypeTestCase', parse_to_repr, ((
         label,

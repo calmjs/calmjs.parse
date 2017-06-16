@@ -223,6 +223,14 @@ class BinOp(Node):
         return [self.left, self.right]
 
 
+class GroupingOp(Node):
+    def __init__(self, expr):
+        self.expr = expr
+
+    def children(self):
+        return [self.expr]
+
+
 class Conditional(Node):
     """Conditional Operator ( ? : )"""
     def __init__(self, predicate, consequent, alternative):
