@@ -27,6 +27,7 @@ import unittest
 
 from calmjs.parse import asttypes
 from calmjs.parse import es5
+from calmjs.parse import _es5_sourcemap_compat
 from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.exceptions import ECMARegexSyntaxError
 from calmjs.parse.parsers.es5 import Parser
@@ -153,6 +154,18 @@ class ParserTestCase(unittest.TestCase):
         self.assertTrue(bool(Parser().parse(text).children()))
 
 
+class SourcemapCompatRemovalTestCase(unittest.TestCase):
+    """
+    Remove this test when that flag is gone.
+    """
+
+    def test_to_be_removed(self):
+        # if this test fails, remove this entire class because this is a
+        # temporary feature.
+        parser = Parser()
+        self.assertTrue(hasattr(parser, '_sourcemap_compat'))
+
+
 repr_visitor = generic.ReprVisitor()
 
 
@@ -167,30 +180,25 @@ def singleline(s):
     return ''.join(clean(t) for t in textwrap.dedent(s).splitlines())
 
 
-class WithGroupingOpTestCase(unittest.TestCase):
-    """
-    Making use of grouping operator
-    """
+def _parse_to_repr_sourcemap_compat(value):
+    return repr_visitor.visit(_es5_sourcemap_compat(value), pos=True)
 
-    def setUp(self):
-        self.parser = Parser()
-        # set the private flag
-        self.parser._sourcemap_compat = True
-        self.maxDiff = None
 
-    def test_to_be_removed(self):
-        # if this test fails, remove this entire class because this is a
-        # temporary feature.
-        parser = Parser()
-        self.assertTrue(hasattr(parser, '_sourcemap_compat'))
-
-    def test_parse_closure_scope(self):
-        tree = self.parser.parse(textwrap.dedent("""
+# Note: this tests for affected changes compared to previous behavior,
+# which is slated for removal in 1.0.0
+ParsedNodeTypeSourcemapCompatTestCase = build_equality_testcase(
+    'ParsedNodeTypeTestCase', _parse_to_repr_sourcemap_compat, ((
+        label,
+        textwrap.dedent(argument).strip(),
+        singleline(result),
+    ) for label, argument, result in [(
+        'parse_closure_scope',
+        """
         (function() {
           x = 5;
         }());
-        """).strip())
-        self.assertEqual(repr_visitor.visit(tree, pos=True), singleline("""
+        """,
+        """
         <ES5Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<GroupingOp @1:1 expr=<
             FunctionCall @1:2 args=[], identifier=<
@@ -201,27 +209,25 @@ class WithGroupingOpTestCase(unittest.TestCase):
               ],
               identifier=None, parameters=[]>>>>
         ]>
-        """))
-
-    def test_dot_accessor_int(self):
-        tree = self.parser.parse(textwrap.dedent("""
+        """,
+    ), (
+        'accessor_int',
+        """
         (0).toString();
-        """).strip())
-
-        self.assertEqual(repr_visitor.visit(tree, pos=True), singleline("""
+        """,
+        """
         <ES5Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<FunctionCall @1:1 args=[], identifier=<
             DotAccessor @1:4 identifier=<Identifier @1:5 value='toString'>,
             node=<GroupingOp @1:1 expr=<Number @1:2 value='0'>>>>>
         ]>
-        """))
-
-    def test_logical_or_expr_nobf(self):
-        tree = self.parser.parse(textwrap.dedent("""
+        """,
+    ), (
+        'logical_or_expr_nobf',
+        """
         (true || true) || (false && false);
-        """).strip())
-
-        self.assertEqual(repr_visitor.visit(tree, pos=True), singleline("""
+        """,
+        """
         <ES5Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<BinOp @1:16 left=<
               GroupingOp @1:1 expr=<BinOp @1:7 left=<
@@ -232,20 +238,271 @@ class WithGroupingOpTestCase(unittest.TestCase):
                 Boolean @1:20 value='false'>, op='&&', right=<
                 Boolean @1:29 value='false'>>>>>
         ]>
-        """))
-
-    def test_excesssive_grouping_normalized(self):
-        tree = self.parser.parse(textwrap.dedent("""
+        """,
+    ), (
+        'excesssive_grouping_normalized',
+        """
         ((((value)))).toString();
-        """).strip())
-        self.assertEqual(repr_visitor.visit(tree, pos=True), singleline("""
+        """,
+        """
         <ES5Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<FunctionCall @1:1 args=[],
             identifier=<DotAccessor @1:14 identifier=<
               Identifier @1:15 value='toString'>,
               node=<GroupingOp @1:4 expr=<Identifier @1:5 value='value'>>>>>
         ]>
-        """))
+        """
+    ), (
+        'iteration_var',
+        """
+        for (var i = 0; i < 10; i++) {
+          x = 10 * i;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <For @1:1 cond=<ExprStatement @1:17 expr=<BinOp @1:19 left=<
+                Identifier @1:17 value='i'>,
+              op='<',
+              right=<Number @1:21 value='10'>>>,
+            count=<UnaryOp @1:26 op='++', postfix=True, value=<
+              Identifier @1:25 value='i'>>,
+            init=<VarStatement @1:6 ?children=[
+                <VarDecl @1:10 identifier=<Identifier @1:10 value='i'>,
+                  initializer=<Number @1:14 value='0'>>
+              ]>,
+            statement=<Block @1:30 ?children=[
+              <ExprStatement @2:3 expr=<Assign @2:5 left=<
+                Identifier @2:3 value='x'>, op='=', right=<
+                  BinOp @2:10 left=<Number @2:7 value='10'>, op='*', right=<
+                    Identifier @2:12 value='i'>>>>
+            ]>>
+        ]>
+        """,
+    ), (
+        'iteration_multi_value',
+        """
+        for (i = 0, j = 10; i < j && j < 15; i++, j++) {
+          x = i * j;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<For @1:1 cond=<ExprStatement @1:21 expr=<
+          BinOp @1:27 left=<
+            BinOp @1:23 left=<Identifier @1:21 value='i'>, op='<', right=<
+                Identifier @1:25 value='j'>>,
+              op='&&', right=<BinOp @1:32 left=<Identifier @1:30 value='j'>,
+                op='<', right=<Number @1:34 value='15'>>>>,
+          count=<Comma @1:41 left=<UnaryOp @1:39 op='++', postfix=True,
+              value=<Identifier @1:38 value='i'>>,
+            right=<UnaryOp @1:44 op='++', postfix=True, value=<
+              Identifier @1:43 value='j'>>>,
+          init=<ExprStatement @1:6 expr=<
+            Comma @1:11 left=<Assign @1:8 left=<
+                Identifier @1:6 value='i'>,
+              op='=', right=<Number @1:10 value='0'>>, right=<
+                  Assign @1:15 left=<Identifier @1:13 value='j'>, op='=',
+                right=<Number @1:17 value='10'>>>>,
+          statement=<Block @1:48 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='x'>, op='=', right=<
+                BinOp @2:9 left=<Identifier @2:7 value='i'>, op='*',
+                  right=<Identifier @2:11 value='j'>>>>
+          ]
+        >>]>
+        """,
+
+    ), (
+        # retain the semicolon in the initialiser part of a 'for' statement
+        'iteration_conditional_initialiser',
+        """
+        for (Q || (Q = []); d < b; ) {
+          d = 1;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<For @1:1 cond=
+          <ExprStatement @1:21 expr=<BinOp @1:23 left=<
+            Identifier @1:21 value='d'>, op='<', right=<
+            Identifier @1:25 value='b'>>>,
+          count=None,
+          init=<ExprStatement @1:6 expr=<BinOp @1:8 left=<
+            Identifier @1:6 value='Q'>,
+              op='||', right=<GroupingOp @1:11 expr=<Assign @1:14 left=
+                <Identifier @1:12 value='Q'>,
+                op='=', right=<Array @1:16 items=[]>
+            >>>>,
+          statement=<Block @1:30 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='d'>, op='=',
+              right=<Number @2:7 value='1'>>>
+          ]
+        >>]>
+        """,
+    ), (
+        'iteration_ternary_initializer',
+        """
+        for (2 >> (foo ? 32 : 43) && 54; 21; ) {
+          a = c;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<For @1:1 cond=
+          <ExprStatement @1:34 expr=<Number @1:34 value='21'>>,
+          count=None,
+          init=<ExprStatement @1:6 expr=<
+            BinOp @1:27 left=<BinOp @1:8 left=<
+              Number @1:6 value='2'>, op='>>', right=
+                <GroupingOp @1:11 expr=
+                  <Conditional @1:16 alternative=<Number @1:23 value='43'>,
+                    consequent=<Number @1:18 value='32'>,
+                    predicate=<Identifier @1:12 value='foo'>>
+              >>, op='&&', right=<Number @1:30 value='54'>>>,
+          statement=<
+            Block @1:40 ?children=[
+              <ExprStatement @2:3 expr=<Assign @2:5 left=<
+                Identifier @2:3 value='a'>, op='=', right=<
+                  Identifier @2:7 value='c'>>>
+            ]
+          >
+        >]>
+        """,
+    ), (
+        'iteration_regex_initialiser',
+        """
+        for (/^.+/g; cond(); ++z) {
+          ev();
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <For @1:1 cond=<ExprStatement @1:14 expr=<FunctionCall @1:14 args=[],
+              identifier=<Identifier @1:14 value='cond'>>>,
+            count=<UnaryOp @1:22 op='++', postfix=False,
+              value=<Identifier @1:24 value='z'>>,
+            init=<ExprStatement @1:6 expr=<Regex @1:6 value='/^.+/g'>>,
+            statement=<Block @1:27 ?children=[
+              <ExprStatement @2:3 expr=<FunctionCall @2:3 args=[],
+                identifier=<Identifier @2:3 value='ev'>>>
+            ]>>
+        ]>
+        """,
+    ), (
+        # function call in FOR init
+        'function_call_in_for_init',
+        """
+        for (o(); i < 3; i++) {
+
+        }
+        """,
+
+        """
+        <ES5Program @1:1 ?children=[
+          <For @1:1 cond=
+            <ExprStatement @1:11 expr=
+              <BinOp @1:13 left=<Identifier @1:11 value='i'>,
+                op='<', right=<Number @1:15 value='3'>>>,
+            count=<UnaryOp @1:19 op='++', postfix=True,
+              value=<Identifier @1:18 value='i'>>,
+            init=<ExprStatement @1:6 expr=<FunctionCall @1:6 args=[],
+              identifier=<Identifier @1:6 value='o'>>>,
+            statement=<Block @1:23 >>
+        ]>
+        """,
+    ), (
+        'for_loop_chained_noin',
+        """
+        for (o < (p < q);;);
+        for (o == (p == q);;);
+        for (o ^ (p ^ q);;);
+        for (o | (p | q);;);
+        for (o & (p & q);;);
+        for (a ? (b ? c : d) : false;;);
+        for (var x;;);
+        for (var x, y, z;;);
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <For @1:1 cond=<EmptyStatement @1:18 value=';'>, count=None,
+            init=<ExprStatement @1:6 expr=<BinOp @1:8 left=<
+              Identifier @1:6 value='o'>, op='<',
+              right=<GroupingOp @1:10 expr=<BinOp @1:13 left=<
+                Identifier @1:11 value='p'>, op='<',
+                right=<Identifier @1:15 value='q'>>>>>,
+            statement=<EmptyStatement @1:20 value=';'>>,
+          <For @2:1 cond=<EmptyStatement @2:20 value=';'>, count=None,
+            init=<ExprStatement @2:6 expr=<BinOp @2:8 left=<
+              Identifier @2:6 value='o'>, op='==', right=<
+                GroupingOp @2:11 expr=<BinOp @2:14 left=<
+                  Identifier @2:12 value='p'>, op='==',
+                  right=<Identifier @2:17 value='q'>>>>>,
+            statement=<EmptyStatement @2:22 value=';'>>,
+          <For @3:1 cond=<EmptyStatement @3:18 value=';'>, count=None,
+            init=<ExprStatement @3:6 expr=<BinOp @3:8 left=<
+              Identifier @3:6 value='o'>, op='^',
+              right=<GroupingOp @3:10 expr=<BinOp @3:13 left=<
+                Identifier @3:11 value='p'>, op='^',
+                right=<Identifier @3:15 value='q'>>>>>,
+            statement=<EmptyStatement @3:20 value=';'>>,
+          <For @4:1 cond=<EmptyStatement @4:18 value=';'>, count=None, init=<
+            ExprStatement @4:6 expr=<BinOp @4:8 left=<
+              Identifier @4:6 value='o'>, op='|',
+              right=<GroupingOp @4:10 expr=<BinOp @4:13 left=<
+                Identifier @4:11 value='p'>, op='|',
+                  right=<Identifier @4:15 value='q'>>>>>,
+            statement=<EmptyStatement @4:20 value=';'>>,
+          <For @5:1 cond=<EmptyStatement @5:18 value=';'>, count=None, init=<
+            ExprStatement @5:6 expr=<BinOp @5:8 left=<
+              Identifier @5:6 value='o'>, op='&',
+              right=<GroupingOp @5:10 expr=<BinOp @5:13 left=<
+                Identifier @5:11 value='p'>, op='&', right=<
+                Identifier @5:15 value='q'>>>>>,
+            statement=<EmptyStatement @5:20 value=';'>>,
+          <For @6:1 cond=<EmptyStatement @6:30 value=';'>, count=None, init=<
+            ExprStatement @6:6 expr=<Conditional @6:8 alternative=<
+              Boolean @6:24 value='false'>,
+              consequent=<GroupingOp @6:10 expr=<
+                Conditional @6:13 alternative=<Identifier @6:19 value='d'>,
+                consequent=<Identifier @6:15 value='c'>,
+                predicate=<Identifier @6:11 value='b'>>>,
+              predicate=<Identifier @6:6 value='a'>>>,
+            statement=<EmptyStatement @6:32 value=';'>>,
+          <For @7:1 cond=<EmptyStatement @7:12 value=';'>, count=None, init=<
+            VarStatement @7:6 ?children=[
+              <VarDecl @7:10 identifier=<Identifier @7:10 value='x'>,
+                initializer=None>
+              ]>,
+            statement=<EmptyStatement @7:14 value=';'>>,
+          <For @8:1 cond=<EmptyStatement @8:18 value=';'>, count=None, init=<
+            VarStatement @8:6 ?children=[
+              <VarDecl @8:10 identifier=<Identifier @8:10 value='x'>,
+                initializer=None>,
+              <VarDecl @8:13 identifier=<Identifier @8:13 value='y'>,
+                initializer=None>,
+              <VarDecl @8:16 identifier=<Identifier @8:16 value='z'>,
+                initializer=None>
+              ]>,
+            statement=<EmptyStatement @8:20 value=';'>>
+        ]>
+        """,
+
+    ), (
+        'dot_reserved_word_nobf',
+        """
+        for (x = e.case;;);
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <For @1:1 cond=<EmptyStatement @1:17 value=';'>,
+            count=None, init=<ExprStatement @1:6 expr=<Assign @1:8 left=<
+              Identifier @1:6 value='x'>, op='=', right=<
+                DotAccessor @1:11 identifier=<Identifier @1:12 value='case'>,
+                node=<Identifier @1:10 value='e'>>>>,
+            statement=<EmptyStatement @1:19 value=';'>>
+        ]>
+        """
+    )])
+)
 
 
 ParsedNodeTypeTestCase = build_equality_testcase(
