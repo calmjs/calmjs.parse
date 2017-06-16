@@ -509,3 +509,149 @@ class SourceMapTestCase(unittest.TestCase):
         self.assertEqual(mapping, [
             [(0, 0, 0, 0, 0), (1, 0, 0, 7), (1, 0, 0, 1, 1), (1, 0, 0, 3)]
         ])
+
+    def test_source_map_inferred_initial_indent(self):
+        # shouldn't happen, but test for it.
+        stream = StringIO()
+
+        fragments = [
+            ('  ', 0, 0, None),
+            ('console', 1, 3, None),
+            ('.', 1, 10, None),
+            ('log', 1, 11, None),
+            ('(', 0, 0, None),
+            ('"hello world"', 1, 15, None),
+            (')', 0, 0, None),
+            (';', 0, 0, None),
+        ]
+
+        names, mapping = sourcemap.write(fragments, stream)
+        self.assertEqual(stream.getvalue(), '  console.log("hello world");')
+        self.assertEqual(names, [])
+        self.assertEqual(mapping, [
+            [(2, 0, 0, 2)],
+        ])
+
+    def test_source_map_unmapped_initial_indent(self):
+        stream = StringIO()
+
+        fragments = [
+            ('  ', None, None, None),
+            ('console', 1, 1, None),
+            ('.', 1, 8, None),
+            ('log', 1, 9, None),
+            ('(', 0, 0, None),
+            ('"hello world"', 1, 13, None),
+            (')', 0, 0, None),
+            (';', 0, 0, None),
+        ]
+
+        names, mapping = sourcemap.write(fragments, stream)
+        self.assertEqual(stream.getvalue(), '  console.log("hello world");')
+        self.assertEqual(names, [])
+        self.assertEqual(mapping, [
+            [(2, 0, 0, 0)],
+        ])
+
+    def test_source_map_mapped_initial_indent(self):
+        stream = StringIO()
+
+        fragments = [
+            ('  ', 1, 1, None),
+            ('console', 1, 3, None),
+            ('.', 1, 10, None),
+            ('log', 1, 11, None),
+            ('(', 0, 0, None),
+            ('"hello world"', 1, 15, None),
+            (')', 0, 0, None),
+            (';', 0, 0, None),
+        ]
+
+        names, mapping = sourcemap.write(fragments, stream)
+        self.assertEqual(stream.getvalue(), '  console.log("hello world");')
+        self.assertEqual(names, [])
+        self.assertEqual(mapping, [
+            [(0, 0, 0, 0)],
+        ])
+
+    def test_multiple_unmapped_chunks(self):
+        stream = StringIO()
+
+        fragments = [
+            (' ', None, None, None),
+            (' ', None, None, None),
+            (' ', None, None, None),
+            ('x', 1, 1, None),
+            ('x', 1, 1, None),
+            ('x', 1, 1, None),
+            (' ', None, None, None),
+            (' ', None, None, None),
+            (' ', None, None, None),
+            ('y', 1, 3, None),
+            ('y', 1, 3, None),
+            ('y', 1, 3, None),
+        ]
+
+        names, mapping = sourcemap.write(fragments, stream)
+        self.assertEqual(stream.getvalue(), '   xxx   yyy')
+        self.assertEqual(names, [])
+        self.assertEqual(mapping, [[
+            (3, 0, 0, 0),
+            (1, 0, 0, 0),
+            (1, 0, 0, 0),
+            (1,),
+            (3, 0, 0, 2),
+            (1, 0, 0, 0),
+            (1, 0, 0, 0),
+        ]])
+
+    def test_source_map_remapped_symbols_without_original(self):
+        # for cases where the program have been wrapped and transpiled
+        # e.g. (function() { $program })()
+        # using: console log "hello world"
+        stream = StringIO()
+        fragments = [
+            ('(', None, None, None),
+            ('function', None, None, None),
+            ('(', None, None, None),
+            (') ', None, None, None),
+            ('{\n', None, None, None),
+            # may be another special case here, to normalize the _first_
+            # fragment
+            ('  ', None, None, None),
+            ('console', 1, 1, None),
+            ('.', None, None, None),
+            ('log', 1, 9, None),
+            ('(', None, None, None),
+            ('"hello world"', 1, 13, None),
+            (')', None, None, None),
+            (';', None, None, None),
+            ('\n', None, None, None),
+            ('}', None, None, None),
+            (')', None, None, None),
+            ('(', 0, None, None),  # testing for alternative conds.
+            (')', None, 0, None),
+            (';', None, None, None),
+        ]
+        names, mapping = sourcemap.write(fragments, stream, normalize=False)
+        self.assertEqual(stream.getvalue(), textwrap.dedent("""
+        (function() {
+          console.log("hello world");
+        })();
+        """).strip())
+        self.assertEqual(names, [])
+        self.assertEqual([[
+            (0,), (1,), (8,), (1,), (2,),
+        ], [
+            (0,),
+            (2, 0, 0, 0), (7,), (1, 0, 0, 8), (3,), (1, 0, 0, 4), (13,),
+            (1,), (1,),
+        ], [
+            (0,), (1,), (1,), (1,), (1,),
+        ]], mapping)
+
+        # the normalized version should also have the correct offsets
+        names, mapping = sourcemap.write(fragments, stream)
+        self.assertEqual([[], [
+            (2, 0, 0, 0), (7,), (1, 0, 0, 8), (3,), (1, 0, 0, 4), (13,),
+        ], []], mapping)

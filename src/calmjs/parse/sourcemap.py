@@ -265,19 +265,26 @@ def write(source, stream, names=None, book=None, normalize=True):
             # assume these untagged chunks follow the previous tagged
             # chunks, so increment the column count by that previous
             # length
-            book.source_column = (
-                book._source_column + p_line_len if colno == 0 else colno)
+            if colno is not None:
+                book.source_column = (
+                    book._source_column + p_line_len if colno == 0 else colno)
 
             name_id = names.update(original_name)
-            # Note that if this segment is the beginning of a line, and
-            # that NO source colno/linecol were provided, it could be an
-            # indentation.
-            # it should not be added as the first segment.
-            # This is often the case with
-            # indentation, where pretty printed (or regenerated sources)
-            # output will like not have white spaces be tracked in the
-            # source AST.
-            if not (not mapping[-1] and colno == 0 and not line.strip()):
+
+            # Two separate checks are done.  As per specification, if
+            # either lineno or colno are unspecified, it is assumed that
+            # the segment is unmapped - append a termination (1-tuple)
+            #
+            # Otherwise, note that if this segment is the beginning of a
+            # line, and that an implied source colno/linecol were
+            # provided (i.e. value of 0), and that the string is empty,
+            # it can be safely skipped, since it is an implied and
+            # unmapped indentation
+
+            if lineno is None or colno is None:
+                mapping[-1].append((book.sink_column,))
+            elif not (not mapping[-1] and (
+                    lineno == 0 or colno == 0) and not line.strip()):
                 if original_name is not None:
                     mapping[-1].append((
                         book.sink_column, filename,
@@ -300,7 +307,9 @@ def write(source, stream, names=None, book=None, normalize=True):
                 # This normally shouldn't happen with sane parsers
                 # and lexers, but this assumes that no further symbols
                 # aside from the new lines got inserted.
-                colno = None if colno == 0 else colno + len(line.rstrip())
+                colno = (
+                    colno if colno in (0, None) else
+                    colno + len(line.rstrip()))
                 p_line_len = 0
                 push_line()
 
