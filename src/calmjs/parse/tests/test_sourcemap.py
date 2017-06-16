@@ -348,10 +348,10 @@ class SourceMapTestCase(unittest.TestCase):
             ('console', 1, 1, None),
             ('.', 1, 8, None),
             ('log', 1, 9, None),
-            ('(', None, None, None),
+            ('(', 0, 0, None),
             ('"hello world"', 1, 13, None),
-            (')', None, None, None),
-            (';', None, None, None),
+            (')', 0, 0, None),
+            (';', 0, 0, None),
         ]
 
         names, mapping = sourcemap.write(fragments, stream)
@@ -375,7 +375,7 @@ class SourceMapTestCase(unittest.TestCase):
             ('{\n', 1, 13, None),
             # may be another special case here, to normalize the _first_
             # fragment
-            ('  ', None, None, None),
+            ('  ', 0, 0, None),
             ('console', 1, 15, None),
             ('.', 1, 22, None),
             ('log', 1, 23, None),
@@ -425,14 +425,14 @@ class SourceMapTestCase(unittest.TestCase):
             ('{\n', 1, 13, None),
             # may be another special case here, to normalize the _first_
             # fragment
-            ('  ', None, None, None),
+            ('  ', 0, 0, None),
             ('console', 1, 15, None),
             ('.', 1, 22, None),
             ('log', 1, 23, None),
-            ('(', None, None, None),
+            ('(', 0, 0, None),
             ('"hello world"', 1, 27, None),
-            (')', None, None, None),
-            (';\n', None, None, None),
+            (')', 0, 0, None),
+            (';\n', 0, 0, None),
             # note that the AST will need to record/provide the ending
             # value to this if the usage on a newline is to be supported
             # like so, otherwise all unmarked symbols will be clobbered
@@ -444,10 +444,10 @@ class SourceMapTestCase(unittest.TestCase):
             # guaranteed to be wrong as the starting column cannot be
             # correctly inferred without the original text.
             ('}', 1, 43, None),    # this one cannot be inferred.
-            (')', 1, None, None),  # this one can be.
+            (')', 0, 0, None),  # this one can be.
             ('(', 1, 45, None),    # next starting symbol
             (')', 1, 46, None),
-            (';', None, None, None),
+            (';', 0, 0, None),
         ]
         names, mapping = sourcemap.write(fragments, stream, normalize=False)
         self.assertEqual(stream.getvalue(), textwrap.dedent("""

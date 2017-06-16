@@ -266,7 +266,7 @@ def write(source, stream, names=None, book=None, normalize=True):
             # chunks, so increment the column count by that previous
             # length
             book.source_column = (
-                book._source_column + p_line_len if colno is None else colno)
+                book._source_column + p_line_len if colno == 0 else colno)
 
             name_id = names.update(original_name)
             # Note that if this segment is the beginning of a line, and
@@ -277,7 +277,7 @@ def write(source, stream, names=None, book=None, normalize=True):
             # indentation, where pretty printed (or regenerated sources)
             # output will like not have white spaces be tracked in the
             # source AST.
-            if not (not mapping[-1] and colno is None and not line.strip()):
+            if not (not mapping[-1] and colno == 0 and not line.strip()):
                 if original_name is not None:
                     mapping[-1].append((
                         book.sink_column, filename,
@@ -300,7 +300,7 @@ def write(source, stream, names=None, book=None, normalize=True):
                 # This normally shouldn't happen with sane parsers
                 # and lexers, but this assumes that no further symbols
                 # aside from the new lines got inserted.
-                colno = None if colno is None else colno + len(line.rstrip())
+                colno = None if colno == 0 else colno + len(line.rstrip())
                 p_line_len = 0
                 push_line()
 
