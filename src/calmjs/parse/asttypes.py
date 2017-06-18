@@ -210,13 +210,21 @@ class VarDeclNoIn(VarDecl):
 
 
 class UnaryOp(Node):
+    # XXX should be rennamed to UnaryExpr
     def __init__(self, op, value, postfix=False):
         self.op = op
         self.value = value
+        # XXX deprecated
         self.postfix = postfix
 
     def children(self):
         return [self.value]
+
+
+class PostfixExpr(UnaryOp):
+    def __init__(self, op, value):
+        self.op = op
+        self.value = value
 
 
 class BinOp(Node):

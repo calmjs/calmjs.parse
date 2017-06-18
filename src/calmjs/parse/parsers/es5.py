@@ -570,7 +570,10 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = self.asttypes.UnaryOp(op=p[2], value=p[1], postfix=True)
+            if self._sourcemap_compat:
+                p[0] = self.asttypes.PostfixExpr(op=p[2], value=p[1])
+            else:
+                p[0] = self.asttypes.UnaryOp(op=p[2], value=p[1], postfix=True)
             p[0].setpos(p, 2)
 
     def p_postfix_expr_nobf(self, p):
@@ -581,7 +584,10 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            p[0] = self.asttypes.UnaryOp(op=p[2], value=p[1], postfix=True)
+            if self._sourcemap_compat:
+                p[0] = self.asttypes.PostfixExpr(op=p[2], value=p[1])
+            else:
+                p[0] = self.asttypes.UnaryOp(op=p[2], value=p[1], postfix=True)
             p[0].setpos(p, 2)
 
     # 11.4 Unary Operators
