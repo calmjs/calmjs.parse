@@ -411,12 +411,12 @@ class Parser(object):
             p[1].append(p[3])
             p[0] = p[1]
 
-    # XXX: GET / SET
+    # 11.1.5 Object Initialiser
     def p_property_assignment(self, p):
         """property_assignment \
              : property_name COLON assignment_expr
              | GETPROP property_name LPAREN RPAREN LBRACE function_body RBRACE
-             | SETPROP property_name LPAREN formal_parameter_list RPAREN \
+             | SETPROP property_name LPAREN property_set_parameter_list RPAREN\
                    LBRACE function_body RBRACE
         """
         if len(p) == 4:
@@ -436,6 +436,11 @@ class Parser(object):
                          | numeric_literal
         """
         p[0] = p[1]
+
+    def p_property_set_parameter_list(self, p):
+        """property_set_parameter_list : identifier
+        """
+        p[0] = [p[1]]
 
     # 11.2 Left-Hand-Side Expressions
     def p_member_expr(self, p):

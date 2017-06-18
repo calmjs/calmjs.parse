@@ -25,7 +25,6 @@
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 from calmjs.parse import asttypes
-from calmjs.parse.exceptions import ECMASyntaxError
 
 
 class PrettyPrinter(object):
@@ -100,9 +99,6 @@ class PrettyPrinter(object):
         template = 'set %s(%s) {\n%s\n%s}'
         if getattr(node, '_parens', False):
             template = '(%s)' % template
-        if len(node.parameters) > 1:
-            raise ECMASyntaxError(
-                'Setter functions must have one argument: %r' % node)
         params = ','.join(self.visit(param) for param in node.parameters)
         self.indent_level += self.indent
         body = '\n'.join(

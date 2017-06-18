@@ -3980,6 +3980,15 @@ ECMASyntaxErrorsTestCase = build_exception_testcase(
         throw
           'exc';
         """
+    ), (
+        'setter_single_arg',
+        """
+        Name.prototype = {
+          set failure(arg1, arg2) {
+            return {1:{2:{3:{4:4}}}};
+          }
+        };
+        """,
     )]), ECMASyntaxError
 )
 

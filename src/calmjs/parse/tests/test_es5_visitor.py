@@ -713,31 +713,3 @@ ECMASyntaxErrorTestCase = build_exception_testcase(
         """,
     )]), ECMASyntaxError
 )
-
-
-class SpecialTestCase(unittest.TestCase):
-    """
-    For catching special case
-    """
-
-    def test_repr_failure_message(self):
-        with self.assertRaises(ECMASyntaxError) as e:
-            parse_to_ecma("""Name.prototype = {
-              set failure(arg1, arg2) {
-                return {1:{2:{3:{4:4}}}};
-              }
-            };""")
-
-        tree = textwrap.dedent("""
-        <SetPropAssign @164:15 elements=[
-          <Return @165:17 expr=<Object @165:24 properties=[
-            <Assign ...>
-          ]>>
-        ], parameters=[
-          <Identifier @164:27 value='arg1'>,
-          <Identifier @164:33 value='arg2'>
-        ], prop_name=<Identifier @164:19 value='failure'>>
-        """).strip()
-        self.assertEqual(
-            e.exception.args[0],
-            "Setter functions must have one argument: %s" % tree)

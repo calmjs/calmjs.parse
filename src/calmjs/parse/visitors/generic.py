@@ -177,8 +177,8 @@ class ReprVisitor(object):
     >>> print(visitor.visit(tree))
     <ES5Program ?children=[<VarStatement ?children=[...]>]>
 
-    Standard call is the repr mode - if stable output is desired, the
-    always use the visit method.
+    Standard call is the repr mode - if stable output is desired across
+    major semantic versions, always use the visit method.
 
     >>> print(visitor(tree))
     <ES5Program @1:1 ?children=[
