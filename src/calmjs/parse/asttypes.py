@@ -24,21 +24,43 @@
 
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
+from collections import defaultdict
+
 
 class Node(object):
     def __init__(self, children=None):
         self._children_list = [] if children is None else children
         self.lexpos = self.lineno = self.colno = None
+        self._token_map = {}
 
-    def setpos(self, p, idx=1):
-        self.lexpos = p.lexpos(idx)
-        self.lineno = p.lineno(idx)
+    def getpos(self, s, idx):
+        token_map = self._token_map.get(s, [])
+        if idx < len(token_map):
+            return token_map[idx]
+        else:
+            return (0, 0, 0)
+
+    def findpos(self, p, idx):
+        lexpos = p.lexpos(idx)
+        lineno = p.lineno(idx)
         # YaccProduction does not provide helpers for colno, so query
         # for a helper out of class and see if it helps...
-        self.colno = (
-            p.lexer.lookup_colno(self.lineno, self.lexpos) if callable(
-                getattr(p.lexer, 'lookup_colno', None)) else 0
-        )
+        colno = (
+            p.lexer.lookup_colno(lineno, lexpos)
+            if lineno > 0 and callable(getattr(p.lexer, 'lookup_colno', None))
+            else 0)
+        return lexpos, lineno, colno
+
+    def setpos(self, p, idx=1, additional=()):
+        self._token_map = defaultdict(list)
+        self.lexpos, self.lineno, self.colno = self.findpos(p, idx)
+        for i, token in enumerate(p):
+            if not isinstance(token, str):
+                continue
+            self._token_map[token].append(self.findpos(p, i))
+
+        for token, i in additional:
+            self._token_map[token].append(self.findpos(p, i))
 
         # the very ugly debugger invocation for locating the special
         # cases that are required

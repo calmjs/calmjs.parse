@@ -1107,9 +1107,10 @@ class Parser(object):
         """
         if len(p) == 2:
             p[0] = self.asttypes.VarDecl(p[1])
+            p[0].setpos(p)  # require yacc_tracking
         else:
             p[0] = self.asttypes.VarDecl(p[1], p[2])
-        p[0].setpos(p)  # require yacc_tracking
+            p[0].setpos(p, additional=(('=', 2),))  # require yacc_tracking
 
     def p_variable_declaration_noin(self, p):
         """variable_declaration_noin : identifier
@@ -1117,9 +1118,10 @@ class Parser(object):
         """
         if len(p) == 2:
             p[0] = self.asttypes.VarDecl(p[1])
+            p[0].setpos(p)  # require yacc_tracking
         else:
             p[0] = self.asttypes.VarDecl(p[1], p[2])
-        p[0].setpos(p)  # require yacc_tracking
+            p[0].setpos(p, additional=(('=', 2),))  # require yacc_tracking
 
     def p_initializer(self, p):
         """initializer : EQ assignment_expr"""
