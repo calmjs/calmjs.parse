@@ -3,204 +3,44 @@
 ES5 base visitors
 """
 
-from calmjs.parse.asttypes import Node
+from calmjs.parse.pptypes import (
+    Space,
+    OptionalSpace,
+    Newline,
+    Indent,
+    Dedent,
+)
+from calmjs.parse.pptypes import (
+    Attr,
+    Text,
+    Optional,
+    JoinAttr,
+    Operator,
+)
+from calmjs.parse.visitors.pprint import (
+    PrettyPrintState,
+    pretty_print_visitor,
+    node_handler_null,
+    node_handler_str_default,
+    node_handler_space_imply,
+    node_handler_newline_simple,
+)
 
-# goal of the following is to produce a document form of the input
-# ast node (docgen?)
-# which in turn
-# markers
-
-
-class Layout(object):
-    """
-    Layout markers
-    """
-
-
-class Space(Layout):
-    pass
-
-
-class OptionalSpace(Layout):
-    pass
-
-
-class Newline(Layout):
-    pass
-
-
-class Indent(Layout):
-    pass
-
-
-class Dedent(Layout):
-    pass
-
-
+# instantiate the values required for the rule definition.
 space = Space()
 optional_space = OptionalSpace()
 newline = Newline()
 indent = Indent()
 dedent = Dedent()
 
-
-class Token(object):
-    def __init__(self, attr=None, value=None, pos=0):
-        self.attr = attr
-        self.value = value
-        self.pos = pos
-
-    def __call__(self, visitor, state, node):
-        raise NotImplementedError
-
-
-class Attr(Token):
-    """
-    Return the value as specified in the attribute
-    """
-
-    def _getattr(self, state, node):
-        if callable(self.attr):
-            return self.attr(node)
-        else:
-            return getattr(node, self.attr)
-
-    def visit_subnode(self, visitor, state, node, sub_node):
-        if isinstance(sub_node, Node):
-            for chunk in visitor.visit(state, sub_node):
-                yield chunk
-        else:
-            for chunk in state(node, sub_node, self):
-                yield chunk
-
-    def __call__(self, visitor, state, node):
-        for chunk in self.visit_subnode(
-                visitor, state, node, self._getattr(state, node)):
-            yield chunk
-
-
-class Text(Token):
-    """
-    Simple text to add back
-    """
-
-    def __call__(self, visitor, state, node):
-        for chunk in state(node, self.value, self):
-            yield chunk
-
-
-class JoinAttr(Attr):
-    """
-    Join the attr with value.
-    """
-
-    def __call__(self, visitor, state, node):
-        nodes = iter(self._getattr(state, node))
-
-        try:
-            target_node = next(nodes)
-        except StopIteration:
-            return
-
-        for chunk in self.visit_subnode(visitor, state, node, target_node):
-            yield chunk
-
-        for target_node in nodes:
-            for value_node in visitor.process_node_with_definition(
-                    state, node, self.value):
-                yield value_node
-            for chunk in self.visit_subnode(visitor, state, node, target_node):
-                yield chunk
-
-
-class Optional(Token):
-    """
-    Optional text, depending on the node having an attribute
-
-    attr
-        the attr that is required for the statement to execute
-    value
-        the token definition segment to be executed
-    """
-
-    def __call__(self, visitor, state, node):
-        if getattr(node, self.attr) is None:
-            return
-
-        # self.value is the definition
-        for chunk in visitor.process_node_with_definition(
-                state, node, self.value):
-            yield chunk
-
-
-class Operator(Attr):
-    """
-    An operator symbol
-    """
-
-    # TODO figure out how to yield it in a way that tags this as an
-    # operator, so that it can be properly normalized by the state base
-    # tracker class. (i.e. no space before ':' but after, no space
-    # between + iff not followed by unary +/++)
-
-    def _getattr(self, state, node):
-        if self.attr:
-            return getattr(node, self.attr)
-        else:
-            return self.value
-
-
-def node_handler_null(state, node, subnode, token):
-    return iter([])
-
-
-def node_handler_str_default(state, node, subnode, token):
-    if isinstance(token.pos, int):
-        _, lineno, colno = node.getpos(subnode, token.pos)
-    else:
-        lineno, colno = None, None
-    yield (subnode, lineno, colno, None)
-
-
-def node_handler_space_imply(state, node, subnode, token):
-    yield (' ', 0, 0, None)
-
-
-def node_handler_space_drop(state, node, subnode, token):
-    yield (' ', None, None, None)
-
-
-def node_handler_newline_simple(state, node, subnode, token):
-    yield ('\n', 0, 0, None)
-
-
-class PrettyPrintStateBase(object):
-    """
-    Pretty Printer State base class.  Implementation specific, all
-    visitor state information are to be stored within instance of
-    this class.
-    """
-
-    def __init__(self, handlers):
-        self.__handlers = {}
-        self.__handlers.update(handlers)
-
-    def __call__(self, node, subnode, token):
-        handler = self.__handlers.get(type(subnode))
-        if handler:
-            for chunk in handler(self, node, subnode, token):
-                yield chunk
-        else:
-            raise NotImplementedError
-
-
+# other helpful shorthands.
 children_newline = JoinAttr(iter, value=(newline,))
 children_comma = JoinAttr(iter, value=(Text(value=','), space,))
-
 value = (
     Attr('value'),
 )
 
+# definitions of all the rules for all the types for an ES5 program.
 definitions = {
     'ES5Program': (
         children_newline,
@@ -423,7 +263,7 @@ definitions = {
 
 class BaseVisitor(object):
     """
-    Base ES5 visitor
+    A simple base visitor class built upon the pprint helpers.
     """
 
     def __init__(self, indent=2, handlers=None, definitions=definitions):
@@ -455,22 +295,7 @@ class BaseVisitor(object):
             Dedent: node_handler_null,
         }
 
-    def process_node_with_definition(self, state, node, definition):
-        for token in definition:
-            if callable(token):
-                gen = token(self, state, node)
-            else:
-                gen = state(node, token, token)
-            for chunk in gen:
-                yield chunk
-
-    def visit(self, state, node):
-        key = node.__class__.__name__
-        for chunk in self.process_node_with_definition(
-                state, node, self.definitions[key]):
-            yield chunk
-
     def __call__(self, node):
-        state = PrettyPrintStateBase(self.handlers)
-        for chunk in self.visit(state, node):
+        state = PrettyPrintState(self.handlers, self.definitions)
+        for chunk in pretty_print_visitor(state, node, state[node]):
             yield chunk

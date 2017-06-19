@@ -4,21 +4,12 @@ import textwrap
 
 # XXX compat import
 from calmjs.parse import _es5_sourcemap_compat as es5
+from calmjs.parse.pptypes import Space
+from calmjs.parse.pptypes import Text
+from calmjs.parse.visitors.pprint import node_handler_space_drop
 from calmjs.parse.visitors import es5base
 
 from calmjs.parse.testing.util import build_equality_testcase
-
-
-class BaseTypesTestCase(unittest.TestCase):
-    """
-    Test out the core base types
-    """
-
-    def test_token(self):
-        token = es5base.Token()
-        self.assertTrue(callable(token))
-        with self.assertRaises(NotImplementedError):
-            token(None, None, None)
 
 
 class BaseVisitorTestCase(unittest.TestCase):
@@ -41,7 +32,7 @@ class BaseVisitorTestCase(unittest.TestCase):
 
     def test_basic_var_space_drop(self):
         visitor = es5base.BaseVisitor(handlers={
-            es5base.Space: es5base.node_handler_space_drop
+            Space: node_handler_space_drop,
         })
         ast = es5('var x = 0;')
         self.assertEqual(list(visitor(ast)), [
@@ -69,7 +60,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         # if the definition contains unmapped entries
         new_definitions = {}
         new_definitions.update(es5base.definitions)
-        new_definitions['This'] = (es5base.Text(value='this', pos=None),)
+        new_definitions['This'] = (Text(value='this', pos=None),)
         visitor = es5base.BaseVisitor(definitions=new_definitions)
         ast = es5('this;')
         self.assertEqual(list(visitor(ast)), [
@@ -81,8 +72,8 @@ def parse_to_sourcemap_tokens(text):
     return list(es5base.BaseVisitor()(es5(text)))
 
 
-ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
-    'ParsedNodeTypeSrcmapCompatTestCase', parse_to_sourcemap_tokens, ((
+ParsedNodeTypeSrcmapTokenTestCase = build_equality_testcase(
+    'ParsedNodeTypeSrcmapTokenTestCase', parse_to_sourcemap_tokens, ((
         label,
         textwrap.dedent(argument).strip(),
         result,
