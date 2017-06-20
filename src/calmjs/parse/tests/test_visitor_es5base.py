@@ -6,7 +6,7 @@ import textwrap
 from calmjs.parse import _es5_sourcemap_compat as es5
 from calmjs.parse.pptypes import Space
 from calmjs.parse.pptypes import Text
-from calmjs.parse.visitors.pprint import node_handler_space_drop
+from calmjs.parse.visitors.pprint import layout_handler_space_drop
 from calmjs.parse.visitors import es5base
 
 from calmjs.parse.testing.util import build_equality_testcase
@@ -31,8 +31,8 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_basic_var_space_drop(self):
-        visitor = es5base.BaseVisitor(handlers={
-            Space: node_handler_space_drop,
+        visitor = es5base.BaseVisitor(layout_handlers={
+            Space: layout_handler_space_drop,
         })
         ast = es5('var x = 0;')
         self.assertEqual(list(visitor(ast)), [
@@ -43,11 +43,14 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_force_handler_drop(self):
         visitor = es5base.BaseVisitor()
         ast = es5('var x = 0;')
-
-        # when the handlers are undefined, this happens:
-        visitor.handlers.clear()
-        with self.assertRaises(NotImplementedError):
-            list(visitor(ast))
+        visitor.layout_handlers.clear()
+        # if there are no layout handlers, the layout nodes will just
+        # simply be skipped - not very useful as note that there is now
+        # no separation between `var` and `x`.
+        self.assertEqual(list(visitor(ast)), [
+            ('var', 1, 1, None), ('x', 1, 5, None), ('=', 1, 7, None),
+            ('0', 1, 9, None), (';', 1, 10, None),
+        ])
 
     def test_simple_identifier(self):
         visitor = es5base.BaseVisitor()

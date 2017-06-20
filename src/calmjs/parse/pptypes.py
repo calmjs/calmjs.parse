@@ -41,6 +41,12 @@ class Token(Rule):
         self.value = value
         self.pos = pos
 
+    def resolve(self, visitor, state, node, value):
+        if isinstance(value, Node):
+            return visitor(state, value, state[value])
+        else:
+            return state(self)(self, state, node, value)
+
     def __call__(self, visitor, state, node):
         """
         Arguments
@@ -97,16 +103,8 @@ class Attr(Token):
         else:
             return getattr(node, self.attr)
 
-    def visit_subnode(self, visitor, state, node, sub_node):
-        if isinstance(sub_node, Node):
-            for chunk in visitor(state, sub_node, state[sub_node]):
-                yield chunk
-        else:
-            for chunk in state(node, sub_node, self):
-                yield chunk
-
     def __call__(self, visitor, state, node):
-        for chunk in self.visit_subnode(
+        for chunk in self.resolve(
                 visitor, state, node, self._getattr(state, node)):
             yield chunk
 
@@ -118,7 +116,7 @@ class Text(Token):
     """
 
     def __call__(self, visitor, state, node):
-        for chunk in state(node, self.value, self):
+        for chunk in self.resolve(visitor, state, node, self.value):
             yield chunk
 
 
@@ -135,7 +133,7 @@ class JoinAttr(Attr):
         except StopIteration:
             return
 
-        for chunk in self.visit_subnode(visitor, state, node, target_node):
+        for chunk in self.resolve(visitor, state, node, target_node):
             yield chunk
 
         for target_node in nodes:
@@ -143,7 +141,7 @@ class JoinAttr(Attr):
             # format also.
             for value_node in visitor(state, node, self.value):
                 yield value_node
-            for chunk in self.visit_subnode(visitor, state, node, target_node):
+            for chunk in self.resolve(visitor, state, node, target_node):
                 yield chunk
 
 
