@@ -25,6 +25,8 @@ from calmjs.parse.visitors.layout import (
     token_handler_str_default,
     layout_handler_space_imply,
     layout_handler_newline_simple,
+    layout_handler_space_optional_pretty,
+    layout_handler_space_minimum,
 )
 
 # other helpful shorthands.
@@ -51,11 +53,11 @@ definitions = {
     ),
     'VarDecl': (
         Attr('identifier'), Optional('initializer', (
-            Operator(value='='), Attr('initializer'),),),
+            Space, Operator(value='='), Space, Attr('initializer'),),),
     ),
     'VarDeclNoIn': (
         Text(value='var '), Attr('identifier'), Optional('initializer', (
-            Operator(value='='), Attr('initializer'),),),
+            Space, Operator(value='='), Space, Attr('initializer'),),),
     ),
     'GroupingOp': (
         Text(value='('), Attr('expr'), Text(value=')'),
@@ -258,8 +260,15 @@ definitions = {
 def default_layout_handlers():
     return {
         Space: layout_handler_space_imply,
-        OptionalSpace: layout_handler_space_imply,
+        OptionalSpace: layout_handler_space_optional_pretty,
         Newline: layout_handler_newline_simple,
+    }
+
+
+def minimum_layout_handlers():
+    return {
+        Space: layout_handler_space_minimum,
+        OptionalSpace: layout_handler_space_minimum,
     }
 
 
