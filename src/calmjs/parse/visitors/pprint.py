@@ -108,13 +108,29 @@ def pretty_print_visitor(state, node, definition):
                 if handler:
                     yield handler
 
+    def process_layouts(layouts, last_chunk, chunk):
+        # XXX should have a thing that resolve the chunks into the
+        # string; or formalize the chunks to be n-tuples with first
+        # element being the string.
+        before = last_chunk[0] if last_chunk else None
+        after = chunk[0] if chunk else None
+        while layouts:
+            for layout in layouts.pop()(state, node, before, after):
+                yield layout
+
+    last_chunk = None
+    layouts = []
+
     for chunk in visitor(state, node, definition):
-        # TODO implement the correct invocation of rule handlers.
         if callable(chunk):
-            for c in chunk(None, None, None, None):
-                yield c
+            layouts.append(chunk)
         else:
+            for layout in process_layouts(layouts, last_chunk, chunk):
+                yield layout
             yield chunk
+            last_chunk = chunk
+    for layout in process_layouts(layouts, last_chunk, None):
+        yield layout
 
 
 # the various output generation - when changing output, no more having
