@@ -20,6 +20,8 @@ from calmjs.parse.pptypes import (
 from calmjs.parse.visitors.pprint import (
     PrettyPrintState,
     pretty_print_visitor,
+)
+from calmjs.parse.visitors.layout import (
     token_handler_str_default,
     layout_handler_space_imply,
     layout_handler_newline_simple,
@@ -253,6 +255,14 @@ definitions = {
 }
 
 
+def default_layout_handlers():
+    return {
+        Space: layout_handler_space_imply,
+        OptionalSpace: layout_handler_space_imply,
+        Newline: layout_handler_newline_simple,
+    }
+
+
 class BaseVisitor(object):
     """
     A simple base visitor class built upon the pprint helpers.
@@ -262,6 +272,7 @@ class BaseVisitor(object):
             self,
             indent=2,
             token_handler=token_handler_str_default,
+            layouts=(default_layout_handlers,),
             layout_handlers=None,
             definitions=definitions):
         """
@@ -272,29 +283,26 @@ class BaseVisitor(object):
         token_handler
             passed onto the state object; this is the handler that will
             process
+        layouts
+            An tuple of callables that will provide the setup of
+            indentation.  The callables must return a layout_handlers
+            mapping, which is a dict with the key being the layout class
+            and the value being the callable that accept a
+            PrettyPrintState instance, a Node, before and after chunk.
         layout_handlers
-            layout handlers, where the key is the name of the layout
-            subclass, value being the callable that will be provided
-            to the PrettyPrintState instance (created by call) that will
-            handle the layout rules.
+            Additional layout handlers, given in the mapping that was
+            described above.
         """
 
         self.indent = indent
         self.token_handler = token_handler
-        self.layout_handlers = self.default_layout_handlers()
+        self.layout_handlers = {}
+        for layout in layouts:
+            self.layout_handlers.update(layout())
         if layout_handlers:
             self.layout_handlers.update(layout_handlers)
         self.definitions = {}
         self.definitions.update(definitions)
-
-    def default_layout_handlers(self):
-        return {
-            Space: layout_handler_space_imply,
-            OptionalSpace: layout_handler_space_imply,
-            Newline: layout_handler_newline_simple,
-            # Indent: None,
-            # Dedent: None,
-        }
 
     def __call__(self, node):
         state = PrettyPrintState(

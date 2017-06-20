@@ -115,7 +115,10 @@ def pretty_print_visitor(state, node, definition):
         before = last_chunk[0] if last_chunk else None
         after = chunk[0] if chunk else None
         while layouts:
-            for layout in layouts.pop()(state, node, before, after):
+            gen = layouts.pop()(state, node, before, after)
+            if not gen:
+                continue
+            for layout in gen:
                 yield layout
 
     last_chunk = None
@@ -129,31 +132,6 @@ def pretty_print_visitor(state, node, definition):
                 yield layout
             yield chunk
             last_chunk = chunk
+    # process the remaining layout rules.
     for layout in process_layouts(layouts, last_chunk, None):
         yield layout
-
-
-# the various output generation - when changing output, no more having
-# to expend effort to write an entire new visitor class or modify every
-# visit_* methods ever again.
-
-def token_handler_str_default(token, state, node, subnode):
-    # TODO the mangler could provide an implementation of this that will
-    # fill out the last element of the yielded tuple.
-    if isinstance(token.pos, int):
-        _, lineno, colno = node.getpos(subnode, token.pos)
-    else:
-        lineno, colno = None, None
-    yield (subnode, lineno, colno, None)
-
-
-def layout_handler_space_imply(state, node, before, after):
-    yield (' ', 0, 0, None)
-
-
-def layout_handler_space_drop(state, node, before, after):
-    yield (' ', None, None, None)
-
-
-def layout_handler_newline_simple(state, node, before, after):
-    yield ('\n', 0, 0, None)

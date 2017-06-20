@@ -6,8 +6,8 @@ import textwrap
 from calmjs.parse import _es5_sourcemap_compat as es5
 from calmjs.parse.pptypes import Space
 from calmjs.parse.pptypes import Text
-from calmjs.parse.visitors.pprint import layout_handler_space_drop
 from calmjs.parse.visitors import es5base
+from calmjs.parse.visitors import layout
 
 from calmjs.parse.testing.util import build_equality_testcase
 
@@ -32,12 +32,15 @@ class BaseVisitorTestCase(unittest.TestCase):
 
     def test_basic_var_space_drop(self):
         visitor = es5base.BaseVisitor(layout_handlers={
-            Space: layout_handler_space_drop,
+            Space: layout.layout_handler_space_drop,
         })
-        ast = es5('var x = 0;')
+        ast = es5('var x = 0;\nvar y = 0;')
         self.assertEqual(list(visitor(ast)), [
             ('var', 1, 1, None), (' ', None, None, None), ('x', 1, 5, None),
             ('=', 1, 7, None), ('0', 1, 9, None), (';', 1, 10, None),
+            ('\n', 0, 0, None),
+            ('var', 2, 1, None), (' ', None, None, None), ('y', 2, 5, None),
+            ('=', 2, 7, None), ('0', 2, 9, None), (';', 2, 10, None),
         ])
 
     def test_force_handler_drop(self):
@@ -72,7 +75,10 @@ class BaseVisitorTestCase(unittest.TestCase):
 
 
 def parse_to_sourcemap_tokens(text):
-    return list(es5base.BaseVisitor()(es5(text)))
+    return list(es5base.BaseVisitor(layouts=(
+        es5base.default_layout_handlers,
+        layout.indentation(),
+    ))(es5(text)))
 
 
 ParsedNodeTypeSrcmapTokenTestCase = build_equality_testcase(
@@ -97,6 +103,7 @@ ParsedNodeTypeSrcmapTokenTestCase = build_equality_testcase(
         """, [
             ('{', 1, 1, None),
             ('\n', 0, 0, None),
+            ('  ', None, None, None),
             ('var', 2, 3, None), (' ', 0, 0, None), ('a', 2, 7, None),
             ('=', 2, 9, None), ('5', 2, 11, None), (';', 2, 12, None),
             ('}', 3, 1, None),
@@ -209,6 +216,7 @@ ParsedNodeTypeSrcmapTokenTestCase = build_equality_testcase(
             ('=', 1, 9, None),
             ('{', 1, 11, None),
             ('\n', 0, 0, None),
+            ('  ', None, None, None),
             ('x', 2, 5, None),
             (' ', 0, 0, None),  # TODO should be optional
             (':', 2, 6, None),
@@ -216,6 +224,7 @@ ParsedNodeTypeSrcmapTokenTestCase = build_equality_testcase(
             ('1', 2, 8, None),
             (',', 3, 9, None),
             ('\n', 0, 0, None),
+            ('  ', None, None, None),
             ('y', 3, 5, None),
             (' ', 0, 0, None),
             (':', 3, 6, None),
