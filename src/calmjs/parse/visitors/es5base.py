@@ -7,6 +7,7 @@ from calmjs.parse.pptypes import (
     Space,
     OptionalSpace,
     Newline,
+    OptionalNewline,
     Indent,
     Dedent,
 )
@@ -24,6 +25,7 @@ from calmjs.parse.visitors.pprint import (
 from calmjs.parse.visitors.layout import (
     token_handler_str_default,
     layout_handler_space_imply,
+    layout_handler_newline_optional_pretty,
     layout_handler_newline_simple,
     layout_handler_space_optional_pretty,
     layout_handler_space_minimum,
@@ -40,6 +42,7 @@ value = (
 definitions = {
     'ES5Program': (
         children_newline,
+        OptionalNewline,
     ),
     'Block': (
         Text(value='{'),
@@ -263,6 +266,7 @@ def default_layout_handlers():
         Space: layout_handler_space_imply,
         OptionalSpace: layout_handler_space_optional_pretty,
         Newline: layout_handler_newline_simple,
+        OptionalNewline: layout_handler_newline_optional_pretty,
     }
 
 

@@ -36,13 +36,13 @@ class Indentation(object):
         self.indent = indent
         self._level = 0
 
-    def layout_handler_indent(self, state, node, before, after):
+    def layout_handler_indent(self, state, node, before, after, prev):
         self._level += 1
 
-    def layout_handler_dedent(self, state, node, before, after):
+    def layout_handler_dedent(self, state, node, before, after, prev):
         self._level -= 1
 
-    def layout_handler_newline(self, state, node, before, after):
+    def layout_handler_newline(self, state, node, before, after, prev):
         # simply render the newline with an implicit sourcemap line/col
         yield ('\n', 0, 0, None)
         indents = ' ' * (self.indent * self._level)
@@ -73,24 +73,41 @@ def token_handler_str_default(token, state, node, subnode):
     yield (subnode, lineno, colno, None)
 
 
-def layout_handler_space_imply(state, node, before, after):
+def layout_handler_space_imply(state, node, before, after, prev):
     # default layout handler where the space will be rendered, with the
     # line/column set to 0 for sourcemap to generate the implicit value.
     yield (' ', 0, 0, None)
 
 
-def layout_handler_space_drop(state, node, before, after):
+def layout_handler_space_drop(state, node, before, after, prev):
     # default layout handler where the space will be rendered, with the
     # line/column set to None for sourcemap to terminate the position.
     yield (' ', None, None, None)
 
 
-def layout_handler_newline_simple(state, node, before, after):
+def layout_handler_newline_simple(state, node, before, after, prev):
     # simply render the newline with an implicit sourcemap line/col
     yield ('\n', 0, 0, None)
 
 
-def layout_handler_space_optional_pretty(state, node, before, after):
+def layout_handler_newline_optional_pretty(state, node, before, after, prev):
+    # simply render the newline with an implicit sourcemap line/col, if
+    # not already preceded or followed by a newline
+    def fc(s):
+        return '' if s is None else s[:1]
+
+    def lc(s):
+        return '' if s is None else s[-1:]
+
+    if lc(before) in '\r\n':
+        # not needed since this is the beginning
+        return
+    # if no new lines in any of the checked characters
+    if not {'\r', '\n'} & {lc(before), fc(after), lc(prev)}:
+        yield ('\n', 0, 0, None)
+
+
+def layout_handler_space_optional_pretty(state, node, before, after, prev):
     if before is None or after is None:
         # nothing.
         return
@@ -99,7 +116,7 @@ def layout_handler_space_optional_pretty(state, node, before, after):
         yield (' ', 0, 0, None)
 
 
-def layout_handler_space_minimum(state, node, before, after):
+def layout_handler_space_minimum(state, node, before, after, prev):
     if before is None or after is None:
         # nothing.
         return

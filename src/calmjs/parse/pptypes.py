@@ -80,6 +80,12 @@ class Newline(Layout):
     """
 
 
+class OptionalNewline(Layout):
+    """
+    Represents an optional newline character.
+    """
+
+
 class Indent(Layout):
     """
     Represents an increment to the indentation level.

@@ -14,12 +14,19 @@ from calmjs.parse.testing.util import build_equality_testcase
 
 class BaseVisitorTestCase(unittest.TestCase):
 
+    def test_empty_program(self):
+        visitor = es5base.BaseVisitor()
+        ast = es5('')
+        self.assertEqual(list(visitor(ast)), [
+        ])
+
     def test_basic_integer(self):
         visitor = es5base.BaseVisitor()
         ast = es5('0;')
         self.assertEqual(list(visitor(ast)), [
             ('0', 1, 1, None),
             (';', 1, 2, None),
+            ('\n', 0, 0, None),
         ])
 
     def test_basic_var_space_standard(self):
@@ -29,6 +36,7 @@ class BaseVisitorTestCase(unittest.TestCase):
             ('var', 1, 1, None), (' ', 0, 0, None), ('x', 1, 5, None),
             (' ', 0, 0, None), ('=', 1, 7, None), (' ', 0, 0, None),
             ('0', 1, 9, None), (';', 1, 10, None),
+            ('\n', 0, 0, None),
         ])
 
     def test_basic_var_space_drop(self):
@@ -44,6 +52,7 @@ class BaseVisitorTestCase(unittest.TestCase):
             ('var', 2, 1, None), (' ', None, None, None), ('y', 2, 5, None),
             (' ', None, None, None), ('=', 2, 7, None),
             (' ', None, None, None), ('0', 2, 9, None), (';', 2, 10, None),
+            ('\n', 0, 0, None),
         ])
 
     def test_force_handler_drop(self):
@@ -62,7 +71,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         visitor = es5base.BaseVisitor()
         ast = es5('this;')
         self.assertEqual(list(visitor(ast)), [
-            ('this', 1, 1, None), (';', 1, 5, None),
+            ('this', 1, 1, None), (';', 1, 5, None), ('\n', 0, 0, None),
         ])
 
     def test_simple_identifier_unmapped(self):
@@ -73,7 +82,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         visitor = es5base.BaseVisitor(definitions=new_definitions)
         ast = es5('this;')
         self.assertEqual(list(visitor(ast)), [
-            ('this', None, None, None), (';', 1, 5, None),
+            ('this', None, None, None), (';', 1, 5, None), ('\n', 0, 0, None),
         ])
 
 
@@ -102,6 +111,7 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
         """, [
             ('0', 1, 1, None),
             (';', 1, 2, None),
+            ('\n', 0, 0, None),
         ],
     ), (
         'block',
@@ -150,6 +160,7 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
             ('5', 5, 9, None), (',', 0, 0, None), (' ', 0, 0, None),
             ('b', 5, 12, None), (' ', 0, 0, None), ('=', 5, 14, None),
             (' ', 0, 0, None), ('7', 5, 16, None), (';', 5, 17, None),
+            ('\n', 0, 0, None),
         ],
     ), (
         'empty_statement',
@@ -164,6 +175,7 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
             (';', 2, 1, None),
             ('\n', 0, 0, None),
             (';', 3, 1, None),
+            ('\n', 0, 0, None),
         ],
     ), (
         'function_call_0',
@@ -174,6 +186,7 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
             # TODO have asttypes call manual position settings
             ('test', 1, 1, None), ('(', 0, 0, None), (')', 0, 0, None),
             (';', 1, 7, None),
+            ('\n', 0, 0, None),
         ],
     ), (
         'function_call_1',
@@ -184,6 +197,7 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
             ('test', 1, 1, None), ('(', 0, 0, None), ('1', 1, 6, None),
             (')', 0, 0, None),
             (';', 1, 8, None),
+            ('\n', 0, 0, None),
         ],
     ), (
         'function_call_2',
@@ -196,6 +210,7 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
             ('2', 1, 9, None),
             (')', 0, 0, None),
             (';', 1, 11, None),
+            ('\n', 0, 0, None),
         ],
     ), (
         'operator_1',
@@ -213,6 +228,7 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
             (' ', 0, 0, None),
             ('1', 1, 9, None),
             (';', 1, 10, None),
+            ('\n', 0, 0, None),
         ],
     ), (
         'unary_op',
@@ -251,6 +267,7 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
             ('a', 6, 1, None),
             ('++', 6, 2, None),
             (';', 6, 4, None),
+            ('\n', 0, 0, None),
         ],
     ), (
         'object',
@@ -284,6 +301,7 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
             ('\n', 0, 0, None),
             ('}', 4, 1, None),
             (';', 0, 0, None),
+            ('\n', 0, 0, None),
         ],
     ), (
         'binop_prefixop',
@@ -309,6 +327,7 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
             ('i', 3, 9, None), (' ', 0, 0, None), ('+', 3, 10, None),
             (' ', 0, 0, None), ('-', 3, 12, None), ('i', 3, 13, None),
             (';', 3, 14, None),
+            ('\n', 0, 0, None),
         ],
     )])
 )
