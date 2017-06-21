@@ -114,12 +114,13 @@ def pretty_print_visitor(state, node, definition):
         # element being the string.
         before = last_chunk[0] if last_chunk else None
         after = chunk[0] if chunk else None
-        while layouts:
-            gen = layouts.pop()(state, node, before, after)
+        for layout in layouts:
+            gen = layout(state, node, before, after)
             if not gen:
                 continue
-            for layout in gen:
-                yield layout
+            for layout_chunk in gen:
+                yield layout_chunk
+        layouts.clear()
 
     last_chunk = None
     layouts = []

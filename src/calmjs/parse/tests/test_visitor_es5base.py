@@ -116,6 +116,7 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
             ('var', 2, 3, None), (' ', 0, 0, None), ('a', 2, 7, None),
             (' ', 0, 0, None), ('=', 2, 9, None), (' ', 0, 0, None),
             ('5', 2, 11, None), (';', 2, 12, None),
+            ('\n', 0, 0, None),
             ('}', 3, 1, None),
             ('\n', 0, 0, None),
         ],
