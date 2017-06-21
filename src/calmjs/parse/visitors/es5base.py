@@ -320,6 +320,6 @@ class BaseVisitor(object):
 
     def __call__(self, node):
         state = PrettyPrintState(
-            self.token_handler, self.layout_handlers, self.definitions)
+            self.definitions, self.token_handler, self.layout_handlers)
         for chunk in pretty_print_visitor(state, node, state[node]):
             yield chunk

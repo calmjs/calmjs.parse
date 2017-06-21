@@ -20,11 +20,34 @@ class PrettyPrintState(object):
 
     Accessing via a Node type as a key will return the definition that
     was initially set up for a given instance.
+
+    The default implementation also provide a couple properties for ease
+    of layout customization, which are the indent character and the
+    newline character.  As certain users and/or platforms expect certain
+    character sequences for these outputs, they can be specified in the
+    constructor for this class.
+
+    While this class can be used (it was originally conceived) as a
+    generic object that allow arbitrary assignments of arguments for
+    consumption by layout functions, it's better to have a dedicated
+    class that provide instance methods that plug into this.  See the
+    ``.visitors.layout`` module for the Indentation class and its
+    factory function for an example on how this could be set up.
     """
 
-    def __init__(self, token_handler, layout_handlers, definitions):
+    # TODO move definitions to first argument, provide newline/indent
+    def __init__(
+            self, definitions, token_handler, layout_handlers,
+            indent_str='  ', newline_str='\n'):
         """
         The constructor takes three arguments.
+
+        definitions
+            A mapping from the names of a Node to their definitions; a
+            definition is a tuple of rules for describing how a
+            particular Node should be rendered.  The Nodes are described
+            in the asttypes module, while the Rules are described in the
+            pptypes module.
 
         token_handler
             The handler that will deal with tokens.  It must be a
@@ -53,12 +76,15 @@ class PrettyPrintState(object):
             after
                 a value to be yielded by the subsequent token
 
-        defintions
-            A mapping from the names of a Node to their definitions; a
-            definition is a tuple of rules for describing how a
-            particular Node should be rendered.  The Nodes are described
-            in the asttypes module, while the Rules are described in the
-            pptypes module.
+        indent_str
+            The string used to indent a line with.  Default is '  '.
+            This attribute will be provided as the property
+            ``indent_str``.
+
+        newline_str
+            The string used for renderinga new line with.  Default is
+            <LF> (line-feed, or '\\n').  This attribute will be provided
+            as the property ``newline_str``.
         """
 
         self.__token_handler = token_handler
@@ -66,6 +92,8 @@ class PrettyPrintState(object):
         self.__layout_handlers.update(layout_handlers)
         self.__definitions = {}
         self.__definitions.update(definitions)
+        self.__indent_str = indent_str
+        self.__newline_str = newline_str
 
     def __getitem__(self, key):
         # TODO figure out how to do proper lookup by the type, rather
@@ -77,6 +105,14 @@ class PrettyPrintState(object):
             return self.__token_handler
         else:
             return self.__layout_handlers.get(rule)
+
+    @property
+    def indent_str(self):
+        return self.__indent_str
+
+    @property
+    def newline_str(self):
+        return self.__newline_str
 
 
 def pretty_print_visitor(state, node, definition):
@@ -109,9 +145,10 @@ def pretty_print_visitor(state, node, definition):
                     yield handler
 
     def process_layouts(layouts, last_chunk, chunk):
-        # XXX should have a thing that resolve the chunks into the
+        # TODO should have a thing that resolve the chunks into the
         # string; or formalize the chunks to be n-tuples with first
         # element being the string.
+        # TODO decide on formalizing the chunk formats using namedtuple.
         before = last_chunk[0] if last_chunk else None
         after = chunk[0] if chunk else None
         prev = None

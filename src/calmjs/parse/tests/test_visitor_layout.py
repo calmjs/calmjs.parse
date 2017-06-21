@@ -1,15 +1,21 @@
 # -*- coding: utf-8 -*-
 import unittest
 
+from calmjs.parse.pptypes import (
+    Indent,
+    Dedent,
+    Newline,
+)
+from calmjs.parse.visitors.pprint import PrettyPrintState
 from calmjs.parse.visitors.layout import (
     layout_handler_space_optional_pretty,
     layout_handler_space_minimum,
     layout_handler_newline_optional_pretty,
+    indentation,
 )
 
 empty = []
 space = [(' ', 0, 0, None)]
-newline = [('\n', 0, 0, None)]
 
 
 class LayoutHandlerTestCase(unittest.TestCase):
@@ -18,10 +24,13 @@ class LayoutHandlerTestCase(unittest.TestCase):
     """
 
     def test_space_optional_pretty(self):
+        # initialise a barebone state.
+        state = PrettyPrintState({}, None, {})
+
         def run(a, b):
             return list(layout_handler_space_optional_pretty(
-                # first/second and final argument not used
-                None, None, a, b, None))
+                # node and prev are not used.
+                state, None, a, b, None))
 
         # also test out the cases where OptionalSpace was defined.
         self.assertEqual(run(None, None), empty)
@@ -45,10 +54,13 @@ class LayoutHandlerTestCase(unittest.TestCase):
         self.assertEqual(run('+', '+'), space)
 
     def test_space_minimum(self):
+        # initialise a barebone state.
+        state = PrettyPrintState({}, None, {})
+
         def run(a, b):
             return list(layout_handler_space_minimum(
-                # first/second and final argument not used
-                None, None, a, b, None))
+                # node and prev are not used.
+                state, None, a, b, None))
 
         self.assertEqual(run(None, None), empty)
 
@@ -71,10 +83,15 @@ class LayoutHandlerTestCase(unittest.TestCase):
         self.assertEqual(run('1', ','), empty)
 
     def test_layout_handler_newline_optional_pretty(self):
+        # yes using the lteral <CR><LF> is pretty hilarious, but just to
+        # show that this is implemented to support whatever.
+        state = PrettyPrintState({}, None, {}, newline_str='<CR><LF>')
+        newline = [('<CR><LF>', 0, 0, None)]
+
         def run(before, after, prev):
             return list(layout_handler_newline_optional_pretty(
-                # first/second argument not used
-                None, None, before, after, prev))
+                # node is not used.
+                state, None, before, after, prev))
 
         # brand new empty program
         self.assertEqual(run(None, None, None), empty)
@@ -87,5 +104,43 @@ class LayoutHandlerTestCase(unittest.TestCase):
         # Previous layout produced a newline
         self.assertEqual(run('}', '  ', '\n'), empty)
 
+        # Previous layout produced a newline, with the custom str
+        self.assertEqual(run('}', '  ', '<CR><LF>'), empty)
+
         # The first layout rule
         self.assertEqual(run(';', 'function', None), newline)
+
+    def test_indentation(self):
+        # initialise a barebone state.
+        state = PrettyPrintState({}, None, {}, indent_str='<TAB>')
+        layout = indentation()()
+        newline = ('\n', 0, 0, None)
+        indent1 = ('<TAB>', None, None, None)
+        indent2 = ('<TAB><TAB>', None, None, None)
+
+        def run(rule):
+            # only the state object is used.
+            return layout[rule](state, None, None, None, None)
+
+        self.assertEqual(list(run(Newline)), [newline])
+        self.assertIsNone(run(Indent))
+        self.assertEqual(list(run(Newline)), [newline, indent1])
+        self.assertIsNone(run(Indent))
+        self.assertEqual(list(run(Newline)), [newline, indent2])
+
+        self.assertIsNone(run(Dedent))
+        self.assertEqual(list(run(Newline)), [newline, indent1])
+        self.assertIsNone(run(Dedent))
+        self.assertEqual(list(run(Newline)), [newline])
+
+        # negative shouldn't matter
+        self.assertIsNone(run(Dedent))
+        self.assertEqual(list(run(Newline)), [newline])
+        # should move it back on the right track.
+        self.assertIsNone(run(Indent))
+        self.assertEqual(list(run(Newline)), [newline])
+
+        layout = indentation(indent_str='    ')()
+        self.assertIsNone(run(Indent))
+        self.assertEqual(list(run(Newline)), [
+            newline, ('    ', None, None, None)])

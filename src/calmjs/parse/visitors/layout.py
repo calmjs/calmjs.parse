@@ -26,14 +26,15 @@ class Indentation(object):
     For tracking indent/dedents.
     """
 
-    def __init__(self, indent=2):
+    def __init__(self, indent_str=None):
         """
         Arguments
 
-        indent
-            The spaces to indent a line with; defaults to 2.
+        indent_str
+            The string to do indentation with; defaults to use whatever
+            provided by the state.
         """
-        self.indent = indent
+        self.indent_str = indent_str
         self._level = 0
 
     def layout_handler_indent(self, state, node, before, after, prev):
@@ -44,15 +45,16 @@ class Indentation(object):
 
     def layout_handler_newline(self, state, node, before, after, prev):
         # simply render the newline with an implicit sourcemap line/col
-        yield ('\n', 0, 0, None)
-        indents = ' ' * (self.indent * self._level)
+        yield (state.newline_str, 0, 0, None)
+        s = self.indent_str if self.indent_str else state.indent_str
+        indents = s * self._level
         if indents:
             yield (indents, None, None, None)
 
 
-def indentation(indent=2):
+def indentation(indent_str=None):
     def make_layout():
-        inst = Indentation(indent)
+        inst = Indentation(indent_str)
         return {
             Indent: inst.layout_handler_indent,
             Dedent: inst.layout_handler_dedent,
@@ -87,24 +89,30 @@ def layout_handler_space_drop(state, node, before, after, prev):
 
 def layout_handler_newline_simple(state, node, before, after, prev):
     # simply render the newline with an implicit sourcemap line/col
-    yield ('\n', 0, 0, None)
+    yield (state.newline_str, 0, 0, None)
 
 
 def layout_handler_newline_optional_pretty(state, node, before, after, prev):
     # simply render the newline with an implicit sourcemap line/col, if
     # not already preceded or followed by a newline
+    l = len(state.newline_str)
+
     def fc(s):
-        return '' if s is None else s[:1]
+        return '' if s is None else s[:l]
 
     def lc(s):
-        return '' if s is None else s[-1:]
+        return '' if s is None else s[-l:]
+
+    # include standard ones plus whatever else that was provided, i.e.
+    # the typical <CR><LF>
+    newline_strs = {'\r', '\n', state.newline_str}
 
     if lc(before) in '\r\n':
         # not needed since this is the beginning
         return
     # if no new lines in any of the checked characters
-    if not {'\r', '\n'} & {lc(before), fc(after), lc(prev)}:
-        yield ('\n', 0, 0, None)
+    if not newline_strs & {lc(before), fc(after), lc(prev)}:
+        yield (state.newline_str, 0, 0, None)
 
 
 def layout_handler_space_optional_pretty(state, node, before, after, prev):
