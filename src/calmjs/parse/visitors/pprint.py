@@ -150,7 +150,12 @@ def pretty_print_visitor(state, node, definition):
         before = last_chunk[0] if last_chunk else None
         after = chunk[0] if chunk else None
         prev = None
-        for layout in layouts:
+
+        compacted = state(tuple(rules))
+        # Do one final lookup since we have a series of layouts that
+        # could be compacted into a single rule; if the compacted layout
+        # rule was present, use that instead.
+        for layout in ([compacted] if compacted else layouts):
             gen = layout(state, node, before, after, prev)
             if not gen:
                 continue

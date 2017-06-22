@@ -239,6 +239,28 @@ class BaseVisitorTestCase(unittest.TestCase):
             (';', 1, 10, None), ('\n', 0, 0, None),
         ])
 
+    def test_if_else_block(self):
+        visitor = es5base.BaseVisitor()
+        ast = es5('if (true) {} else {}')
+        self.assertEqual([tuple(t) for t in (visitor(ast))], [
+            ('if', 1, 1, None),
+            (' ', 0, 0, None),
+            ('(', 1, 4, None),
+            ('true', 1, 5, None),
+            (')', 1, 9, None),
+            (' ', 0, 0, None),
+            ('{', 1, 11, None),
+            ('\n', 0, 0, None),
+            ('}', 1, 12, None),
+            ('\n', 0, 0, None),
+            ('else', 1, 14, None),
+            (' ', 0, 0, None),
+            ('{', 1, 19, None),
+            ('\n', 0, 0, None),
+            ('}', 1, 20, None),
+            ('\n', 0, 0, None),
+        ])
+
 
 def parse_to_sourcemap_tokens_pretty(text):
     return list(es5base.BaseVisitor(layouts=(

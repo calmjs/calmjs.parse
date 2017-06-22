@@ -51,7 +51,7 @@ definitions = {
         Indent, Newline,
         children_newline,
         Dedent, OptionalNewline,
-        Text(value='}'), Newline,
+        Text(value='}'),
     ),
     'VarStatement': (
         Text(value='var'), Space, children_comma, Text(value=';'),
@@ -97,9 +97,10 @@ definitions = {
     'If': (
         Text(value='if'), Space,
         Text(value='('), Attr('predicate'), Text(value=')'), Space,
-        Attr('consequent'),
+        Optional('consequent', (
+            Attr('consequent'),)),
         Optional('alternative', (
-            Space, Text(value='else'), Space, Attr('alternative'),)),
+            Newline, Text(value='else'), Space, Attr('alternative'),)),
     ),
     'Boolean': value,
     'For': (
@@ -277,6 +278,9 @@ def default_layout_handlers():
         OptionalSpace: layout_handler_space_optional_pretty,
         Newline: layout_handler_newline_simple,
         OptionalNewline: layout_handler_newline_optional_pretty,
+        (Indent, Newline, Dedent, OptionalNewline):
+            layout_handler_newline_simple,
+        (Indent, Newline, Dedent, Newline): layout_handler_newline_simple,
     }
 
 
