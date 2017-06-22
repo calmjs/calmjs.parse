@@ -104,6 +104,24 @@ class BaseVisitorTestCase(unittest.TestCase):
             (';', 1, 13, None), ('\n', 0, 0, None),
         ])
 
+    def test_simple_function_invoke(self):
+        visitor = es5base.BaseVisitor()
+        ast = es5('foo();')
+        self.assertEqual(list(visitor(ast)), [
+            ('foo', 1, 1, None), ('(', 1, 4, None), (')', 1, 5, None),
+            (';', 1, 6, None), ('\n', 0, 0, None),
+        ])
+
+    def test_new_new(self):
+        visitor = es5base.BaseVisitor()
+        ast = es5('new new T();')
+        self.assertEqual(list(visitor(ast)), [
+            ('new', 1, 1, None), (' ', 0, 0, None),
+            ('new', 1, 5, None), (' ', 0, 0, None),
+            ('T', 1, 9, None), ('(', 1, 10, None), (')', 1, 11, None),
+            (';', 1, 12, None), ('\n', 0, 0, None),
+        ])
+
 
 def parse_to_sourcemap_tokens_pretty(text):
     return list(es5base.BaseVisitor(layouts=(
@@ -203,7 +221,7 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
         """,
         [
             # TODO have asttypes call manual position settings
-            ('test', 1, 1, None), ('(', 0, 0, None), (')', 0, 0, None),
+            ('test', 1, 1, None), ('(', 1, 5, None), (')', 1, 6, None),
             (';', 1, 7, None),
             ('\n', 0, 0, None),
         ],
@@ -213,8 +231,8 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
         test(1);
         """,
         [
-            ('test', 1, 1, None), ('(', 0, 0, None), ('1', 1, 6, None),
-            (')', 0, 0, None),
+            ('test', 1, 1, None), ('(', 1, 5, None), ('1', 1, 6, None),
+            (')', 1, 7, None),
             (';', 1, 8, None),
             ('\n', 0, 0, None),
         ],
@@ -224,10 +242,10 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
         test(1, 2);
         """,
         [
-            ('test', 1, 1, None), ('(', 0, 0, None),
+            ('test', 1, 1, None), ('(', 1, 5, None),
             ('1', 1, 6, None), (',', 0, 0, None), (' ', 0, 0, None),
             ('2', 1, 9, None),
-            (')', 0, 0, None),
+            (')', 1, 10, None),
             (';', 1, 11, None),
             ('\n', 0, 0, None),
         ],
@@ -421,7 +439,7 @@ ParsedToMinimumTestcase = build_equality_testcase(
         """,
         [
             # TODO have asttypes call manual position settings
-            ('test', 1, 1, None), ('(', 0, 0, None), (')', 0, 0, None),
+            ('test', 1, 1, None), ('(', 1, 5, None), (')', 1, 6, None),
             (';', 1, 7, None),
         ],
     ), (
@@ -430,8 +448,8 @@ ParsedToMinimumTestcase = build_equality_testcase(
         test(1);
         """,
         [
-            ('test', 1, 1, None), ('(', 0, 0, None), ('1', 1, 6, None),
-            (')', 0, 0, None),
+            ('test', 1, 1, None), ('(', 1, 5, None), ('1', 1, 6, None),
+            (')', 1, 7, None),
             (';', 1, 8, None),
         ],
     ), (
@@ -440,10 +458,10 @@ ParsedToMinimumTestcase = build_equality_testcase(
         test(1, 2);
         """,
         [
-            ('test', 1, 1, None), ('(', 0, 0, None),
+            ('test', 1, 1, None), ('(', 1, 5, None),
             ('1', 1, 6, None), (',', 0, 0, None),
             ('2', 1, 9, None),
-            (')', 0, 0, None),
+            (')', 1, 10, None),
             (';', 1, 11, None),
         ],
     ), (

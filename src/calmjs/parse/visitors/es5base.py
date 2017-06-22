@@ -226,9 +226,7 @@ definitions = {
     ),
     'Regex': value,
     'NewExpr': (
-        Text(value='new '), Attr('identifier'), Text(value='('),
-        JoinAttr('args', value=(Text(value=','), Space)),
-        Text(value=')'),
+        Text(value='new'), Space, Attr('identifier'), Attr('args'),
     ),
     'DotAccessor': (
         Attr('node'), Text(value='.'), Attr('identifier'),
@@ -237,8 +235,11 @@ definitions = {
         Attr('node'), Text(value='['), Attr('expr'), Text(value=']'),
     ),
     'FunctionCall': (
-        Attr('identifier'), Text(value='('),
-        JoinAttr('args', value=(Text(value=','), Space)),
+        Attr('identifier'), Attr('args'),
+    ),
+    'Arguments': (
+        Text(value='('),
+        JoinAttr('items', value=(Text(value=','), Space)),
         Text(value=')'),
     ),
     'Object': (

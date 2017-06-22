@@ -473,13 +473,15 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         """,
         """
         <ES5Program @1:1 ?children=[
-          <For @1:1 cond=<ExprStatement @1:14 expr=<FunctionCall @1:14 args=[],
+          <For @1:1 cond=<ExprStatement @1:14 expr=<FunctionCall @1:14 args=<
+              Arguments @1:18 items=[]>,
               identifier=<Identifier @1:14 value='cond'>>>,
             count=<UnaryOp @1:22 op='++', postfix=False,
               value=<Identifier @1:24 value='z'>>,
             init=<ExprStatement @1:6 expr=<Regex @1:6 value='/^.+/g'>>,
             statement=<Block @1:27 ?children=[
-              <ExprStatement @2:3 expr=<FunctionCall @2:3 args=[],
+              <ExprStatement @2:3 expr=<FunctionCall @2:3 args=<
+                Arguments @2:5 items=[]>,
                 identifier=<Identifier @2:3 value='ev'>>>
             ]>>
         ]>
@@ -1067,11 +1069,12 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         """,
         """
         <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=[], identifier=<
+          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=<
+            Arguments @1:4 items=[]>, identifier=<
             Identifier @1:1 value='foo'>>>,
           <VarStatement @2:1 ?children=[
             <VarDecl @2:5 identifier=<Identifier @2:5 value='r'>,
-              initializer=<FunctionCall @2:9 args=[],
+              initializer=<FunctionCall @2:9 args=<Arguments @2:12 items=[]>,
                 identifier=<Identifier @2:9 value='foo'>>>]>
         ]>
         """,
@@ -1083,14 +1086,16 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         """,
         """
         <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=[
-            <Identifier @1:5 value='x'>, <Number @1:8 value='7'>
-          ], identifier=<Identifier @1:1 value='foo'>>>,
+          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=<
+            Arguments @1:4 items=[
+              <Identifier @1:5 value='x'>, <Number @1:8 value='7'>
+            ]>,
+            identifier=<Identifier @1:1 value='foo'>>>,
           <VarStatement @2:1 ?children=[
             <VarDecl @2:5 identifier=<Identifier @2:5 value='r'>,
-              initializer=<FunctionCall @2:9 args=[
+              initializer=<FunctionCall @2:9 args=<Arguments @2:12 items=[
                 <Identifier @2:13 value='x'>, <Number @2:16 value='7'>
-              ],
+              ]>,
               identifier=<Identifier @2:9 value='foo'>>>
           ]>
         ]>
@@ -1105,12 +1110,13 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         <ES5Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<BracketAccessor @1:6 expr=<
               Number @1:7 value='10'>,
-            node=<FunctionCall @1:1 args=[],
+            node=<FunctionCall @1:1 args=<Arguments @1:4 items=[]>,
             identifier=<Identifier @1:1 value='foo'>>>>,
           <VarStatement @2:1 ?children=[
             <VarDecl @2:5 identifier=<Identifier @2:5 value='j'>,
               initializer=<BracketAccessor @2:14 expr=<
-                Number @2:15 value='10'>, node=<FunctionCall @2:9 args=[],
+                Number @2:15 value='10'>, node=<FunctionCall @2:9 args=<
+                Arguments @2:12 items=[]>,
                 identifier=<Identifier @2:9 value='foo'>>>>
           ]>
         ]>
@@ -1125,13 +1131,13 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         <ES5Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<DotAccessor @1:6 identifier=<
               Identifier @1:7 value='foo'>,
-            node=<FunctionCall @1:1 args=[],
+            node=<FunctionCall @1:1 args=<Arguments @1:4 items=[]>,
             identifier=<Identifier @1:1 value='foo'>>>>,
             <VarStatement @2:1 ?children=[
               <VarDecl @2:5 identifier=<Identifier @2:5 value='bar'>,
                 initializer=<DotAccessor @2:16 identifier=<
                   Identifier @2:17 value='foo'>,
-                node=<FunctionCall @2:11 args=[],
+                node=<FunctionCall @2:11 args=<Arguments @2:14 items=[]>,
                   identifier=<Identifier @2:11 value='foo'>>>>
             ]>
         ]>
@@ -1144,7 +1150,8 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         """
         <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
           <VarDecl @1:5 identifier=<Identifier @1:5 value='foo'>, initializer=<
-            NewExpr @1:11 args=[], identifier=<Identifier @1:15 value='Foo'>>>
+            NewExpr @1:11 args=<Arguments @1:18 items=[]>,
+            identifier=<Identifier @1:15 value='Foo'>>>
         ]>]>
         """,
     ), (
@@ -1154,7 +1161,7 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         """
         <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
           <VarDecl @1:5 identifier=<Identifier @1:5 value='bar'>,
-            initializer=<NewExpr @1:11 args=[],
+            initializer=<NewExpr @1:11 args=<Arguments @1:22 items=[]>,
               identifier=<DotAccessor @1:18 identifier=<
                 Identifier @1:19 value='Bar'>,
               node=<Identifier @1:15 value='Foo'>>>>
@@ -1168,7 +1175,7 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
           <VarDecl @1:5 identifier=<Identifier @1:5 value='bar'>,
             initializer=<BracketAccessor @1:24 expr=<Number @1:25 value='7'>,
-              node=<NewExpr @1:11 args=[], identifier=<
+              node=<NewExpr @1:11 args=<Arguments @1:22 items=[]>, identifier=<
                 DotAccessor @1:18 identifier=<
                   Identifier @1:19 value='Bar'>,
                 node=<Identifier @1:15 value='Foo'>>>>>
@@ -1224,15 +1231,18 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         """,
         """
         <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<NewExpr @1:1 args=[], identifier=<
+          <ExprStatement @1:1 expr=<NewExpr @1:1 args=<
+            Arguments @1:6 items=[]>, identifier=<
             Identifier @1:5 value='T'>>>,
           <ExprStatement @2:1 expr=<DotAccessor @2:8 identifier=<
             Identifier @2:9 value='derp'>, node=<
-              NewExpr @2:1 args=[], identifier=<Identifier @2:5 value='T'>>>>
+              NewExpr @2:1 args=<Arguments @2:6 items=[]>,
+              identifier=<Identifier @2:5 value='T'>>>>
         ]>
         """
     ), (
         'new_new_expr',
+        # a function that returns a function, then used as a constructor
         # var T = function(){ return function (){} }
         """
         new new T()
@@ -1241,13 +1251,13 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         """
         <ES5Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<NewExpr @1:1 args=[], identifier=<
-              NewExpr @1:5 args=[], identifier=<
-                Identifier @1:9 value='T'>>>>,
+            NewExpr @1:5 args=<Arguments @1:10 items=[]>, identifier=<
+              Identifier @1:9 value='T'>>>>,
           <VarStatement @2:1 ?children=[
             <VarDecl @2:5 identifier=<Identifier @2:5 value='x'>,
               initializer=<NewExpr @2:9 args=[], identifier=<
-                NewExpr @2:13 args=[], identifier=<
-                  Identifier @2:17 value='T'>>>>
+                NewExpr @2:13 args=<Arguments @2:18 items=[]>,
+                  identifier=<Identifier @2:17 value='T'>>>>
           ]>
         ]>
         """
@@ -1440,11 +1450,14 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         'regex_test',
         'return (/h\d/i).test(elem.nodeName);',
         r"""
-        <ES5Program @1:1 ?children=[<Return @1:1 expr=<FunctionCall @1:8 args=[
-          <DotAccessor @1:26 identifier=<Identifier @1:27 value='nodeName'>,
-            node=<Identifier @1:22 value='elem'>>], identifier=<
-              DotAccessor @1:16 identifier=<Identifier @1:17 value='test'>,
-                node=<GroupingOp @1:8 expr=<Regex @1:9 value='/h\\d/i'>>>>>]>
+        <ES5Program @1:1 ?children=[<Return @1:1 expr=<FunctionCall @1:8 args=<
+          Arguments @1:21 items=[
+            <DotAccessor @1:26 identifier=<Identifier @1:27 value='nodeName'>,
+              node=<Identifier @1:22 value='elem'>>
+          ]>,
+          identifier=<
+            DotAccessor @1:16 identifier=<Identifier @1:17 value='test'>,
+            node=<GroupingOp @1:8 expr=<Regex @1:9 value='/h\\d/i'>>>>>]>
 
         """,
 
@@ -1459,28 +1472,28 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
           <ExprStatement @1:1 expr=<Conditional @1:8 alternative=<
               Assign @1:58 left=<Identifier @1:56 value='a'>, op='=',
               right=<Array @1:60 items=[
-            <FunctionCall @1:61 args=[
+            <FunctionCall @1:61 args=<Arguments @1:64 items=[
               <BracketAccessor @1:66 expr=<Number @1:67 value='1'>,
                 node=<Identifier @1:65 value='j'>>
-            ], identifier=<DotAccessor @1:62 identifier=<
+            ]>, identifier=<DotAccessor @1:62 identifier=<
               Identifier @1:63 value='f'>, node=<Identifier @1:61 value='k'>>>
           ]>>,
           consequent=<GroupingOp @1:10 expr=<Comma @1:26 left=<
                 Assign @1:13 left=<Identifier @1:11 value='a'>, op='=',
               right=<Array @1:15 items=[
-                <FunctionCall @1:16 args=[
+                <FunctionCall @1:16 args=<Arguments @1:19 items=[
                   <BracketAccessor @1:21 expr=<Number @1:22 value='1'>,
                     node=<Identifier @1:20 value='j'>>
-                ], identifier=<DotAccessor @1:17 identifier=<
+                ]>, identifier=<DotAccessor @1:17 identifier=<
                   Identifier @1:18 value='f'>,
                   node=<Identifier @1:16 value='c'>>>
               ]>>,
-            right=<FunctionCall @1:28 args=[
+            right=<FunctionCall @1:28 args=<Arguments @1:42 items=[
                 <Identifier @1:43 value='a'>,
                 <Identifier @1:46 value='d'>,
                 <UnaryOp @1:49 op='!', postfix=False, value=<
                   Number @1:50 value='0'>>
-              ],
+              ]>,
               identifier=<DotAccessor @1:37 identifier=<
                 Identifier @1:38 value='call'>, node=<
                   DotAccessor @1:32 identifier=<
@@ -1488,9 +1501,9 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
                     node=<DotAccessor @1:29 identifier=<
                       Identifier @1:30 value='fn'>,
                         node=<Identifier @1:28 value='e'>>>>>>>,
-          predicate=<FunctionCall @1:1 args=[
+          predicate=<FunctionCall @1:1 args=<Arguments @1:4 items=[
             <Identifier @1:5 value='d'>
-          ], identifier=<DotAccessor @1:2 identifier=<
+          ]>, identifier=<DotAccessor @1:2 identifier=<
             Identifier @1:3 value='b'>, node=<Identifier @1:1 value='e'>>>>>
         ]>
         """,
@@ -1504,7 +1517,8 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         """
         <ES5Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<GroupingOp @1:1 expr=<
-            FunctionCall @1:2 args=[], identifier=<FuncExpr @1:2 elements=[
+            FunctionCall @1:2 args=<Arguments @3:2 items=[]>,
+            identifier=<FuncExpr @1:2 elements=[
               <ExprStatement @2:3 expr=<Assign @2:5 left=<
                 Identifier @2:3 value='x'>, op='=',
                 right=<Number @2:7 value='5'>>>
@@ -1521,9 +1535,9 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
             value=<GroupingOp @1:9 expr=<BinOp @1:25 left=<
               BinOp @1:16 left=<Identifier @1:10 value='match'>, op='===',
                 right=<Boolean @1:20 value='true'>>, op='||', right=<
-            BinOp @1:57 left=<FunctionCall @1:28 args=[
+            BinOp @1:57 left=<FunctionCall @1:28 args=<Arguments @1:45 items=[
               <String @1:46 value='"classid"'>
-            ],
+            ]>,
             identifier=<DotAccessor @1:32 identifier=<
               Identifier @1:33 value='getAttribute'>, node=<
                 Identifier @1:28 value='elem'>>>, op='!==', right=<
@@ -1602,7 +1616,8 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
                 op='<', right=<Number @1:15 value='3'>>>,
             count=<PostfixExpr @1:19 op='++',
               value=<Identifier @1:18 value='i'>>,
-            init=<ExprStatement @1:6 expr=<FunctionCall @1:6 args=[],
+            init=<ExprStatement @1:6 expr=<FunctionCall @1:6 args=<
+              Arguments @1:7 items=[]>,
               identifier=<Identifier @1:6 value='o'>>>,
             statement=<Block @1:23 >>
         ]>
@@ -1693,10 +1708,11 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         <ES5Program @1:1 ?children=[
           <ForIn @1:1 item=<VarDeclNoIn @1:6 identifier=<
                 Identifier @1:10 value='x'>,
-              initializer=<FunctionCall @1:14 args=[
-              ],
+              initializer=<FunctionCall @1:14 args=<Arguments @1:17 items=[
+              ]>,
               identifier=<Identifier @1:14 value='foo'>>>,
-            iterable=<GroupingOp @1:23 expr=<FunctionCall @1:24 args=[],
+            iterable=<GroupingOp @1:23 expr=<FunctionCall @1:24 args=<
+              Arguments @1:27 items=[]>,
               identifier=<Identifier @1:24 value='bah'>>>,
             statement=<Block @1:32 >>,
           <EmptyStatement @1:34 value=';'>
@@ -1737,9 +1753,11 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
                 <SetPropAssign @5:3 elements=[
                   <VarStatement @6:5 ?children=[
                     <VarDecl @6:9 identifier=<Identifier @6:9 value='names'>,
-                      initializer=<FunctionCall @6:17 args=[
-                        <String @6:28 value='" "'>
-                      ], identifier=<DotAccessor @6:21 identifier=<
+                      initializer=<FunctionCall @6:17 args=<
+                        Arguments @6:27 items=[
+                          <String @6:28 value='" "'>
+                        ]>,
+                        identifier=<DotAccessor @6:21 identifier=<
                         Identifier @6:22 value='split'>, node=<
                         Identifier @6:17 value='name'>>>>
                   ]>,
@@ -1770,9 +1788,11 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         """,
         """
         <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=[], identifier=<
-            DotAccessor @1:4 identifier=<Identifier @1:5 value='toString'>,
-            node=<GroupingOp @1:1 expr=<Number @1:2 value='0'>>>>>
+          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=<
+              Arguments @1:13 items=[]>,
+            identifier=<DotAccessor @1:4 identifier=<
+              Identifier @1:5 value='toString'>,
+              node=<GroupingOp @1:1 expr=<Number @1:2 value='0'>>>>>
         ]>
         """,
     ), (
@@ -1913,7 +1933,7 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         """
         <ES5Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<GroupingOp @1:1 expr=<
-            FunctionCall @1:2 args=[], identifier=<
+            FunctionCall @1:2 args=<Arguments @3:2 items=[]>, identifier=<
               FuncExpr @1:2 elements=[
                 <ExprStatement @2:3 expr=<Assign @2:5 left=<
                   Identifier @2:3 value='x'>, op='=',
@@ -1923,25 +1943,14 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         ]>
         """,
     ), (
-        'accessor_int',
-        """
-        (0).toString();
-        """,
-        """
-        <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=[], identifier=<
-            DotAccessor @1:4 identifier=<Identifier @1:5 value='toString'>,
-            node=<GroupingOp @1:1 expr=<Number @1:2 value='0'>>>>>
-        ]>
-        """,
-    ), (
-        'excesssive_grouping_normalized',
+        'excessive_grouping_normalized',
         """
         ((((value)))).toString();
         """,
         """
         <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=[],
+          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=<
+            Arguments @1:23 items=[]>,
             identifier=<DotAccessor @1:14 identifier=<
               Identifier @1:15 value='toString'>,
               node=<GroupingOp @1:4 expr=<Identifier @1:5 value='value'>>>>>
@@ -2173,7 +2182,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
     ), (
         # retain the semicolon in the initialiser part of a 'for' statement
-        'iteration_conditional_initialiser',
+        'iteration_conditional_initializer',
         """
         for (Q || (Q = []); d < b; ) {
           d = 1;
@@ -2217,7 +2226,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         >]>
         """,
     ), (
-        'iteration_regex_initialiser',
+        'iteration_regex_initializer',
         """
         for (/^.+/g; cond(); ++z) {
           ev();

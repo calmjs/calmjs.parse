@@ -541,8 +541,16 @@ class Parser(object):
         """arguments : LPAREN RPAREN
                      | LPAREN argument_list RPAREN
         """
-        if len(p) == 4:
-            p[0] = p[2]
+        if self._sourcemap_compat:
+            if len(p) == 4:
+                p[0] = self.asttypes.Arguments(p[2])
+            else:
+                p[0] = self.asttypes.Arguments([])
+            p[0].setpos(p)
+        else:
+            # the deprecated legacy method
+            if len(p) == 4:
+                p[0] = p[2]
 
     def p_argument_list(self, p):
         """argument_list : assignment_expr

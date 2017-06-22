@@ -137,6 +137,19 @@ class Array(Node):
         return self.items
 
 
+class List(Node):
+    # in JavaScript, this is distinctive from Array.
+    def __init__(self, items):
+        self.items = items
+
+    def children(self):
+        return self.items
+
+
+class Arguments(List):
+    pass
+
+
 class Object(Node):
     def __init__(self, properties=None):
         self.properties = [] if properties is None else properties
@@ -148,6 +161,7 @@ class Object(Node):
 class NewExpr(Node):
     def __init__(self, identifier, args=None):
         self.identifier = identifier
+        # TODO should simply be args
         self.args = [] if args is None else args
 
     def children(self):
@@ -157,10 +171,17 @@ class NewExpr(Node):
 class FunctionCall(Node):
     def __init__(self, identifier, args=None):
         self.identifier = identifier
+        # TODO should simply be args
         self.args = [] if args is None else args
 
     def children(self):
-        return [self.identifier] + self.args
+        if isinstance(self.args, list):
+            # XXX legacy version
+            # TODO deprecate remove this
+            return [self.identifier] + self.args
+        else:
+            # source map supported version
+            return [self.identifier, self.args]
 
 
 class BracketAccessor(Node):
