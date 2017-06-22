@@ -440,7 +440,10 @@ class Parser(object):
     def p_property_set_parameter_list(self, p):
         """property_set_parameter_list : identifier
         """
-        p[0] = [p[1]]
+        if self._sourcemap_compat:
+            p[0] = p[1]
+        else:
+            p[0] = [p[1]]
 
     # 11.2 Left-Hand-Side Expressions
     def p_member_expr(self, p):

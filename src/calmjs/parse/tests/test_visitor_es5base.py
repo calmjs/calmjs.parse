@@ -13,6 +13,9 @@ from calmjs.parse.testing.util import build_equality_testcase
 
 
 class BaseVisitorTestCase(unittest.TestCase):
+    # Many of these tests are here are for showing individual fixes that
+    # were done to other classes in order to properly support the source
+    # map feature.
 
     def test_empty_program(self):
         visitor = es5base.BaseVisitor()
@@ -120,6 +123,32 @@ class BaseVisitorTestCase(unittest.TestCase):
             ('new', 1, 5, None), (' ', 0, 0, None),
             ('T', 1, 9, None), ('(', 1, 10, None), (')', 1, 11, None),
             (';', 1, 12, None), ('\n', 0, 0, None),
+        ])
+
+    def test_getter(self):
+        visitor = es5base.BaseVisitor()
+        ast = es5('x = {get p() {}};')
+        self.assertEqual(list(visitor(ast)), [
+            ('x', 1, 1, None), (' ', 0, 0, None), ('=', 1, 3, None),
+            (' ', 0, 0, None), ('{', 1, 5, None), ('\n', 0, 0, None),
+            ('get', 1, 6, None), (' ', 0, 0, None), ('p', 1, 10, None),
+            ('(', 1, 11, None), (')', 1, 12, None),
+            (' ', 0, 0, None), ('{', 1, 14, None), ('\n', 0, 0, None),
+            ('}', 1, 15, None), ('\n', 0, 0, None),
+            ('}', 1, 16, None), (';', 1, 17, None), ('\n', 0, 0, None),
+        ])
+
+    def test_setter(self):
+        visitor = es5base.BaseVisitor()
+        ast = es5('x = {set p(a) {}};')
+        self.assertEqual(list(visitor(ast)), [
+            ('x', 1, 1, None), (' ', 0, 0, None), ('=', 1, 3, None),
+            (' ', 0, 0, None), ('{', 1, 5, None), ('\n', 0, 0, None),
+            ('set', 1, 6, None), (' ', 0, 0, None), ('p', 1, 10, None),
+            ('(', 1, 11, None), ('a', 1, 12, None), (')', 1, 13, None),
+            (' ', 0, 0, None), ('{', 1, 15, None), ('\n', 0, 0, None),
+            ('}', 1, 16, None), ('\n', 0, 0, None),
+            ('}', 1, 17, None), (';', 1, 18, None), ('\n', 0, 0, None),
         ])
 
 

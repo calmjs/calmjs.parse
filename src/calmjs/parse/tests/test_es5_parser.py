@@ -1774,9 +1774,7 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
                         Number @8:23 value='1'>,
                           node=<Identifier @8:17 value='names'>>>>
                 ],
-                parameters=[
-                  <Identifier @5:16 value='name'>
-                ],
+                parameters=<Identifier @5:16 value='name'>,
                 prop_name=<Identifier @5:7 value='fullName'>>
           ]>>>
         ]>

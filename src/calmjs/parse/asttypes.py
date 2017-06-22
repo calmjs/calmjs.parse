@@ -230,7 +230,10 @@ class SetPropAssign(Node):
         self.elements = elements or []
 
     def children(self):
-        return [self.prop_name] + self.parameters + self.elements
+        # XXX sourcemap compat has changed parameters to singular.
+        p = self.parameters if isinstance(self.parameters, list) else [
+            self.parameters]
+        return [self.prop_name] + p + self.elements
 
 
 class VarStatement(Node):

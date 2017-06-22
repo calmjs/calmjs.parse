@@ -70,7 +70,8 @@ definitions = {
         Attr('left'), OptionalSpace, Attr('op'), Space, Attr('right'),
     ),
     'GetPropAssign': (
-        Text(value='get '), Attr('prop_name'), Text(value='()'), Space,
+        Text(value='get'), Space, Attr('prop_name'),
+        Text(value='('), Text(value=')'), Space,
         Text(value='{'),
         Indent, Newline,
         JoinAttr(attr='elements', value=(Newline,)),
@@ -78,7 +79,7 @@ definitions = {
         Text(value='}'),
     ),
     'SetPropAssign': (
-        Text(value='set '), Attr('prop_name'), Text(value='('),
+        Text(value='set'), Space, Attr('prop_name'), Text(value='('),
         Attr('parameters'), Text(value=')'), Space,
         Text(value='{'),
         Indent, Newline,
