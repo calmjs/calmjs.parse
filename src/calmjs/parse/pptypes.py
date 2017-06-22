@@ -3,8 +3,12 @@
 Types for pretty printing.
 """
 
+from collections import namedtuple
 from calmjs.parse.asttypes import Node
 from calmjs.parse.asttypes import Elision
+
+SourceChunk = namedtuple('SourceChunk', [
+    'text', 'lineno', 'colno', 'original'])
 
 
 def is_empty(value):

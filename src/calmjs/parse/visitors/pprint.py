@@ -4,6 +4,7 @@ Base pretty printing state and visitor function.
 """
 
 from calmjs.parse.pptypes import Token
+from calmjs.parse.pptypes import SourceChunk
 
 
 class PrettyPrintState(object):
@@ -145,10 +146,6 @@ def pretty_print_visitor(state, node, definition):
                     yield handler
 
     def process_layouts(layouts, last_chunk, chunk):
-        # TODO should have a thing that resolve the chunks into the
-        # string; or formalize the chunks to be n-tuples with first
-        # element being the string.
-        # TODO decide on formalizing the chunk formats using namedtuple.
         before = last_chunk[0] if last_chunk else None
         after = chunk[0] if chunk else None
         prev = None
@@ -168,7 +165,7 @@ def pretty_print_visitor(state, node, definition):
     for chunk in visitor(state, node, definition):
         if callable(chunk):
             layouts.append(chunk)
-        else:
+        elif isinstance(chunk, SourceChunk):
             for layout in process_layouts(layouts, last_chunk, chunk):
                 yield layout
             yield chunk

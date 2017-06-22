@@ -17,6 +17,8 @@ from calmjs.parse.pptypes import Dedent
 from calmjs.parse.pptypes import Indent
 from calmjs.parse.pptypes import Newline
 
+from calmjs.parse.pptypes import SourceChunk
+
 required_space = re.compile(r'^(?:\w\w|\+\+|\-\-)$')
 
 
@@ -48,7 +50,7 @@ class Indentation(object):
         s = self.indent_str if self.indent_str else state.indent_str
         indents = s * self._level
         if indents:
-            yield (indents, None, None, None)
+            yield SourceChunk(indents, None, None, None)
 
 
 def indentation(indent_str=None):
@@ -71,24 +73,24 @@ def token_handler_str_default(token, state, node, subnode):
         _, lineno, colno = node.getpos(subnode, token.pos)
     else:
         lineno, colno = None, None
-    yield (subnode, lineno, colno, None)
+    yield SourceChunk(subnode, lineno, colno, None)
 
 
 def layout_handler_space_imply(state, node, before, after, prev):
     # default layout handler where the space will be rendered, with the
     # line/column set to 0 for sourcemap to generate the implicit value.
-    yield (' ', 0, 0, None)
+    yield SourceChunk(' ', 0, 0, None)
 
 
 def layout_handler_space_drop(state, node, before, after, prev):
     # default layout handler where the space will be rendered, with the
     # line/column set to None for sourcemap to terminate the position.
-    yield (' ', None, None, None)
+    yield SourceChunk(' ', None, None, None)
 
 
 def layout_handler_newline_simple(state, node, before, after, prev):
     # simply render the newline with an implicit sourcemap line/col
-    yield (state.newline_str, 0, 0, None)
+    yield SourceChunk(state.newline_str, 0, 0, None)
 
 
 def layout_handler_newline_optional_pretty(state, node, before, after, prev):
@@ -111,7 +113,7 @@ def layout_handler_newline_optional_pretty(state, node, before, after, prev):
         return
     # if no new lines in any of the checked characters
     if not newline_strs & {lc(before), fc(after), lc(prev)}:
-        yield (state.newline_str, 0, 0, None)
+        yield SourceChunk(state.newline_str, 0, 0, None)
 
 
 def layout_handler_space_optional_pretty(state, node, before, after, prev):
@@ -125,7 +127,7 @@ def layout_handler_space_optional_pretty(state, node, before, after, prev):
             # in front for pretty
             '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '>>>=', '&=', '^=',
             '|=', '='}:
-        yield (' ', 0, 0, None)
+        yield SourceChunk(' ', 0, 0, None)
 
 
 def layout_handler_space_minimum(state, node, before, after, prev):
@@ -134,4 +136,4 @@ def layout_handler_space_minimum(state, node, before, after, prev):
         return
     s = before[-1:] + after[:1]
     if required_space.match(s):
-        yield (' ', 0, 0, None)
+        yield SourceChunk(' ', 0, 0, None)
