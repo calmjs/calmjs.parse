@@ -16,6 +16,7 @@ import re
 from calmjs.parse.pptypes import Dedent
 from calmjs.parse.pptypes import Indent
 from calmjs.parse.pptypes import Newline
+from calmjs.parse.pptypes import OptionalNewline
 
 from calmjs.parse.pptypes import SourceChunk
 
@@ -44,13 +45,43 @@ class Indentation(object):
     def layout_handler_dedent(self, state, node, before, after, prev):
         self._level -= 1
 
-    def layout_handler_newline(self, state, node, before, after, prev):
-        # simply render the newline with an implicit sourcemap line/col
-        yield (state.newline_str, 0, 0, None)
+    def _generate_indents(self, state):
         s = self.indent_str if self.indent_str else state.indent_str
         indents = s * self._level
         if indents:
             yield SourceChunk(indents, None, None, None)
+
+    def layout_handler_newline(self, state, node, before, after, prev):
+        # simply render the newline with an implicit sourcemap line/col
+        yield SourceChunk(state.newline_str, 0, 0, None)
+        for chunk in self._generate_indents(state):
+            yield chunk
+
+    def layout_handler_newline_optional(
+            self, state, node, before, after, prev):
+        # simply render the newline with an implicit sourcemap line/col, if
+        # not already preceded or followed by a newline
+        l = len(state.newline_str)
+
+        def fc(s):
+            return '' if s is None else s[:l]
+
+        def lc(s):
+            return '' if s is None else s[-l:]
+
+        # include standard ones plus whatever else that was provided, i.e.
+        # the typical <CR><LF>
+        newline_strs = {'\r', '\n', state.newline_str}
+
+        if lc(before) in '\r\n':
+            # not needed since this is the beginning
+            return
+        # if no new lines in any of the checked characters
+        if not newline_strs & {lc(before), fc(after), lc(prev)}:
+            yield SourceChunk(state.newline_str, 0, 0, None)
+
+        for chunk in self._generate_indents(state):
+            yield chunk
 
 
 def indentation(indent_str=None):
@@ -60,6 +91,10 @@ def indentation(indent_str=None):
             Indent: inst.layout_handler_indent,
             Dedent: inst.layout_handler_dedent,
             Newline: inst.layout_handler_newline,
+            OptionalNewline: inst.layout_handler_newline_optional,
+            (Indent, Newline, Dedent, OptionalNewline):
+                inst.layout_handler_newline,
+            (Indent, Newline, Dedent, Newline): inst.layout_handler_newline,
         }
     return make_layout
 

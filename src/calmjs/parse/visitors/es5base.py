@@ -105,12 +105,16 @@ definitions = {
     'Boolean': value,
     'For': (
         Text(value='for'), Space, Text(value='('),
-        Attr('init'), Attr('cond'), Attr('count'), Text(value=')'),
-        Attr('statement'),
+        Attr('init'),
+        Optional('cond', (Space,)), Attr('cond'),
+        Optional('count', (Space,)), Attr('count'),
+        Text(value=')'), Space, Attr('statement'),
     ),
     'ForIn': (
         Text(value='for'), Space, Text(value='('),
-        Attr('item'), Attr('iterable'), Text(value=')'),
+        Attr('item'),
+        Space, Text(value='in'), Space,
+        Attr('iterable'), Text(value=')'), Space,
         Attr('statement'),
     ),
     'BinOp': (
@@ -126,7 +130,7 @@ definitions = {
         Attr('expr'), Text(value=';'),
     ),
     'DoWhile': (
-        Text(value='do'), Space, Attr('statement'),
+        Text(value='do'), Space, Attr('statement'), Space,
         Text(value='while'), Space, Text(value='('),
         Attr('predicate'), Text(value=');'),
     ),
@@ -177,24 +181,24 @@ definitions = {
         Text(value='case'), Space, Attr('expr'), Text(value=':'),
         Indent, Newline,
         JoinAttr('elements', value=(Newline,)),
-        Dedent, OptionalNewline,
+        Dedent,
     ),
     'Default': (
         Text(value='default'), Text(value=':'),
         Indent, Newline,
         JoinAttr('elements', value=(Newline,)),
-        Dedent, OptionalNewline,
+        Dedent,
     ),
     'Throw': (
-        Text(value='throw'), Space, Attr('expr'),
+        Text(value='throw'), Space, Attr('expr'), Text(value=';'),
     ),
     'Debugger': (
-        Text(value='debugger;'),
+        Text(value='debugger'), Text(value=';'),
     ),
     'Try': (
         Text(value='try'), Space, Attr('statements'),
-        Optional('catch', (Space, Attr('catch'))),
-        Optional('fin', (Space, Attr('fin'))),
+        Optional('catch', (Newline, Attr('catch'),)),
+        Optional('fin', (Newline, Attr('fin'),)),
     ),
     'Catch': (
         Text(value='catch'), Space,
@@ -205,8 +209,8 @@ definitions = {
         Text(value='finally'), Space, Attr('elements'),
     ),
     'FuncDecl': (
-        Text(value='function'), Space, Attr('identifier'),
-        Text(value='('),
+        Text(value='function'), Optional('identifier', (Space,)),
+        Attr('identifier'), Text(value='('),
         JoinAttr('parameters', value=(Text(value=','), Space)),
         Text(value=')'), Space,
         Text(value='{'),
@@ -216,8 +220,8 @@ definitions = {
         Text(value='}'),
     ),
     'FuncExpr': (
-        Text(value='function'), Space, Attr('identifier'),
-        Text(value='('),
+        Text(value='function'), Optional('identifier', (Space,)),
+        Attr('identifier'), Text(value='('),
         JoinAttr('parameters', value=(Text(value=','), Space,)),
         Text(value=')'), Space,
         Text(value='{'),

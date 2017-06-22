@@ -5,6 +5,7 @@ from calmjs.parse.pptypes import (
     Indent,
     Dedent,
     Newline,
+    OptionalNewline,
 )
 from calmjs.parse.visitors.pprint import PrettyPrintState
 from calmjs.parse.visitors.layout import (
@@ -138,9 +139,8 @@ class LayoutHandlerTestCase(unittest.TestCase):
         indent1 = ('<TAB>', None, None, None)
         indent2 = ('<TAB><TAB>', None, None, None)
 
-        def run(rule):
-            # only the state object is used.
-            return layout[rule](state, None, None, None, None)
+        def run(rule, before=None):
+            return layout[rule](state, None, before, None, None)
 
         self.assertEqual(list(run(Newline)), [newline])
         self.assertIsNone(run(Indent))
@@ -164,3 +164,5 @@ class LayoutHandlerTestCase(unittest.TestCase):
         self.assertIsNone(run(Indent))
         self.assertEqual(list(run(Newline)), [
             newline, ('    ', None, None, None)])
+
+        self.assertEqual(list(run(OptionalNewline, before='\n')), [])
