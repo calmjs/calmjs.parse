@@ -18,7 +18,6 @@ from calmjs.parse.pptypes import Indent
 from calmjs.parse.pptypes import Newline
 
 required_space = re.compile(r'^(?:\w\w|\+\+|\-\-)$')
-optional_space = re.compile(r'^(?:.=|=.)$')
 
 
 class Indentation(object):
@@ -120,7 +119,12 @@ def layout_handler_space_optional_pretty(state, node, before, after, prev):
         # nothing.
         return
     s = before[-1:] + after[:1]
-    if required_space.match(s) or optional_space.match(s):
+
+    if required_space.match(s) or after in {
+            # the various assignments of these types must have a space
+            # in front for pretty
+            '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '>>>=', '&=', '^=',
+            '|=', '='}:
         yield (' ', 0, 0, None)
 
 

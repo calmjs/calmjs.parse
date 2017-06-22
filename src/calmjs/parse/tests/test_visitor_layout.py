@@ -34,22 +34,42 @@ class LayoutHandlerTestCase(unittest.TestCase):
 
         # also test out the cases where OptionalSpace was defined.
         self.assertEqual(run(None, None), empty)
+        self.assertEqual(run('a', None), empty)
+        self.assertEqual(run(None, 'a'), empty)
         # for Assign
         self.assertEqual(run('a', ':'), empty)
         self.assertEqual(run('a', '='), space)
-        self.assertEqual(run('=', 'a'), space)
         self.assertEqual(run('1', '='), space)
-        self.assertEqual(run('=', '1'), space)
+
+        self.assertEqual(run('a', '+='), space)
+        self.assertEqual(run('a', '-='), space)
+        self.assertEqual(run('a', '*='), space)
+        self.assertEqual(run('a', '/='), space)
+        self.assertEqual(run('a', '%='), space)
+        self.assertEqual(run('a', '&='), space)
+        self.assertEqual(run('a', '^='), space)
+        self.assertEqual(run('a', '|='), space)
+        self.assertEqual(run('a', '<<='), space)
+        self.assertEqual(run('a', '>>='), space)
+        self.assertEqual(run('a', '>>>='), space)
+
+        # these rules are not defined, since they typically shouldn't
+        # happen and that BinOp rules should use Space.
+        self.assertEqual(run('+', 'a'), empty)
+        self.assertEqual(run('-', 'a'), empty)
+        self.assertEqual(run('*', 'a'), empty)
+        self.assertEqual(run('/', 'a'), empty)
 
         # for Unary
         self.assertEqual(run('!', 'a'), empty)
         self.assertEqual(run('f', '1'), space)
         self.assertEqual(run('1', 'f'), space)
-        self.assertEqual(run('f', '+'), empty)
-        self.assertEqual(run('f', '-'), empty)
-        self.assertEqual(run('-', 'f'), empty)
-        self.assertEqual(run('+', 'f'), empty)
+        self.assertEqual(run('f', '++'), empty)
+        self.assertEqual(run('f', '--'), empty)
+        self.assertEqual(run('--', 'f'), empty)
+        self.assertEqual(run('++', 'f'), empty)
         self.assertEqual(run('+', '-'), empty)
+        self.assertEqual(run('-', '+'), empty)
         self.assertEqual(run('-', '-'), space)
         self.assertEqual(run('+', '+'), space)
 
