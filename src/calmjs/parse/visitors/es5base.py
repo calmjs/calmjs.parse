@@ -17,6 +17,8 @@ from calmjs.parse.pptypes import (
     Optional,
     JoinAttr,
     Operator,
+    ElisionToken,
+    ElisionJoinAttr,
 )
 from calmjs.parse.visitors.pprint import (
     PrettyPrintState,
@@ -257,10 +259,11 @@ definitions = {
     ),
     'Array': (
         Text(value='['),
-        JoinAttr('items', value=(Text(value=','), Space,)),
+        ElisionJoinAttr('items', value=(Space,)),
         Text(value=']'),
     ),
     'Elision': (
+        ElisionToken(attr='value', value=','),
     ),
     'This': (
         Text(value='this'),

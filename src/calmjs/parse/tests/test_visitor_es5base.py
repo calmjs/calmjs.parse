@@ -175,6 +175,70 @@ class BaseVisitorTestCase(unittest.TestCase):
             ('\n', 0, 0, None),
         ])
 
+    def test_elision_0(self):
+        # basically empty list
+        visitor = es5base.BaseVisitor()
+        ast = es5('[];')
+        self.assertEqual(list(visitor(ast)), [
+            ('[', 1, 1, None), (']', 1, 2, None),
+            (';', 1, 3, None), ('\n', 0, 0, None),
+        ])
+
+    def test_elision_1(self):
+        visitor = es5base.BaseVisitor()
+        ast = es5('[,];')
+        self.assertEqual(list(visitor(ast)), [
+            ('[', 1, 1, None), (',', 1, 2, None), (']', 1, 3, None),
+            (';', 1, 4, None), ('\n', 0, 0, None),
+        ])
+
+    def test_elision_2(self):
+        visitor = es5base.BaseVisitor()
+        ast = es5('[,,];')
+        self.assertEqual(list(visitor(ast)), [
+            ('[', 1, 1, None), (',,', 1, 2, None), (']', 1, 4, None),
+            (';', 1, 5, None), ('\n', 0, 0, None),
+        ])
+
+    def test_elision_4(self):
+        visitor = es5base.BaseVisitor()
+        ast = es5('[,,,,];')
+        self.assertEqual(list(visitor(ast)), [
+            ('[', 1, 1, None), (',,,,', 1, 2, None), (']', 1, 6, None),
+            (';', 1, 7, None), ('\n', 0, 0, None),
+        ])
+
+    def test_elision_v3(self):
+        visitor = es5base.BaseVisitor()
+        ast = es5('[1,,,,];')
+        self.assertEqual(list(visitor(ast)), [
+            ('[', 1, 1, None), ('1', 1, 2, None), (',', 0, 0, None),
+            (',,,', 1, 4, None), (']', 1, 7, None),
+            (';', 1, 8, None), ('\n', 0, 0, None),
+        ])
+
+    def test_elision_vv3(self):
+        visitor = es5base.BaseVisitor()
+        ast = es5('[1, 2,,,,];')
+        self.assertEqual(list(visitor(ast)), [
+            ('[', 1, 1, None),
+            ('1', 1, 2, None), (',', 0, 0, None), (' ', 0, 0, None),
+            ('2', 1, 5, None), (',', 0, 0, None),  # ditto for this
+            (',,,', 1, 7, None), (']', 1, 10, None),
+            (';', 1, 11, None), ('\n', 0, 0, None),
+        ])
+
+    def test_elision_v3v(self):
+        visitor = es5base.BaseVisitor()
+        ast = es5('[1,,,, 1];')
+        self.assertEqual(list(visitor(ast)), [
+            ('[', 1, 1, None), ('1', 1, 2, None), (',', 0, 0, None),
+            (',,,', 1, 4, None),
+            (' ', 0, 0, None),
+            ('1', 1, 8, None), (']', 1, 9, None),
+            (';', 1, 10, None), ('\n', 0, 0, None),
+        ])
+
 
 def parse_to_sourcemap_tokens_pretty(text):
     return list(es5base.BaseVisitor(layouts=(

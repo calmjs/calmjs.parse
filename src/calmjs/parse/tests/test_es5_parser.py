@@ -1376,6 +1376,8 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         var a = [1,2,3,4,5];
         var b = [1,];
         var c = [1,,];
+        var d = [1,,,];
+        var e = [1,,,,];
         var res = a[3];
         """,
         """
@@ -1396,13 +1398,25 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
           <VarStatement @3:1 ?children=[
             <VarDecl @3:5 identifier=<Identifier @3:5 value='c'>, initializer=<
               Array @3:9 items=[
-                <Number @3:10 value='1'>, <Elision @3:12 value=','>
+                <Number @3:10 value='1'>, <Elision @3:12 value=1>
               ]>>
           ]>,
           <VarStatement @4:1 ?children=[
-            <VarDecl @4:5 identifier=<Identifier @4:5 value='res'>,
-              initializer=<BracketAccessor @4:12 expr=<Number @4:13 value='3'>,
-                node=<Identifier @4:11 value='a'>>>
+            <VarDecl @4:5 identifier=<Identifier @4:5 value='d'>, initializer=<
+              Array @4:9 items=[
+                <Number @4:10 value='1'>, <Elision @4:12 value=2>
+              ]>>
+          ]>,
+          <VarStatement @5:1 ?children=[
+            <VarDecl @5:5 identifier=<Identifier @5:5 value='e'>, initializer=<
+              Array @5:9 items=[
+                <Number @5:10 value='1'>, <Elision @5:12 value=3>
+              ]>>
+          ]>,
+          <VarStatement @6:1 ?children=[
+            <VarDecl @6:5 identifier=<Identifier @6:5 value='res'>,
+              initializer=<BracketAccessor @6:12 expr=<Number @6:13 value='3'>,
+                node=<Identifier @6:11 value='a'>>>
           ]>
         ]>
         """,
@@ -1414,9 +1428,7 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
           <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
             initializer=<Array @1:9 items=[
-              <Elision @1:10 value=','>,
-              <Elision @1:11 value=','>,
-              <Elision @1:12 value=','>
+              <Elision @1:10 value=3>
             ]>>
           ]>
         ]>
@@ -1429,8 +1441,7 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
           <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
             initializer=<Array @1:9 items=[
               <Number @1:10 value='1'>,
-              <Elision @1:12 value=','>,
-              <Elision @1:13 value=','>,
+              <Elision @1:12 value=2>,
               <Number @1:14 value='4'>
             ]>>
           ]>
@@ -1444,10 +1455,36 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
           <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
             initializer=<Array @1:9 items=[
               <Number @1:10 value='1'>,
-              <Elision @1:12 value=','>,
+              <Elision @1:12 value=1>,
               <Number @1:13 value='3'>,
-              <Elision @1:15 value=','>,
+              <Elision @1:15 value=1>,
               <Number @1:16 value='5'>
+            ]>>
+          ]>
+        ]>
+        """,
+    ), (
+        'elision_4',
+        'var a = [1,,,,];',
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+            initializer=<Array @1:9 items=[
+              <Number @1:10 value='1'>,
+              <Elision @1:12 value=3>
+            ]>>
+          ]>
+        ]>
+        """,
+    ), (
+        'elision_5',
+        'var a = [,,,, 1];',
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+            initializer=<Array @1:9 items=[
+              <Elision @1:10 value=4>,
+              <Number @1:15 value='1'>
             ]>>
           ]>
         ]>

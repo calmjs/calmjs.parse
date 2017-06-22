@@ -4,6 +4,7 @@ Types for pretty printing.
 """
 
 from calmjs.parse.asttypes import Node
+from calmjs.parse.asttypes import Elision
 
 
 def is_empty(value):
@@ -41,6 +42,26 @@ class Token(Rule):
     """
 
     def __init__(self, attr=None, value=None, pos=0):
+        """
+        Arguments
+
+        attr
+            Should reference some attribute of the referenced Node
+        value
+            Some value that will be assigned to this token for use in
+            the production of chunks
+        pos
+            The index to be passed to Token.getpos for the correct
+            index for the given token map entry.  The text element will
+            be used for the lookup first, and typically the correct
+            position will be reported on the 0th entry, however for
+            certain Node types multiple entries may be use, and so for
+            that situation the pos will need to be explicitly specified,
+            increment for each time that the exact value may be
+            generated through the execution of the rule description for
+            a given Node.
+        """
+
         self.attr = attr
         self.value = value
         self.pos = pos
@@ -156,6 +177,61 @@ class JoinAttr(Attr):
                 yield value_node
             for chunk in self.resolve(visitor, state, node, target_node):
                 yield chunk
+
+
+class ElisionToken(Attr, Text):
+    """
+    The special snowflake token just for Elision, simply because of how
+    the ES5 specification (ECMA-262), section 11.1.4, specifies how the
+    production of Elision is to be done.  The value is to be captured as
+    an integer and is then later used by whatever processing required.
+
+    While the name of this class is very specific, the meaning of the
+    arguments for the constructor will remain the same.  The `attr` be
+    the attribute to extract from the token, with the value being
+    handled similar to the Text interpretation of value.
+    """
+
+    def __call__(self, visitor, state, node):
+        value = self._getattr(state, node)
+        for chunk in self.resolve(visitor, state, node, self.value * value):
+            yield chunk
+
+
+class ElisionJoinAttr(ElisionToken):
+    """
+    The Elision type does require a bit of special handling, given that
+    particular Node type also serve the function of the joiner.
+
+    Note that the ',' token will always be automatically yielded.
+    """
+
+    def __call__(self, visitor, state, node):
+        nodes = iter(self._getattr(state, node))
+
+        try:
+            previous_node = next(nodes)
+        except StopIteration:
+            return
+
+        for chunk in self.resolve(visitor, state, node, previous_node):
+            yield chunk
+
+        for next_node in nodes:
+            # note that self.value is to be defined in the definition
+            # format also.
+            if not isinstance(previous_node, Elision):
+                # TODO find a better way to deal with this magic string
+                # using next_node to avoid using the Array which may
+                # provide a misleading position
+                yield next(visitor(state, next_node, (Text(value=','),)))
+
+            if not isinstance(next_node, Elision):
+                for value_node in visitor(state, node, self.value):
+                    yield value_node
+            for chunk in self.resolve(visitor, state, node, next_node):
+                yield chunk
+            previous_node = next_node
 
 
 class Optional(Token):

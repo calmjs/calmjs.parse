@@ -382,6 +382,19 @@ class Parser(object):
         """elision : COMMA
                    | elision COMMA
         """
+        if self._sourcemap_compat:
+            if len(p) == 2:
+                p[0] = [self.asttypes.Elision(1)]
+                p[0][0].setpos(p)
+            else:
+                # increment the Elision value.
+                p[1][-1].value += 1
+                p[0] = p[1]
+            # TODO figure out a cleaner way to provide this lookup
+            p[0][0]._token_map = {(',' * p[0][0].value): [
+                p[0][0].findpos(p, 0)]}
+            return
+        # leave legacy remain the same type.
         if len(p) == 2:
             p[0] = [self.asttypes.Elision(p[1])]
             p[0][0].setpos(p)
