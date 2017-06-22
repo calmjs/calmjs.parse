@@ -6,6 +6,10 @@ Types for pretty printing.
 from calmjs.parse.asttypes import Node
 
 
+def is_empty(value):
+    return value in (None, [])
+
+
 class Rule(object):
     """
     The base type.
@@ -110,8 +114,11 @@ class Attr(Token):
             return getattr(node, self.attr)
 
     def __call__(self, visitor, state, node):
+        value = self._getattr(state, node)
+        if is_empty(value):
+            return
         for chunk in self.resolve(
-                visitor, state, node, self._getattr(state, node)):
+                visitor, state, node, value):
             yield chunk
 
 
@@ -162,7 +169,7 @@ class Optional(Token):
     """
 
     def __call__(self, visitor, state, node):
-        if getattr(node, self.attr) is None:
+        if is_empty(getattr(node, self.attr)):
             return
 
         # note that self.value is to be defined in the definition

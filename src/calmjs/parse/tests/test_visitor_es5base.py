@@ -85,6 +85,25 @@ class BaseVisitorTestCase(unittest.TestCase):
             ('this', None, None, None), (';', 1, 5, None), ('\n', 0, 0, None),
         ])
 
+    def test_empty_object(self):
+        visitor = es5base.BaseVisitor()
+        ast = es5('thing = {};')
+        self.assertEqual(list(visitor(ast)), [
+            ('thing', 1, 1, None), (' ', 0, 0, None), ('=', 1, 7, None),
+            (' ', 0, 0, None), ('{', 1, 9, None), ('}', 1, 10, None),
+            (';', 1, 11, None), ('\n', 0, 0, None),
+        ])
+
+    def test_simple_function_declare(self):
+        visitor = es5base.BaseVisitor()
+        ast = es5('function(){};')
+        self.assertEqual(list(visitor(ast)), [
+            ('function', 1, 1, None), (' ', 0, 0, None),
+            ('(', 1, 9, None), (')', 1, 10, None), (' ', 0, 0, None),
+            ('{', 1, 11, None), ('\n', 0, 0, None), ('}', 1, 12, None),
+            (';', 1, 13, None), ('\n', 0, 0, None),
+        ])
+
 
 def parse_to_sourcemap_tokens_pretty(text):
     return list(es5base.BaseVisitor(layouts=(

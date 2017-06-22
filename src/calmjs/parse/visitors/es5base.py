@@ -48,7 +48,7 @@ definitions = {
         Text(value='{'),
         Indent, Newline,
         children_newline,
-        Dedent, Newline,
+        Dedent, OptionalNewline,
         Text(value='}'), Newline,
     ),
     'VarStatement': (
@@ -74,7 +74,7 @@ definitions = {
         Text(value='{'),
         Indent, Newline,
         JoinAttr(attr='elements', value=(Newline,)),
-        Dedent, Newline,
+        Dedent, OptionalNewline,
         Text(value='}'),
     ),
     'SetPropAssign': (
@@ -83,7 +83,7 @@ definitions = {
         Text(value='{'),
         Indent, Newline,
         JoinAttr(attr='elements', value=(Newline,)),
-        Dedent, Newline,
+        Dedent, OptionalNewline,
         Text(value='}'),
     ),
     'Number': value,
@@ -160,10 +160,10 @@ definitions = {
     'Switch': (
         Text(value='switch'), Space,
         Text(value='('), Attr('expr'), Text(value=')'), Space, Text(value='{'),
-        Indent, Newline,
+        Indent, OptionalNewline,
         Attr('cases'),
         Optional('default', (Attr('default'))),
-        Dedent, Newline,
+        Dedent, OptionalNewline,
         Text(value='}'),
     ),
     'Case': (
@@ -205,7 +205,7 @@ definitions = {
         Text(value='{'),
         Indent, Newline,
         JoinAttr('elements', value=(Newline,)),
-        Dedent, Newline,
+        Dedent, OptionalNewline,
         Text(value='}'),
     ),
     'FuncExpr': (
@@ -216,7 +216,7 @@ definitions = {
         Text(value='{'),
         Indent, Newline,
         JoinAttr('elements', value=(Newline,)),
-        Dedent, Newline,
+        Dedent, OptionalNewline,
         Text(value='}'),
     ),
     'Conditional': (
@@ -243,9 +243,11 @@ definitions = {
     ),
     'Object': (
         Text(value='{'),
-        Indent, Newline,
-        JoinAttr('properties', value=(Text(value=','), Newline,)),
-        Dedent, Newline,
+        Optional('properties', (
+            Indent, Newline,
+            JoinAttr('properties', value=(Text(value=','), Newline,)),
+            Dedent, Newline,
+        )),
         Text(value='}'),
     ),
     'Array': (
