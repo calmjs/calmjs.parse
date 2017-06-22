@@ -394,6 +394,20 @@ class Switch(Node):
         return [self.expr] + self.cases + [self.default]
 
 
+class SwitchStatement(Node):
+
+    def __init__(self, expr, case_block):
+        self.expr = expr
+        self.case_block = case_block
+
+    def children(self):
+        return [self.expr, self.case_block]
+
+
+class CaseBlock(Block):
+    pass
+
+
 class Case(Node):
     def __init__(self, expr, elements):
         self.expr = expr

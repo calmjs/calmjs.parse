@@ -158,12 +158,15 @@ definitions = {
     'Label': (
         Attr('identifier'), Text(value=':'), Space, Attr('statement'),
     ),
-    'Switch': (
+    'SwitchStatement': (
         Text(value='switch'), Space,
-        Text(value='('), Attr('expr'), Text(value=')'), Space, Text(value='{'),
-        Indent, OptionalNewline,
-        Attr('cases'),
-        Optional('default', (Attr('default'))),
+        Text(value='('), Attr('expr'), Text(value=')'), Space,
+        Attr('case_block'),
+    ),
+    'CaseBlock': (
+        Text(value='{'),
+        Indent, Newline,
+        children_newline,
         Dedent, OptionalNewline,
         Text(value='}'),
     ),
@@ -171,13 +174,13 @@ definitions = {
         Text(value='case'), Space, Attr('expr'), Text(value=':'),
         Indent, Newline,
         JoinAttr('elements', value=(Newline,)),
-        Dedent, Newline,
+        Dedent, OptionalNewline,
     ),
     'Default': (
-        Text(value='default:'),
+        Text(value='default'), Text(value=':'),
         Indent, Newline,
         JoinAttr('elements', value=(Newline,)),
-        Dedent, Newline,
+        Dedent, OptionalNewline,
     ),
     'Throw': (
         Text(value='throw'), Space, Attr('expr'),

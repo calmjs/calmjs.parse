@@ -1319,12 +1319,25 @@ class Parser(object):
     # 12.11 The switch Statement
     def p_switch_statement(self, p):
         """switch_statement : SWITCH LPAREN expr RPAREN case_block"""
+        if self._sourcemap_compat:
+            # this uses a completely different type that corrects a
+            # subtly wrong interpretation of this construct.
+            # see: https://github.com/rspivak/slimit/issues/94
+            p[0] = self.asttypes.SwitchStatement(expr=p[3], case_block=p[5])
+            p[0].setpos(p)
+            return
+
+        # previously wrongly implemented still just remain as is for
+        # the 0.9.x release...
+        # TODO remove this along with every not _sourcemap_compat blocks
         cases = []
         default = None
         # iterate over return values from case_block
         for item in p[5]:
             if isinstance(item, self.asttypes.Default):
                 default = item
+                # if default is not item[-1], should warn that wrong
+                # code will be generated.
             elif isinstance(item, list):
                 cases.extend(item)
 
@@ -1337,7 +1350,18 @@ class Parser(object):
             : LBRACE case_clauses_opt RBRACE
             | LBRACE case_clauses_opt default_clause case_clauses_opt RBRACE
         """
-        p[0] = p[2:-1]
+        if self._sourcemap_compat:
+            statements = []
+            for s in p[2:-1]:
+                if isinstance(s, list):
+                    for i in s:
+                        statements.append(i)
+                elif isinstance(s, self.asttypes.Default):
+                    statements.append(s)
+            p[0] = self.asttypes.CaseBlock(statements)
+            p[0].setpos(p)
+        else:
+            p[0] = p[2:-1]
 
     def p_case_clauses_opt(self, p):
         """case_clauses_opt : empty

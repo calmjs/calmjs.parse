@@ -151,6 +151,30 @@ class BaseVisitorTestCase(unittest.TestCase):
             ('}', 1, 17, None), (';', 1, 18, None), ('\n', 0, 0, None),
         ])
 
+    def test_switch_case_default_case(self):
+        visitor = es5base.BaseVisitor()
+        ast = es5('switch (v) { case true: break; default: case false: }')
+        self.assertEqual(list(visitor(ast)), [
+            ('switch', 1, 1, None), (' ', 0, 0, None), ('(', 1, 8, None),
+            ('v', 1, 9, None), (')', 1, 10, None), (' ', 0, 0, None),
+            ('{', 1, 12, None),
+            ('\n', 0, 0, None),
+            ('case', 1, 14, None), (' ', 0, 0, None), ('true', 1, 19, None),
+            (':', 1, 23, None),
+            ('\n', 0, 0, None),
+            ('break', 1, 25, None), (';', 1, 30, None),
+            ('\n', 0, 0, None),
+            ('\n', 0, 0, None),  # XXX this is extra
+            ('default', 1, 32, None), (':', 1, 39, None),
+            ('\n', 0, 0, None),
+            ('\n', 0, 0, None),  # XXX this is extra
+            ('case', 1, 41, None), (' ', 0, 0, None), ('false', 1, 46, None),
+            (':', 1, 51, None),
+            ('\n', 0, 0, None),
+            ('}', 1, 53, None),
+            ('\n', 0, 0, None),
+        ])
+
 
 def parse_to_sourcemap_tokens_pretty(text):
     return list(es5base.BaseVisitor(layouts=(

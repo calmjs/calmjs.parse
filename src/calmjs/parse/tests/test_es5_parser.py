@@ -720,7 +720,7 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
         """,
         """
         <ES5Program @1:1 ?children=[
-          <Switch @1:1 cases=[
+          <SwitchStatement @1:1 case_block=<CaseBlock @1:22 ?children=[
             <Case @2:3 elements=[], expr=<Number @2:8 value='6'>>,
             <Case @3:3 elements=[
               <ExprStatement @4:5 expr=<Assign @4:7 left=<
@@ -733,12 +733,55 @@ ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
                 Identifier @7:5 value='x'>, op='=', right=<
                   String @7:9 value="'Monday'">>>,
               <Break @8:5 identifier=None>
-            ], expr=<Number @6:8 value='1'>>
-          ],
-          default=<Default @9:3 elements=[
-            <Break @10:5 identifier=None>
+            ], expr=<Number @6:8 value='1'>>,
+            <Default @9:3 elements=[
+              <Break @10:5 identifier=None>
+            ]>
           ]>,
           expr=<Identifier @1:9 value='day_of_week'>>
+        ]>
+        """,
+
+    ), (
+        'switch_statement_case_default_case',
+        """
+        switch (result) {
+          case 'good':
+            do_good();
+          case 'pass':
+            do_pass();
+            break;
+          default:
+            log_unexpected_result();
+          case 'error':
+            handle_error();
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <SwitchStatement @1:1 case_block=<CaseBlock @1:17 ?children=[
+            <Case @2:3 elements=[
+                <ExprStatement @3:5 expr=<FunctionCall @3:5 args=
+                  <Arguments @3:12 items=[]>,
+                  identifier=<Identifier @3:5 value='do_good'>>>
+            ], expr=<String @2:8 value="'good'">>,
+            <Case @4:3 elements=[
+              <ExprStatement @5:5 expr=<FunctionCall @5:5 args=
+                <Arguments @5:12 items=[]>,
+                identifier=<Identifier @5:5 value='do_pass'>>>,
+              <Break @6:5 identifier=None>
+            ], expr=<String @4:8 value="'pass'">>,
+            <Default @7:3 elements=[
+              <ExprStatement @8:5 expr=<FunctionCall @8:5 args=
+                <Arguments @8:26 items=[]>,
+                identifier=<Identifier @8:5 value='log_unexpected_result'>>>
+            ]>,
+            <Case @9:3 elements=[
+              <ExprStatement @10:5 expr=<FunctionCall @10:5 args=
+                <Arguments @10:17 items=[]>,
+                identifier=<Identifier @10:5 value='handle_error'>>>
+            ], expr=<String @9:8 value="'error'">>
+          ]>, expr=<Identifier @1:9 value='result'>>
         ]>
         """,
 
