@@ -4,6 +4,7 @@ Base pretty printing state and visitor function.
 """
 
 from calmjs.parse.pptypes import Token
+from calmjs.parse.pptypes import RuleChunk
 from calmjs.parse.pptypes import SourceChunk
 
 
@@ -143,9 +144,9 @@ def pretty_print_visitor(state, node, definition):
                 # handler by invoking it directly like so:
                 handler = state(rule)
                 if handler:
-                    yield handler
+                    yield RuleChunk(rule, handler)
 
-    def process_layouts(layouts, last_chunk, chunk):
+    def process_layouts(rules, layouts, last_chunk, chunk):
         before = last_chunk[0] if last_chunk else None
         after = chunk[0] if chunk else None
         prev = None
@@ -158,18 +159,22 @@ def pretty_print_visitor(state, node, definition):
                 # ditto for the chunk resolution
                 prev = layout_chunk[0]
         layouts.clear()
+        rules.clear()
 
     last_chunk = None
     layouts = []
+    rules = []
 
     for chunk in visitor(state, node, definition):
-        if callable(chunk):
-            layouts.append(chunk)
+        if isinstance(chunk, RuleChunk):
+            rule, layout = chunk
+            layouts.append(layout)
+            rules.append(rule)
         elif isinstance(chunk, SourceChunk):
-            for layout in process_layouts(layouts, last_chunk, chunk):
+            for layout in process_layouts(rules, layouts, last_chunk, chunk):
                 yield layout
             yield chunk
             last_chunk = chunk
     # process the remaining layout rules.
-    for layout in process_layouts(layouts, last_chunk, None):
+    for layout in process_layouts(rules, layouts, last_chunk, None):
         yield layout
