@@ -4,8 +4,7 @@ Base pretty printing state and visitor function.
 """
 
 from calmjs.parse.pptypes import Token
-from calmjs.parse.pptypes import RuleChunk
-from calmjs.parse.pptypes import SourceChunk
+from calmjs.parse.pptypes import LayoutRuleChunk
 
 
 class PrettyPrintState(object):
@@ -144,42 +143,45 @@ def pretty_print_visitor(state, node, definition):
                 # handler by invoking it directly like so:
                 handler = state(rule)
                 if handler:
-                    yield RuleChunk(rule, handler)
+                    yield LayoutRuleChunk(rule, handler, node)
 
-    def process_layouts(rules, layouts, last_chunk, chunk):
-        before = last_chunk[0] if last_chunk else None
-        after = chunk[0] if chunk else None
-        prev = None
+    def process_layouts(layout_rule_chunks, last_chunk, chunk):
+        before_text = last_chunk.text if last_chunk else None
+        after_text = chunk.text if chunk else None
+        # the text that was yielded by the previous layout handler
+        prev_text = None
 
-        compacted = state(tuple(rules))
+        compacted_rule = tuple(c.rule for c in layout_rule_chunks)
+        compacted_handler = state(compacted_rule)
+        compacted = None if not compacted_handler else [LayoutRuleChunk(
+            compacted_rule, compacted_handler, layout_rule_chunks[0].rule)]
         # Do one final lookup since we have a series of layouts that
         # could be compacted into a single rule; if the compacted layout
         # rule was present, use that instead.
-        for layout in ([compacted] if compacted else layouts):
-            gen = layout(state, node, before, after, prev)
+        for lr_chunk in (compacted if compacted else layout_rule_chunks):
+            gen = lr_chunk.handler(
+                state, lr_chunk.node, before_text, after_text, prev_text)
             if not gen:
                 continue
-            for layout_chunk in gen:
-                yield layout_chunk
-                # ditto for the chunk resolution
-                prev = layout_chunk[0]
-        layouts.clear()
-        rules.clear()
+            for chunk_from_layout in gen:
+                yield chunk_from_layout
+                prev_text = chunk_from_layout.text
+        layout_rule_chunks.clear()
 
     last_chunk = None
-    layouts = []
-    rules = []
+    layout_rule_chunks = []
 
     for chunk in visitor(state, node, definition):
-        if isinstance(chunk, RuleChunk):
-            rule, layout = chunk
-            layouts.append(layout)
-            rules.append(rule)
-        elif isinstance(chunk, SourceChunk):
-            for layout in process_layouts(rules, layouts, last_chunk, chunk):
+        if isinstance(chunk, LayoutRuleChunk):
+            layout_rule_chunks.append(chunk)
+        else:
+            # process layout rule chunks that had been cached.
+            for layout in process_layouts(
+                    layout_rule_chunks, last_chunk, chunk):
                 yield layout
             yield chunk
             last_chunk = chunk
-    # process the remaining layout rules.
-    for layout in process_layouts(rules, layouts, last_chunk, None):
+
+    # process the remaining layout rule chunks.
+    for layout in process_layouts(layout_rule_chunks, last_chunk, None):
         yield layout

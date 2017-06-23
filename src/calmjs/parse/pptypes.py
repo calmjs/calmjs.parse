@@ -7,7 +7,8 @@ from collections import namedtuple
 from calmjs.parse.asttypes import Node
 from calmjs.parse.asttypes import Elision
 
-RuleChunk = namedtuple('RuleChunk', ['rule', 'handler'])
+LayoutRuleChunk = namedtuple('LayoutRuleChunk', [
+    'rule', 'handler', 'node'])
 SourceChunk = namedtuple('SourceChunk', [
     'text', 'lineno', 'colno', 'original'])
 
