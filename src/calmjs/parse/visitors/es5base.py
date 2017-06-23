@@ -25,6 +25,7 @@ from calmjs.parse.visitors.pprint import (
     pretty_print_visitor,
 )
 from calmjs.parse.visitors.layout import (
+    rule_handler_noop,
     token_handler_str_default,
     layout_handler_space_imply,
     layout_handler_newline_optional_pretty,
@@ -282,9 +283,9 @@ def default_layout_handlers():
         OptionalSpace: layout_handler_space_optional_pretty,
         Newline: layout_handler_newline_simple,
         OptionalNewline: layout_handler_newline_optional_pretty,
-        (Indent, Newline, Dedent, OptionalNewline):
-            layout_handler_newline_simple,
-        (Indent, Newline, Dedent, Newline): layout_handler_newline_simple,
+        # if an indent is immediately followed by dedent without actual
+        # content, simply do nothing.
+        (Indent, Newline, Dedent): rule_handler_noop,
     }
 
 

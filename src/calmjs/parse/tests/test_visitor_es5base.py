@@ -166,7 +166,6 @@ class BaseVisitorTestCase(unittest.TestCase):
             ('\n', 0, 0, None),
             ('default', 1, 32, None), (':', 1, 39, None),
             ('\n', 0, 0, None),
-            ('\n', 0, 0, None),  # XXX this is extra
             ('case', 1, 41, None), (' ', 0, 0, None), ('false', 1, 46, None),
             (':', 1, 51, None),
             ('\n', 0, 0, None),
@@ -700,8 +699,7 @@ ParsedToMinimumTestcase = build_equality_testcase(
 
 
 # TODO use the finalized shorthand invocation to do this; for now show
-# that the identity source code can be correctly regenerated.  Tests are
-# reuse from the original ecmavisitor.
+# that the identity source code can be correctly regenerated.
 
 def parse_to_prettyprint(text):
     return ''.join(c[0] for c in parse_to_sourcemap_tokens_pretty(text))
@@ -994,6 +992,16 @@ ES5IdentityTestCase = build_equality_testcase(
             log_unexpected_result();
           case 'error':
             handle_error();
+        }
+        """,
+
+    ), (
+        'switch_statement_empty',
+        """
+        switch (a) {
+          default:
+          case 1:
+          case 2:
         }
         """,
 

@@ -3,8 +3,12 @@
 Base pretty printing state and visitor function.
 """
 
+from itertools import chain
 from calmjs.parse.pptypes import Token
 from calmjs.parse.pptypes import LayoutRuleChunk
+
+# the default noop.
+from calmjs.parse.visitors.layout import rule_handler_noop
 
 
 class PrettyPrintState(object):
@@ -105,7 +109,7 @@ class PrettyPrintState(object):
         if isinstance(rule, Token):
             return self.__token_handler
         else:
-            return self.__layout_handlers.get(rule)
+            return self.__layout_handlers.get(rule, NotImplemented)
 
     @property
     def indent_str(self):
@@ -139,10 +143,14 @@ def pretty_print_visitor(state, node, definition):
                     yield chunk
             else:
                 # Otherwise, it's simply a layout class (inert and does
-                # nothing aside from serving as a marker).  Lookup the
-                # handler by invoking it directly like so:
+                # nothing aside from serving as a marker); yield a
+                # LayoutRuleChunk as a marker, and resolve any rules
+                # that haven't had a handler registered with the noop
+                # rule handler.
                 handler = state(rule)
-                if handler:
+                if handler is NotImplemented:
+                    yield LayoutRuleChunk(rule, rule_handler_noop, node)
+                else:
                     yield LayoutRuleChunk(rule, handler, node)
 
     def process_layouts(layout_rule_chunks, last_chunk, chunk):
@@ -151,14 +159,42 @@ def pretty_print_visitor(state, node, definition):
         # the text that was yielded by the previous layout handler
         prev_text = None
 
-        compacted_rule = tuple(c.rule for c in layout_rule_chunks)
-        compacted_handler = state(compacted_rule)
-        compacted = None if not compacted_handler else [LayoutRuleChunk(
-            compacted_rule, compacted_handler, layout_rule_chunks[0].rule)]
-        # Do one final lookup since we have a series of layouts that
-        # could be compacted into a single rule; if the compacted layout
-        # rule was present, use that instead.
-        for lr_chunk in (compacted if compacted else layout_rule_chunks):
+        # While Layout rules in a typical definition are typically
+        # interspersed with Tokens, certain assumptions with how the
+        # Layouts are specified within there will fail when Tokens fail
+        # to generate anything for any reason.  However, the state
+        # instance will be able to accept and resolve a tuple of Layouts
+        # to some handler function, so that a form of normalization can
+        # be done.  For instance, an (Indent, Newline, Dedent) can
+        # simply be resolved to no operations.  To achieve this, iterate
+        # through the layout_rule_chunks and generate a normalized form
+        # for the final handling to happen.
+
+        # The contracted layout rule chunks to be formed.
+        normalized_lrcs = []
+        # the preliminary stack that will be cleared whenever a
+        # normalized layout rule chunk is generated.
+        lrcs_stack = []
+        rule_stack = []
+
+        # first pass: generate both the normalized/finalized lrcs.
+        for lrc in layout_rule_chunks:
+            rule_stack.append(lrc.rule)
+            handler = state(tuple(rule_stack))
+            if handler is NotImplemented:
+                # not implemented so we keep going; also add the chunk
+                # to the stack.
+                lrcs_stack.append(lrc)
+                continue
+            # so a handler is found, generate a new layout rule chunk,
+            # and junk the stack.
+            normalized_lrcs.append(LayoutRuleChunk(
+                tuple(rule_stack), handler, layout_rule_chunks[0].node))
+            lrcs_stack.clear()
+            rule_stack.clear()
+
+        # second pass: now the processing can be done.
+        for lr_chunk in chain(normalized_lrcs, lrcs_stack):
             gen = lr_chunk.handler(
                 state, lr_chunk.node, before_text, after_text, prev_text)
             if not gen:

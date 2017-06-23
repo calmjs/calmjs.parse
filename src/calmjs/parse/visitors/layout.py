@@ -92,14 +92,16 @@ def indentation(indent_str=None):
             Dedent: inst.layout_handler_dedent,
             Newline: inst.layout_handler_newline,
             OptionalNewline: inst.layout_handler_newline_optional,
-            (Indent, Newline, Dedent, OptionalNewline):
-                inst.layout_handler_newline,
-            (Indent, Newline, Dedent, Newline): inst.layout_handler_newline,
         }
     return make_layout
 
 
 # other standalone handlers
+
+def rule_handler_noop(*a, **kw):
+    # a no op for layouts
+    return iter(())
+
 
 def token_handler_str_default(token, state, node, subnode):
     # TODO the mangler could provide an implementation of this that will
