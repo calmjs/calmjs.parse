@@ -741,6 +741,17 @@ ES5IdentityTestCase = build_equality_testcase(
         if (true) var x = 100;
         """,
     ), (
+        'if_empty',
+        """
+        if (true);
+        """,
+    ), (
+        'if_else_empty',
+        """
+        if (true);
+        else;
+        """,
+    ), (
         'if_statement_block',
         """
         if (true) {
@@ -791,10 +802,6 @@ ES5IdentityTestCase = build_equality_testcase(
         }
         """,
     ), (
-        ################################
-        # iteration
-        ################################
-
         'iteration_reuse',
         """
         for (i = 0; i < 10; i++) {
@@ -879,10 +886,11 @@ ES5IdentityTestCase = build_equality_testcase(
         }
         """,
     ), (
-        # test 15
-        ################################
-        # continue statement
-        ################################
+        'while_empty',
+        """
+        while (false);
+        """,
+    ), (
 
         'while_loop_continue',
         """
@@ -900,9 +908,6 @@ ES5IdentityTestCase = build_equality_testcase(
         }
         """,
     ), (
-        ################################
-        # break statement
-        ################################
         'while_loop_break',
         """
         while (true) {
@@ -910,7 +915,6 @@ ES5IdentityTestCase = build_equality_testcase(
           s = 'I am not reachable';
         }
         """,
-        # test 18
     ), (
         'while_loop_break_label',
         """
@@ -920,10 +924,6 @@ ES5IdentityTestCase = build_equality_testcase(
         }
         """,
     ), (
-        ################################
-        # return statement
-        ################################
-
         'return_empty',
         """
         {
@@ -938,10 +938,6 @@ ES5IdentityTestCase = build_equality_testcase(
         }
         """,
     ), (
-        # test21
-        ################################
-        # with statement
-        ################################
         'with_statement',
         """
         with (x) {
@@ -949,10 +945,6 @@ ES5IdentityTestCase = build_equality_testcase(
         }
         """,
     ), (
-        ################################
-        # labelled statement
-        ################################
-
         'labelled_statement',
         """
         label: while (true) {
@@ -961,9 +953,6 @@ ES5IdentityTestCase = build_equality_testcase(
         """,
 
     ), (
-        ################################
-        # switch statement
-        ################################
         'switch_statement',
         """
         switch (day_of_week) {
@@ -1006,28 +995,18 @@ ES5IdentityTestCase = build_equality_testcase(
         """,
 
     ), (
-        # test 24
-        ################################
-        # throw statement
-        ################################
         'throw_statement',
         """
         throw 'exc';
         """,
 
     ), (
-        ################################
-        # debugger statement
-        ################################
         'debugger_statement',
         """
         debugger;
         """,
 
     ), (
-        ################################
-        # expression statement
-        ################################
         'expression_statement',
         """
         5 + 7 - 20 * 10;
@@ -1040,10 +1019,6 @@ ES5IdentityTestCase = build_equality_testcase(
         """,
 
     ), (
-        # test 27
-        ################################
-        # try statement
-        ################################
         'try_catch_statement',
         """
         try {
@@ -1080,10 +1055,6 @@ ES5IdentityTestCase = build_equality_testcase(
         """,
 
     ), (
-        # test 30
-        ################################
-        # function
-        ################################
         'function_with_arguments',
         """
         function foo(x, y) {
@@ -1108,7 +1079,6 @@ ES5IdentityTestCase = build_equality_testcase(
         };
         """,
     ), (
-        # test 33
         'var_function_with_arguments',
         """
         var a = function foo(x, y) {
@@ -1134,8 +1104,6 @@ ES5IdentityTestCase = build_equality_testcase(
         """,
 
     ), (
-        # function call
-        # test 36
         'function_call',
         """
         foo();
@@ -1229,7 +1197,6 @@ ES5IdentityTestCase = build_equality_testcase(
         """,
 
     ), (
-        # test 51
         'function_definition',
         """
         String.prototype.foo = function(data) {
@@ -1264,12 +1231,6 @@ ES5IdentityTestCase = build_equality_testcase(
         25["toString"]();
         """,
     ), (
-
-        #######################################
-        # Make sure parentheses are not removed
-        #######################################
-
-        # ... Expected an identifier and instead saw '/'
         'parentheses_not_removed',
         r"""
         Expr.match[type].source + (/(?![^\[]*\])(?![^\(]*\))/.source);
@@ -1281,7 +1242,6 @@ ES5IdentityTestCase = build_equality_testcase(
         (options = arguments[i]) != null;
         """,
 
-        # test 54
     ), (
         'regex_test',
         """
@@ -1310,25 +1270,106 @@ ES5IdentityTestCase = build_equality_testcase(
         """,
 
     ), (
-        # test 57
         'ternary_dot_accessor',
         """
         var el = (elem ? elem.ownerDocument || elem : 0).documentElement;
         """,
 
     ), (
-        # typeof
         'typeof',
         """
         typeof second.length === "number";
         """,
 
     ), (
+        'prepostfix',
+        """
+        i++;
+        i--;
+        ++i;
+        --i;
+        !i;
+        function() {
+          i++;
+          i--;
+          ++i;
+          --i;
+          !i;
+        };
+        """,
+
+    ), (
+        'shift_ops',
+        """
+        x << y;
+        y >> x;
+        function() {
+          x << y;
+          y >> x;
+        };
+        """,
+
+    ), (
+        'mul_ops',
+        """
+        x * y;
+        y / x;
+        x % z;
+        function() {
+          x * y;
+          y / x;
+          x % z;
+        };
+        """,
+
+    ), (
+        'various_ops',
+        """
+        5 + 7 - 20 * 10;
+        ++x;
+        --x;
+        x++;
+        x--;
+        x = 17 /= 3;
+        1 << 2;
+        foo = 2 << 3;
+        1 < 2;
+        bar = 1 < 2;
+        1 | 2;
+        bar = 1 & 2;
+        1 | 2 & 8;
+        bar = 1 & 2 | 8;
+        x ^ y;
+        bar = x ^ y;
+        x && y;
+        bar = x && y;
+        1, 2;
+        """,
+    ), (
+        'regex_isolated',
+        """
+        s = mot ? z : /x:3;x<5;y</g / i;
+        """,
+    ), (
         # function call in FOR init
         'function_call_in_for_init',
         """
         for (o(); i < 3; i++) {
         }
+        """,
+
+    ), (
+        # function call in FOR init
+        'function_call_various',
+        """
+        a();
+        a()();
+        d()['test'];
+        d().test;
+        var i = a();
+        var i = a()();
+        var i = d()['test'];
+        var i = d().test;
         """,
 
     ), (
@@ -1350,6 +1391,145 @@ ES5IdentityTestCase = build_equality_testcase(
         'dot_accessor_on_integer',
         """
         (0).toString();
+        """,
+    ), (
+        'var_function_named',
+        """
+        var x = function y() {
+        };
+        """,
+    ), (
+        'new_expr_lhs',
+        """
+        new T();
+        new T().derp;
+        """,
+    ), (
+        'new_new_expr',
+        # var T = function(){ return function (){} }
+        """
+        new new T();
+        var x = new new T();
+        """,
+    ), (
+        # delete
+        'delete_keyword',
+        """
+        var obj = {
+          foo: 1
+        };
+        delete obj.foo;
+        """,
+    ), (
+        'object_various',
+        """
+        var obj = {
+          foo: 1,
+          set bar(x) {
+            this._bar = x + 1;
+          },
+          get bar() {
+            return this._bar;
+          }
+        };
+        """,
+    ), (
+        'void_keyword',
+        """
+        void 0;
+        """,
+    ), (
+        'instanceof',
+        """
+        x instanceof y;
+        """,
+    ), (
+        # membership
+        'membership_in',
+        """
+        1 in s;
+        """,
+    ), (
+        'for_various',
+        """
+        for (;;);
+        for (o < (p < q);;);
+        for (o == (p == q);;);
+        for (o ^ (p ^ q);;);
+        for (o | (p | q);;);
+        for (o & (p & q);;);
+        for (a ? (b ? c : d) : false;;);
+        for (var x;;);
+        for (var x, y, z;;);
+        """,
+    ), (
+        'forin_various',
+        """
+        for (f in o < (p < q));
+        for (f in o == (p == q));
+        for (f in o ^ (p ^ q));
+        for (f in o | (p | q));
+        for (f in o & (p & q));
+        for (f in a ? (b ? c : d) : false);
+        for (f in x);
+        for (f in x, y, z);
+        """,
+    ), (
+        'forin_initializer_noin',
+        """
+        for (var x = foo() in (bah())) {
+        }
+        """,
+    ), (
+        'dot_reserved_word',
+        """
+        e.case;
+        """,
+    ), (
+        'dot_reserved_word_nobf',
+        """
+        for (x = e.case;;);
+        """,
+    ), (
+        'logical_or_expr_nobf',
+        """
+        (true || true) || (false && false);
+        """,
+    ), (
+        'multiplicative_expr_nobf',
+        """
+        !0 % 1;
+        """,
+    ), (
+        'function_expr_1',
+        """
+        function(arg) {
+        };
+        """,
+    ), (
+        'octal_slimit_issue_70',
+        r"""
+        var x = '\071[90m%s';
+        """,
+    ), (
+        'special_array_char_slimit_issue_82',
+        r"""
+        var x = ['a', '\n'];
+        """,
+    ), (
+        'special_string_slimit_issue_82',
+        r"""
+        var x = '\n';
+        """,
+    ), (
+        'for_in_without_braces',
+        """
+        for (index in [1, 2, 3]) index;
+        """,
+    ), (
+        'for_loop_into_regex_slimit_issue_54',
+        """
+        for (index in [1, 2, 3]) /^salign$/;
         """,
     )]))
 )

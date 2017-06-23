@@ -20,7 +20,18 @@ from calmjs.parse.pptypes import OptionalNewline
 
 from calmjs.parse.pptypes import SourceChunk
 
+from calmjs.parse.asttypes import If
+from calmjs.parse.asttypes import For
+from calmjs.parse.asttypes import ForIn
+from calmjs.parse.asttypes import While
+
 required_space = re.compile(r'^(?:\w\w|\+\+|\-\-)$')
+
+# the various assignments symbols; for dealing with pretty spacing
+assignment_tokens = {
+    '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '>>>=', '&=', '^=', '|=', '='}
+# other symbols
+optional_rhs_space_tokens = {';', ')', None}
 
 
 class Indentation(object):
@@ -154,17 +165,19 @@ def layout_handler_newline_optional_pretty(state, node, before, after, prev):
 
 
 def layout_handler_space_optional_pretty(state, node, before, after, prev):
+    if isinstance(node, (If, For, ForIn, While)):
+        if after not in optional_rhs_space_tokens:
+            yield SourceChunk(' ', 0, 0, None)
+            return
+
     if before is None or after is None:
         # nothing.
         return
     s = before[-1:] + after[:1]
 
-    if required_space.match(s) or after in {
-            # the various assignments of these types must have a space
-            # in front for pretty
-            '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '>>>=', '&=', '^=',
-            '|=', '='}:
+    if required_space.match(s) or after in assignment_tokens:
         yield SourceChunk(' ', 0, 0, None)
+        return
 
 
 def layout_handler_space_minimum(state, node, before, after, prev):

@@ -97,26 +97,24 @@ definitions = {
     'EmptyStatement': value,
     'If': (
         Text(value='if'), Space,
-        Text(value='('), Attr('predicate'), Text(value=')'), Space,
-        Optional('consequent', (
-            Attr('consequent'),)),
+        Text(value='('), Attr('predicate'), Text(value=')'), OptionalSpace,
+        Attr('consequent'),
         Optional('alternative', (
-            Newline, Text(value='else'), Space, Attr('alternative'),)),
+            Newline, Text(value='else'), OptionalSpace, Attr('alternative'),)),
     ),
     'Boolean': value,
     'For': (
         Text(value='for'), Space, Text(value='('),
         Attr('init'),
-        Optional('cond', (Space,)), Attr('cond'),
-        Optional('count', (Space,)), Attr('count'),
-        Text(value=')'), Space, Attr('statement'),
+        OptionalSpace, Attr('cond'),
+        OptionalSpace, Attr('count'),
+        Text(value=')'), OptionalSpace, Attr('statement'),
     ),
     'ForIn': (
         Text(value='for'), Space, Text(value='('),
         Attr('item'),
         Space, Text(value='in'), Space,
-        Attr('iterable'), Text(value=')'), Space,
-        Attr('statement'),
+        Attr('iterable'), Text(value=')'), OptionalSpace, Attr('statement'),
     ),
     'BinOp': (
         Attr('left'), Space, Operator(attr='op'), Space, Attr('right'),
@@ -137,7 +135,7 @@ definitions = {
     ),
     'While': (
         Text(value='while'), Space,
-        Text(value='('), Attr('predicate'), Text(value=')'), Space,
+        Text(value='('), Attr('predicate'), Text(value=')'), OptionalSpace,
         Attr('statement'),
     ),
     'Null': (
