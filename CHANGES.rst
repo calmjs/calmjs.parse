@@ -1,8 +1,8 @@
 Changelog
 =========
 
-0.9.1 - Unreleased
-------------------
+0.10.0 - Unreleased
+-------------------
 
 - Corrected the line number reporting for the lexer, and correct the
   propagation of that to the parser and the Node subclasses.  Fixes the
@@ -13,12 +13,24 @@ Changelog
   <https://github.com/moses-palmer/slimit/commit/6aa92d68e0>`_ (where
   the custom lexer class does not provide the position attributes
   required by ply).
-- Implemented bookkeeping of column number.
+- Implemented bookkeeping of column numbers.
+- Made other various changes to AST but for compatibility reasons (to
+  not force a major semver bump) they are only enabled with a flag to
+  the ES5 parser.
+- Corrected a fault with how switch/case statements are handled in a way
+  that may break compatibility; fixes are only enabled when flagged.
+  `rspivak/slimit#94 <https://github.com/rspivak/slimit/issues/94>`_
 - The repr form of Node now shows the line/col number info by default;
   the visit method of the ReprVisitor class have not been changed, only
   the invocation of it via the callable form has as that is the call
   target for __repr__.  This is a good time to mention that named
   methods afford the most control for usage as documented already.
+- Parsers now accept an asttypes module during its construction.
+- Provide support for source map generation classes.
+- Introduced a flexible visitor function/state class that accepts a
+  definition of rules for the generation of chunk tuples that are
+  compatible for the source map generation.  A new way for pretty
+  printing and minification can be achieved using this module.
 
 0.9.0 - 2017-06-09
 ------------------
