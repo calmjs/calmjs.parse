@@ -190,8 +190,8 @@ def pretty_print_visitor(state, node, definition):
             # and junk the stack.
             normalized_lrcs.append(LayoutRuleChunk(
                 tuple(rule_stack), handler, layout_rule_chunks[0].node))
-            lrcs_stack.clear()
-            rule_stack.clear()
+            lrcs_stack[:] = []
+            rule_stack[:] = []
 
         # second pass: now the processing can be done.
         for lr_chunk in chain(normalized_lrcs, lrcs_stack):
@@ -202,7 +202,6 @@ def pretty_print_visitor(state, node, definition):
             for chunk_from_layout in gen:
                 yield chunk_from_layout
                 prev_text = chunk_from_layout.text
-        layout_rule_chunks.clear()
 
     last_chunk = None
     layout_rule_chunks = []
@@ -215,6 +214,7 @@ def pretty_print_visitor(state, node, definition):
             for layout in process_layouts(
                     layout_rule_chunks, last_chunk, chunk):
                 yield layout
+            layout_rule_chunks[:] = []
             yield chunk
             last_chunk = chunk
 
