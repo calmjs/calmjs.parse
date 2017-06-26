@@ -4,10 +4,12 @@ import textwrap
 
 # XXX compat import
 from calmjs.parse import _es5_sourcemap_compat as es5
+from calmjs.parse import asttypes
 from calmjs.parse.pptypes import Space
 from calmjs.parse.pptypes import Text
 from calmjs.parse.visitors import es5base
 from calmjs.parse.visitors import layout
+from calmjs.parse.visitors.generic import ConditionalVisitor
 
 from calmjs.parse.testing.util import build_equality_testcase
 
@@ -257,6 +259,81 @@ class BaseVisitorTestCase(unittest.TestCase):
             ('\n', 0, 0, None),
             ('}', 1, 20, None),
             ('\n', 0, 0, None),
+        ])
+
+
+class OtherUsageTestCase(unittest.TestCase):
+    """
+    Test out other forms of usage that are not part of the standard
+    chain of calls, e.g. calls that involve manual creation/modification
+    of Nodes within the AST.
+    """
+
+    def test_manual_element(self):
+        # a form of possible manual replacement call.
+        ast = asttypes.ES5Program(children=[
+            asttypes.ExprStatement(asttypes.FunctionCall(
+                identifier=asttypes.Identifier('foo'),
+                args=asttypes.Arguments([asttypes.Identifier('x')]),
+            )),
+        ])
+        visitor = es5base.BaseVisitor()
+        self.assertEqual([tuple(t) for t in (visitor(ast))], [
+            ('foo', None, None, None), ('(', None, None, None),
+            ('x', None, None, None), (')', None, None, None),
+            (';', None, None, None), ('\n', 0, 0, None),
+        ])
+
+    def test_remap_function_call(self):
+        # a form of possible manual replacement call.
+        cv = ConditionalVisitor()
+        src = textwrap.dedent("""
+        (function(foo, bar, arg1, arg2) {
+            foo(arg1);
+            bar(arg2);
+        })(foo, bar, arg1, arg2);
+        """).strip()
+        ast = es5(src)
+        block = cv.extract(ast, lambda n: isinstance(n, asttypes.FuncExpr))
+
+        for stmt in block.elements:
+            fc = stmt.expr
+            stmt.expr = asttypes.FunctionCall(
+                args=fc.args, identifier=asttypes.DotAccessor(
+                    node=asttypes.Identifier(value='window'),
+                    identifier=fc.identifier))
+
+        # Now try to render.
+        visitor = es5base.BaseVisitor()
+        self.assertEqual([tuple(t) for t in (visitor(ast))], [
+            ('(', 1, 1, None),
+            ('function', 1, 2, None),
+            ('(', 1, 10, None),
+            ('foo', 1, 11, None), (',', 0, 0, None), (' ', 0, 0, None),
+            ('bar', 1, 16, None), (',', 0, 0, None), (' ', 0, 0, None),
+            ('arg1', 1, 21, None), (',', 0, 0, None), (' ', 0, 0, None),
+            ('arg2', 1, 27, None), (')', 1, 31, None),
+            (' ', 0, 0, None),
+            ('{', 1, 33, None),
+            ('\n', 0, 0, None),
+            # injected elements should have None for lineno/colno
+            ('window', None, None, None), ('.', None, None, None),
+            ('foo', 2, 5, None),
+            ('(', 2, 8, None), ('arg1', 2, 9, None), (')', 2, 13, None),
+            (';', 2, 14, None),
+            ('\n', 0, 0, None),
+            ('window', None, None, None), ('.', None, None, None),
+            ('bar', 3, 5, None),
+            ('(', 3, 8, None), ('arg2', 3, 9, None), (')', 3, 13, None),
+            (';', 3, 14, None),
+            ('\n', 0, 0, None),
+            ('}', 4, 1, None),
+            (')', 4, 2, None),
+            ('(', 4, 3, None), ('foo', 4, 4, None), (',', 0, 0, None),
+            (' ', 0, 0, None), ('bar', 4, 9, None), (',', 0, 0, None),
+            (' ', 0, 0, None), ('arg1', 4, 14, None), (',', 0, 0, None),
+            (' ', 0, 0, None), ('arg2', 4, 20, None),
+            (')', 4, 24, None), (';', 4, 25, None), ('\n', 0, 0, None),
         ])
 
 

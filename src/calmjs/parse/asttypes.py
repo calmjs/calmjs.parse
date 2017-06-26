@@ -28,15 +28,20 @@ from collections import defaultdict
 
 
 class Node(object):
+    lexpos = lineno = colno = None
+
     def __init__(self, children=None):
         self._children_list = [] if children is None else children
-        self.lexpos = self.lineno = self.colno = None
         self._token_map = {}
 
     def getpos(self, s, idx):
-        token_map = self._token_map.get(s, [])
-        if idx < len(token_map):
-            return token_map[idx]
+        token_map = getattr(self, '_token_map', NotImplemented)
+        if token_map is NotImplemented:
+            return (None, None, None)
+
+        token_list = token_map.get(s, [])
+        if idx < len(token_list):
+            return token_list[idx]
         else:
             return (0, 0, 0)
 
