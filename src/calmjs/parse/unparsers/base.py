@@ -54,7 +54,6 @@ class BaseUnparser(object):
     def __init__(
             self,
             definitions,
-            indent=2,
             token_handler=token_handler_str_default,
             layouts=(default_layout_handlers,),
             layout_handlers=None,
@@ -65,8 +64,6 @@ class BaseUnparser(object):
 
         definition
             The definition for unparsing.
-        indent
-            level of indentation in spaces to record; defaults to 2.
         token_handler
             passed onto the state object; this is the handler that will
             process
@@ -87,7 +84,6 @@ class BaseUnparser(object):
             prettyprint module
         """
 
-        self.indent = indent
         self.token_handler = token_handler
         self.layout_handlers = {}
         for layout in layouts:

@@ -4,6 +4,7 @@ Description for ES5 unparser.
 """
 
 from calmjs.parse.layout import token_handler_str_default
+from calmjs.parse.layout import indentation
 
 from calmjs.parse.ruletypes import (
     Space,
@@ -274,10 +275,28 @@ class Unparser(BaseUnparser):
     def __init__(
             self,
             definitions=definitions,
-            indent=2,
             token_handler=token_handler_str_default,
             layouts=(default_layout_handlers,),
             layout_handlers=None):
 
         super(Unparser, self).__init__(
-            definitions, indent, token_handler, layouts, layout_handlers)
+            definitions, token_handler, layouts, layout_handlers)
+
+
+def pretty_print(ast, indent_str='  '):
+    """
+    Simple pretty print function; returns a string rendering of an input
+    AST of an ES5 Program.
+
+    arguments
+
+    ast
+        The AST to pretty print
+    indent_str
+        The string used for indentation.  Defaults to two spaces.
+    """
+
+    return ''.join(chunk.text for chunk in Unparser(layouts=(
+        default_layout_handlers,
+        indentation(indent_str=indent_str),
+    ))(ast))

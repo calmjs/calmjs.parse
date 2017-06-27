@@ -14,6 +14,7 @@ from calmjs.parse.unparsers.base import default_layout_handlers
 from calmjs.parse.unparsers.base import minimum_layout_handlers
 from calmjs.parse.unparsers.es5 import Unparser
 from calmjs.parse.unparsers.es5 import definitions
+from calmjs.parse.unparsers.es5 import pretty_print
 
 from calmjs.parse.testing.util import build_equality_testcase
 
@@ -339,6 +340,26 @@ class OtherUsageTestCase(unittest.TestCase):
             (' ', 0, 0, None), ('arg2', 4, 20, None),
             (')', 4, 24, None), (';', 4, 25, None), ('\n', 0, 0, None),
         ])
+
+    def test_pretty_print(self):
+        # Simple test of the pretty_print function
+        src = textwrap.dedent("""
+        (function(foo, bar, arg1, arg2) {
+          foo(arg1);
+          bar(arg2);
+        })(foo, bar, arg1, arg2);
+        """).lstrip()
+        self.assertEqual(pretty_print(es5(src)), src)
+
+    def test_pretty_print_custom_indent(self):
+        # Simple test of the pretty_print function
+        src = textwrap.dedent("""
+        (function(foo, bar, arg1, arg2) {
+            foo(arg1);
+            bar(arg2);
+        })(foo, bar, arg1, arg2);
+        """).lstrip()
+        self.assertEqual(pretty_print(es5(src), indent_str='    '), src)
 
 
 def parse_to_sourcemap_tokens_pretty(text):
