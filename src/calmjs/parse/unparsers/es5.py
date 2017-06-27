@@ -283,6 +283,15 @@ class Unparser(BaseUnparser):
             definitions, token_handler, layouts, layout_handlers)
 
 
+def pretty_printer(indent_str='    '):
+    """
+    Construct a pretty printing unparser
+    """
+
+    return Unparser(layouts=(default_layout_handlers, indentation(
+        indent_str=indent_str)))
+
+
 def pretty_print(ast, indent_str='  '):
     """
     Simple pretty print function; returns a string rendering of an input
@@ -296,7 +305,4 @@ def pretty_print(ast, indent_str='  '):
         The string used for indentation.  Defaults to two spaces.
     """
 
-    return ''.join(chunk.text for chunk in Unparser(layouts=(
-        default_layout_handlers,
-        indentation(indent_str=indent_str),
-    ))(ast))
+    return ''.join(chunk.text for chunk in pretty_printer(indent_str)(ast))
