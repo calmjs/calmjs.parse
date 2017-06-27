@@ -5,9 +5,9 @@ from collections import namedtuple
 from calmjs.parse import es5
 from calmjs.parse.asttypes import VarStatement
 from calmjs.parse.asttypes import VarDecl
-from calmjs.parse.visitors.pprint import PrettyPrintState
-from calmjs.parse.visitors.pprint import pretty_print_visitor
-from calmjs.parse.pptypes import (
+from calmjs.parse.unparsers.prettyprint import State
+from calmjs.parse.unparsers.prettyprint import visitor
+from calmjs.parse.ruletypes import (
     Attr,
     JoinAttr,
     Text,
@@ -34,7 +34,7 @@ def setup_handlers(testcase):
         testcase.layouts_handled.append((state, node, before, after, prev))
         yield SimpleChunk(' ')
 
-    # return token_handler, layout_handlers for PrettyPrintState init
+    # return token_handler, layout_handlers for State init
     return simple_token_maker, {Space: simple_space}
 
 
@@ -43,7 +43,7 @@ class PPVisitorTestCase(unittest.TestCase):
     def setUp(self):
         # provide just enough of the everything that is required.
         token_handler, layout_handlers = setup_handlers(self)
-        self.state = PrettyPrintState(
+        self.state = State(
             definitions={
                 'ES5Program': (children_newline, Newline,),
                 'VarStatement': (
@@ -64,10 +64,10 @@ class PPVisitorTestCase(unittest.TestCase):
     def test_layouts_buffering(self):
         # The buffered layout rule handler should be invoked with the
         # Node that originally queued the LayoutRuleChunk (rather, the
-        # pretty_print_visitor should have done that for the Node).
+        # visitor should have done that for the Node).
         original = 'var a = 1;'
         tree = es5(original)
-        recreated = ''.join(c.text for c in pretty_print_visitor(
+        recreated = ''.join(c.text for c in visitor(
             self.state, tree, self.state[tree]))
         # see that this at least works as expected
         self.assertEqual(original, recreated)

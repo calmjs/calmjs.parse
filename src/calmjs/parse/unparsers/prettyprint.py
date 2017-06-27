@@ -4,14 +4,14 @@ Base pretty printing state and visitor function.
 """
 
 from itertools import chain
-from calmjs.parse.pptypes import Token
-from calmjs.parse.pptypes import LayoutRuleChunk
+from calmjs.parse.ruletypes import Token
+from calmjs.parse.ruletypes import LayoutRuleChunk
 
 # the default noop.
-from calmjs.parse.visitors.layout import rule_handler_noop
+from calmjs.parse.layout import rule_handler_noop
 
 
-class PrettyPrintState(object):
+class State(object):
     """
     Provide storage and lookup for the stored definitions and the
     handlers, which is documented by the constructor below.
@@ -120,7 +120,7 @@ class PrettyPrintState(object):
         return self.__newline_str
 
 
-def pretty_print_visitor(state, node, definition):
+def visitor(state, node, definition):
     """
     The default, standalone visitor function following the standard
     argument format, where the first argument is a PrettyPrintState,
@@ -133,13 +133,13 @@ def pretty_print_visitor(state, node, definition):
     be required, such as the generation of optional rendering output.
     """
 
-    def visitor(state, node, definition):
+    def _visitor(state, node, definition):
         for rule in definition:
             if isinstance(rule, Token):
                 # tokens are callables that will generate the chunks
                 # that will ultimately form the output, so simply invoke
                 # that with this function, the state and the node.
-                for chunk in rule(visitor, state, node):
+                for chunk in rule(_visitor, state, node):
                     yield chunk
             else:
                 # Otherwise, it's simply a layout class (inert and does
@@ -206,7 +206,7 @@ def pretty_print_visitor(state, node, definition):
     last_chunk = None
     layout_rule_chunks = []
 
-    for chunk in visitor(state, node, definition):
+    for chunk in _visitor(state, node, definition):
         if isinstance(chunk, LayoutRuleChunk):
             layout_rule_chunks.append(chunk)
         else:

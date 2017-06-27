@@ -26,6 +26,9 @@ __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 from collections import defaultdict
 
+# This should be nodetypes; asttypes means type of AST, and defining a
+# type for the entire tree is not the scope of what's being defined here
+
 
 class Node(object):
     lexpos = lineno = colno = None

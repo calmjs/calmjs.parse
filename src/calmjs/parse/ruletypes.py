@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Types for pretty printing.
+Rule types are used for building descriptions for processing and
+regenerating for a given type of AST back into a string.
 """
 
 from collections import namedtuple
@@ -275,3 +276,9 @@ class Operator(Attr):
             return getattr(node, self.attr)
         else:
             return self.value
+
+
+# other helpful shorthands.
+
+children_newline = JoinAttr(iter, value=(Newline,))
+children_comma = JoinAttr(iter, value=(Text(value=','), Space,))

@@ -2,8 +2,8 @@
 """
 Various helpers for plugging into the pprint visitor.
 
-Combining the following layout handlers with the pptypes definition and
-pprint framework can be done in myriad of ways such that new output
+Combining the following layout handlers with the ruletypes definition
+and pprint framework can be done in myriad of ways such that new output
 formats can be constructed very trivially by simply changing how or what
 of the following layouts to use to plug into the pprint visitor setup.
 This finally removes the annoyance of having to write an entire new
@@ -13,12 +13,12 @@ visit_* methods.
 
 import re
 
-from calmjs.parse.pptypes import Dedent
-from calmjs.parse.pptypes import Indent
-from calmjs.parse.pptypes import Newline
-from calmjs.parse.pptypes import OptionalNewline
+from calmjs.parse.ruletypes import Dedent
+from calmjs.parse.ruletypes import Indent
+from calmjs.parse.ruletypes import Newline
+from calmjs.parse.ruletypes import OptionalNewline
 
-from calmjs.parse.pptypes import SourceChunk
+from calmjs.parse.ruletypes import SourceChunk
 
 from calmjs.parse.asttypes import If
 from calmjs.parse.asttypes import For

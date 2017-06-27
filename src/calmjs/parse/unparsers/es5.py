@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-ES5 base visitors
+Description for ES5 unparser.
 """
 
-from calmjs.parse.pptypes import (
+from calmjs.parse.layout import token_handler_str_default
+
+from calmjs.parse.ruletypes import (
     Space,
     OptionalSpace,
     Newline,
@@ -11,7 +13,7 @@ from calmjs.parse.pptypes import (
     Indent,
     Dedent,
 )
-from calmjs.parse.pptypes import (
+from calmjs.parse.ruletypes import (
     Attr,
     Text,
     Optional,
@@ -20,23 +22,15 @@ from calmjs.parse.pptypes import (
     ElisionToken,
     ElisionJoinAttr,
 )
-from calmjs.parse.visitors.pprint import (
-    PrettyPrintState,
-    pretty_print_visitor,
+from calmjs.parse.ruletypes import (
+    children_newline,
+    children_comma,
 )
-from calmjs.parse.visitors.layout import (
-    rule_handler_noop,
-    token_handler_str_default,
-    layout_handler_space_imply,
-    layout_handler_newline_optional_pretty,
-    layout_handler_newline_simple,
-    layout_handler_space_optional_pretty,
-    layout_handler_space_minimum,
+from calmjs.parse.unparsers.base import (
+    BaseUnparser,
+    default_layout_handlers,
 )
 
-# other helpful shorthands.
-children_newline = JoinAttr(iter, value=(Newline,))
-children_comma = JoinAttr(iter, value=(Text(value=','), Space,))
 value = (
     Attr('value'),
 )
@@ -275,68 +269,15 @@ definitions = {
 }
 
 
-def default_layout_handlers():
-    return {
-        Space: layout_handler_space_imply,
-        OptionalSpace: layout_handler_space_optional_pretty,
-        Newline: layout_handler_newline_simple,
-        OptionalNewline: layout_handler_newline_optional_pretty,
-        # if an indent is immediately followed by dedent without actual
-        # content, simply do nothing.
-        (Indent, Newline, Dedent): rule_handler_noop,
-    }
-
-
-def minimum_layout_handlers():
-    return {
-        Space: layout_handler_space_minimum,
-        OptionalSpace: layout_handler_space_minimum,
-    }
-
-
-class BaseVisitor(object):
-    """
-    A simple base visitor class built upon the pprint helpers.
-    """
+class Unparser(BaseUnparser):
 
     def __init__(
             self,
+            definitions=definitions,
             indent=2,
             token_handler=token_handler_str_default,
             layouts=(default_layout_handlers,),
-            layout_handlers=None,
-            definitions=definitions):
-        """
-        Optional arguements
+            layout_handlers=None):
 
-        indent
-            level of indentation in spaces to record; defaults to 2.
-        token_handler
-            passed onto the state object; this is the handler that will
-            process
-        layouts
-            An tuple of callables that will provide the setup of
-            indentation.  The callables must return a layout_handlers
-            mapping, which is a dict with the key being the layout class
-            and the value being the callable that accept a
-            PrettyPrintState instance, a Node, before and after chunk.
-        layout_handlers
-            Additional layout handlers, given in the mapping that was
-            described above.
-        """
-
-        self.indent = indent
-        self.token_handler = token_handler
-        self.layout_handlers = {}
-        for layout in layouts:
-            self.layout_handlers.update(layout())
-        if layout_handlers:
-            self.layout_handlers.update(layout_handlers)
-        self.definitions = {}
-        self.definitions.update(definitions)
-
-    def __call__(self, node):
-        state = PrettyPrintState(
-            self.definitions, self.token_handler, self.layout_handlers)
-        for chunk in pretty_print_visitor(state, node, state[node]):
-            yield chunk
+        super(Unparser, self).__init__(
+            definitions, indent, token_handler, layouts, layout_handlers)

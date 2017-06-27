@@ -5,11 +5,15 @@ import textwrap
 # XXX compat import
 from calmjs.parse import _es5_sourcemap_compat as es5
 from calmjs.parse import asttypes
-from calmjs.parse.pptypes import Space
-from calmjs.parse.pptypes import Text
-from calmjs.parse.visitors import es5base
-from calmjs.parse.visitors import layout
+from calmjs.parse.ruletypes import Space
+from calmjs.parse.ruletypes import Text
+from calmjs.parse import layout
 from calmjs.parse.visitors.generic import ConditionalVisitor
+
+from calmjs.parse.unparsers.base import default_layout_handlers
+from calmjs.parse.unparsers.base import minimum_layout_handlers
+from calmjs.parse.unparsers.es5 import Unparser
+from calmjs.parse.unparsers.es5 import definitions
 
 from calmjs.parse.testing.util import build_equality_testcase
 
@@ -20,13 +24,13 @@ class BaseVisitorTestCase(unittest.TestCase):
     # map feature.
 
     def test_empty_program(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('')
         self.assertEqual(list(visitor(ast)), [
         ])
 
     def test_basic_integer(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('0;')
         self.assertEqual(list(visitor(ast)), [
             ('0', 1, 1, None),
@@ -35,7 +39,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_basic_var_space_standard(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('var x = 0;')
         self.assertEqual(list(visitor(ast)), [
             ('var', 1, 1, None), (' ', 0, 0, None), ('x', 1, 5, None),
@@ -45,7 +49,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_basic_var_space_drop(self):
-        visitor = es5base.BaseVisitor(layout_handlers={
+        visitor = Unparser(layout_handlers={
             Space: layout.layout_handler_space_drop,
         })
         ast = es5('var x = 0;\nvar y = 0;')
@@ -61,7 +65,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_force_handler_drop(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('var x = 0;')
         visitor.layout_handlers.clear()
         # if there are no layout handlers, the layout nodes will just
@@ -73,7 +77,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_simple_identifier(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('this;')
         self.assertEqual(list(visitor(ast)), [
             ('this', 1, 1, None), (';', 1, 5, None), ('\n', 0, 0, None),
@@ -82,16 +86,16 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_simple_identifier_unmapped(self):
         # if the definition contains unmapped entries
         new_definitions = {}
-        new_definitions.update(es5base.definitions)
+        new_definitions.update(definitions)
         new_definitions['This'] = (Text(value='this', pos=None),)
-        visitor = es5base.BaseVisitor(definitions=new_definitions)
+        visitor = Unparser(definitions=new_definitions)
         ast = es5('this;')
         self.assertEqual(list(visitor(ast)), [
             ('this', None, None, None), (';', 1, 5, None), ('\n', 0, 0, None),
         ])
 
     def test_empty_object(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('thing = {};')
         self.assertEqual(list(visitor(ast)), [
             ('thing', 1, 1, None), (' ', 0, 0, None), ('=', 1, 7, None),
@@ -100,7 +104,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_simple_function_declare(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('function(){};')
         self.assertEqual(list(visitor(ast)), [
             ('function', 1, 1, None),
@@ -110,7 +114,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_simple_function_invoke(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('foo();')
         self.assertEqual(list(visitor(ast)), [
             ('foo', 1, 1, None), ('(', 1, 4, None), (')', 1, 5, None),
@@ -118,7 +122,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_new_new(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('new new T();')
         self.assertEqual(list(visitor(ast)), [
             ('new', 1, 1, None), (' ', 0, 0, None),
@@ -128,7 +132,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_getter(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('x = {get p() {}};')
         self.assertEqual(list(visitor(ast)), [
             ('x', 1, 1, None), (' ', 0, 0, None), ('=', 1, 3, None),
@@ -141,7 +145,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_setter(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('x = {set p(a) {}};')
         self.assertEqual(list(visitor(ast)), [
             ('x', 1, 1, None), (' ', 0, 0, None), ('=', 1, 3, None),
@@ -154,7 +158,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_switch_case_default_case(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('switch (v) { case true: break; default: case false: }')
         self.assertEqual(list(visitor(ast)), [
             ('switch', 1, 1, None), (' ', 0, 0, None), ('(', 1, 8, None),
@@ -177,7 +181,7 @@ class BaseVisitorTestCase(unittest.TestCase):
 
     def test_elision_0(self):
         # basically empty list
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('[];')
         self.assertEqual(list(visitor(ast)), [
             ('[', 1, 1, None), (']', 1, 2, None),
@@ -185,7 +189,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_elision_1(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('[,];')
         self.assertEqual(list(visitor(ast)), [
             ('[', 1, 1, None), (',', 1, 2, None), (']', 1, 3, None),
@@ -193,7 +197,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_elision_2(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('[,,];')
         self.assertEqual(list(visitor(ast)), [
             ('[', 1, 1, None), (',,', 1, 2, None), (']', 1, 4, None),
@@ -201,7 +205,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_elision_4(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('[,,,,];')
         self.assertEqual(list(visitor(ast)), [
             ('[', 1, 1, None), (',,,,', 1, 2, None), (']', 1, 6, None),
@@ -209,7 +213,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_elision_v3(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('[1,,,,];')
         self.assertEqual(list(visitor(ast)), [
             ('[', 1, 1, None), ('1', 1, 2, None), (',', 0, 0, None),
@@ -218,7 +222,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_elision_vv3(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('[1, 2,,,,];')
         self.assertEqual(list(visitor(ast)), [
             ('[', 1, 1, None),
@@ -229,7 +233,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_elision_v3v(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('[1,,,, 1];')
         self.assertEqual(list(visitor(ast)), [
             ('[', 1, 1, None), ('1', 1, 2, None), (',', 0, 0, None),
@@ -240,7 +244,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_if_else_block(self):
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         ast = es5('if (true) {} else {}')
         self.assertEqual([tuple(t) for t in (visitor(ast))], [
             ('if', 1, 1, None),
@@ -277,7 +281,7 @@ class OtherUsageTestCase(unittest.TestCase):
                 args=asttypes.Arguments([asttypes.Identifier('x')]),
             )),
         ])
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         self.assertEqual([tuple(t) for t in (visitor(ast))], [
             ('foo', None, None, None), ('(', None, None, None),
             ('x', None, None, None), (')', None, None, None),
@@ -304,7 +308,7 @@ class OtherUsageTestCase(unittest.TestCase):
                     identifier=fc.identifier))
 
         # Now try to render.
-        visitor = es5base.BaseVisitor()
+        visitor = Unparser()
         self.assertEqual([tuple(t) for t in (visitor(ast))], [
             ('(', 1, 1, None),
             ('function', 1, 2, None),
@@ -338,15 +342,15 @@ class OtherUsageTestCase(unittest.TestCase):
 
 
 def parse_to_sourcemap_tokens_pretty(text):
-    return list(es5base.BaseVisitor(layouts=(
-        es5base.default_layout_handlers,
+    return list(Unparser(layouts=(
+        default_layout_handlers,
         layout.indentation(),
     ))(es5(text)))
 
 
 def parse_to_sourcemap_tokens_min(text):
-    return list(es5base.BaseVisitor(layouts=(
-        es5base.minimum_layout_handlers,
+    return list(Unparser(layouts=(
+        minimum_layout_handlers,
     ))(es5(text)))
 
 

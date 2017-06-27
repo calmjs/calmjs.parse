@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-from calmjs.parse.pptypes import Token
-from calmjs.parse.pptypes import Layout
+from calmjs.parse.ruletypes import Token
+from calmjs.parse.ruletypes import Layout
 
 
 class PPTypesTestCase(unittest.TestCase):
