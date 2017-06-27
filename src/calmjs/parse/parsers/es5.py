@@ -1509,3 +1509,14 @@ class Parser(object):
     def p_function_body(self, p):
         """function_body : source_elements"""
         p[0] = p[1]
+
+
+def parse(source):
+    """
+    Return an AST from the input ES5 source.
+    """
+
+    parser = Parser()
+    # TODO remove compat flag when no longer implemented.
+    parser._sourcemap_compat = True
+    return parser.parse(source)

@@ -27,10 +27,10 @@ import unittest
 
 from calmjs.parse import asttypes
 from calmjs.parse import es5
-from calmjs.parse import _es5_sourcemap_compat
 from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.exceptions import ECMARegexSyntaxError
 from calmjs.parse.parsers.es5 import Parser
+from calmjs.parse.parsers.es5 import parse
 from calmjs.parse.visitors import generic
 from calmjs.parse.visitors.es5 import pretty_print
 
@@ -181,7 +181,7 @@ def singleline(s):
 
 
 def _parse_to_repr_sourcemap_compat(value):
-    return repr_visitor.visit(_es5_sourcemap_compat(value), pos=True)
+    return repr_visitor.visit(parse(value), pos=True)
 
 
 # Note: this tests for affected changes compared to previous behavior,
