@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.10.0 - 2017-08-26
+0.10.1 - 2017-08-26
 -------------------
 
 - Corrected the line number reporting for the lexer, and correct the

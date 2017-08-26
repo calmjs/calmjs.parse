@@ -220,7 +220,7 @@ For platforms or systems that do not have utf8 configured as the default
 encoding, the automatic table generation may fail when constructing a
 parser instance.  An example:
 
-.. code:: python-doctest
+.. code::
 
     >>> from calmjs.parse.parsers import es5
     >>> parser = es5.Parser()
