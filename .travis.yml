@@ -86,6 +86,4 @@ branches:
   only:
     - testing
     - master
-    - 0.10.x
-    - 1.0.x
-    - 2.0.x
+    - 0.10.1
