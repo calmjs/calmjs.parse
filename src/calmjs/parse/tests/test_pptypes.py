@@ -3,6 +3,7 @@ import unittest
 
 from calmjs.parse.ruletypes import Token
 from calmjs.parse.ruletypes import Layout
+from calmjs.parse.ruletypes import Deferred
 
 
 class PPTypesTestCase(unittest.TestCase):
@@ -18,3 +19,9 @@ class PPTypesTestCase(unittest.TestCase):
         self.assertTrue(callable(token))
         with self.assertRaises(NotImplementedError):
             token(None, None, None)
+
+    def test_deferred(self):
+        deferred = Deferred()
+        self.assertTrue(callable(deferred))
+        with self.assertRaises(NotImplementedError):
+            deferred(None, None)

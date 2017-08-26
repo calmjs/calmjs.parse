@@ -94,6 +94,29 @@ class Token(Rule):
         raise NotImplementedError
 
 
+class Deferred(Rule):
+    """
+    These are special in the sense that they are deferred to generate
+    a combination of the above, potentially based on some specific
+    conditions as per the type.  These are generally used for the attr
+    attribute of the Token, for its _getattr
+
+    The constructor is specific to the definition.
+    """
+
+    def __call__(self, dispatcher, node):
+        """
+        Arguments
+
+        dispatcher
+            a walker.Dispatcher instance.
+        node
+            a Node instance.
+        """
+
+        raise NotImplementedError
+
+
 class Space(Layout):
     """
     Represents a space.
@@ -136,8 +159,8 @@ class Attr(Token):
     """
 
     def _getattr(self, dispatcher, node):
-        if callable(self.attr):
-            return self.attr(node)
+        if isinstance(self.attr, Deferred):
+            return self.attr(dispatcher, node)
         else:
             return getattr(node, self.attr)
 
@@ -279,7 +302,14 @@ class Operator(Attr):
             return self.value
 
 
-# other helpful shorthands.
+class Iter(Deferred):
+    """
+    Produces an iterator for the Attr.
+    """
 
-children_newline = JoinAttr(iter, value=(Newline,))
-children_comma = JoinAttr(iter, value=(Text(value=','), Space,))
+    def __call__(self, dispatcher, node):
+        return iter(node)
+
+
+children_newline = JoinAttr(Iter(), value=(Newline,))
+children_comma = JoinAttr(Iter(), value=(Text(value=','), Space,))

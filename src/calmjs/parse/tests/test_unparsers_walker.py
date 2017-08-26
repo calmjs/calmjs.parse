@@ -14,11 +14,12 @@ from calmjs.parse.ruletypes import (
     Operator,
     Space,
     Newline,
+    Iter,
 )
 
 SimpleChunk = namedtuple('SimpleChunk', ['text'])
-children_newline = JoinAttr(iter, value=(Newline,))
-children_comma = JoinAttr(iter, value=(Text(value=','), Space,))
+children_newline = JoinAttr(Iter(), value=(Newline,))
+children_comma = JoinAttr(Iter(), value=(Text(value=','), Space,))
 
 
 def setup_handlers(testcase):
