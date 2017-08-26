@@ -1,17 +1,8 @@
 import atexit
 import sys
 from setuptools import setup, find_packages
-from setuptools.command.develop import develop
 from setuptools.command.install import install
 from subprocess import call
-
-
-class DevelopHook(develop):
-    """For hooking the optimizer when setup exits"""
-    def __init__(self, *a, **kw):
-        develop.__init__(self, *a, **kw)
-        atexit.register(
-            call, [sys.executable, '-m', 'calmjs.parse.parsers.optimize'])
 
 
 class InstallHook(install):
@@ -22,7 +13,7 @@ class InstallHook(install):
             call, [sys.executable, '-m', 'calmjs.parse.parsers.optimize'])
 
 
-version = '0.9.0'
+version = '1.0.0'
 
 classifiers = """
 Development Status :: 4 - Beta
@@ -62,7 +53,6 @@ setup(
     include_package_data=True,
     zip_safe=False,
     cmdclass={
-        'develop': DevelopHook,
         'install': InstallHook,
     },
     install_requires=[

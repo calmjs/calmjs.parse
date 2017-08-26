@@ -36,6 +36,7 @@ from calmjs.parse.unicode_chars import (
     COMBINING_MARK,
     CONNECTOR_PUNCTUATION,
 )
+from calmjs.parse.utils import format_lex_token
 
 # See "Regular Expression Literals" at
 # http://www.mozilla.org/js/language/js20-2002-04/rationale/syntax.html
@@ -109,12 +110,26 @@ class Lexer(object):
     http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-262.pdf
     """
     def __init__(self):
+        self.lexer = None
         self.prev_token = None
         self.cur_token = None
         self.cur_token_real = None
         self.next_tokens = []
         self.token_stack = [[None, []]]
+        self.newline_idx = [0]
         self.build()
+
+    @property
+    def lineno(self):
+        return self.lexer.lineno if self.lexer else 0
+
+    @property
+    def lexpos(self):
+        return self.lexer.lexpos if self.lexer else 0
+
+    @property
+    def last_newline_lexpos(self):
+        return self.newline_idx[-1]
 
     def build(self, **kwargs):
         """Build the lexer."""
@@ -122,6 +137,15 @@ class Lexer(object):
 
     def input(self, text):
         self.lexer.input(text)
+
+    def _set_pos(self, token):
+        lines = token.value.splitlines(True)
+        lexpos = token.lexpos
+        for line in lines:
+            if line[-1:] in '\r\n':
+                lexpos += len(line)
+                self.lexer.lineno += 1
+                self.newline_idx.append(lexpos)
 
     def token(self):
         if self.next_tokens:
@@ -139,7 +163,7 @@ class Lexer(object):
             except IndexError:
                 tok = self._get_update_token()
                 if tok is not None and tok.type == 'LINE_TERMINATOR':
-                    lexer.lineno += len(tok.value.splitlines())
+                    self._set_pos(tok)
                     continue
                 else:
                     return tok
@@ -147,7 +171,7 @@ class Lexer(object):
             if char != '/' or (char == '/' and next_char in ('/', '*')):
                 tok = self._get_update_token()
                 if tok.type in DIVISION_SYNTAX_MARKERS:
-                    lexer.lineno += len(tok.value.splitlines())
+                    self._set_pos(tok)
                     continue
                 else:
                     return tok
@@ -227,8 +251,11 @@ class Lexer(object):
                 # TODO actually give up earlier than this with the first
                 # mismatch.
                 raise ECMASyntaxError(
-                    "Mismatched '%s' at line %d" % (
-                        self.cur_token.value, self.cur_token.lineno)
+                    "Mismatched '%s' at %d:%d" % (
+                        self.cur_token.value,
+                        self.cur_token.lineno,
+                        self._get_colno(self.cur_token),
+                    )
                 )
 
         # insert semicolon before restricted tokens
@@ -240,7 +267,26 @@ class Lexer(object):
                                          'RETURN', 'THROW']):
             return self._create_semi_token(self.cur_token)
 
-        return self.cur_token
+        return self._set_colno(self.cur_token)
+
+    def _set_colno(self, token):
+        if token:
+            token.colno = self._get_colno(token)
+        return token
+
+    def _get_colno(self, token):
+        # have a 1 offset to map nicer to commonly used/configured
+        # text editors.
+        return token.lexpos - self.last_newline_lexpos + 1
+
+    def lookup_colno(self, lineno, lexpos):
+        """
+        Look up a colno from the lineno and lexpos.
+        """
+
+        # have a 1 offset to map nicer to commonly used/configured
+        # text editors.
+        return lexpos - self.newline_idx[lineno - 1] + 1
 
     def _create_semi_token(self, orig_token):
         token = ply.lex.LexToken()
@@ -248,10 +294,17 @@ class Lexer(object):
         token.value = ';'
         if orig_token is not None:
             token.lineno = orig_token.lineno
+            # TODO figure out whether/how to normalize this with the
+            # actual length of the original token...
+            # Though, if actual use case boils down to error reporting,
+            # line number is sufficient, and leaving it as 0 means it
+            # shouldn't get dealt with during source map generation.
+            token.colno = 0
             token.lexpos = orig_token.lexpos
         else:
             token.lineno = 0
             token.lexpos = 0
+            token.colno = 0
         return token
 
     # iterator protocol
@@ -350,8 +403,8 @@ class Lexer(object):
 
     def t_regex_error(self, token):
         raise ECMARegexSyntaxError(
-            "Error parsing regular expression '%s' at %s" % (
-                token.value, token.lineno)
+            "Error parsing regular expression '%s' at %s:%s" % (
+                token.value, token.lineno, self._get_colno(token))
         )
 
     # Punctuators
@@ -425,7 +478,7 @@ class Lexer(object):
     t_NUMBER = r"""
     (?:
         0[xX][0-9a-fA-F]+              # hex_integer_literal
-     |  0[0-7]+                        # or octal_integer_literal (spec B.1.1)
+     |  0[0-7]+                        # or octal_integer_literal
      |  (?:                            # or decimal_literal
             (?:0|[1-9][0-9]*)          # decimal_integer_literal
             \.                         # dot
@@ -450,7 +503,7 @@ class Lexer(object):
                 | \\[a-zA-Z!-\/:-@\[-`{-~] # or escaped characters
                 | \\x[0-9a-fA-F]{2}        # or hex_escape_sequence
                 | \\u[0-9a-fA-F]{4}        # or unicode_escape_sequence
-                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence (spec B.1.2)
+                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3})  # or octal_escape_sequence
             )*?                            # zero or many times
             (?: \\\n                       # multiline ?
               (?:
@@ -458,7 +511,7 @@ class Lexer(object):
                 | \\[a-zA-Z!-\/:-@\[-`{-~] # or escaped characters
                 | \\x[0-9a-fA-F]{2}        # or hex_escape_sequence
                 | \\u[0-9a-fA-F]{4}        # or unicode_escape_sequence
-                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence (spec B.1.2)
+                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence
               )*?                          # zero or many times
             )*
         ")                                 # closing double quote
@@ -469,7 +522,7 @@ class Lexer(object):
                 | \\[a-zA-Z!-\/:-@\[-`{-~] # or escaped characters
                 | \\x[0-9a-fA-F]{2}        # or hex_escape_sequence
                 | \\u[0-9a-fA-F]{4}        # or unicode_escape_sequence
-                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence (spec B.1.2)
+                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence
             )*?                            # zero or many times
             (?: \\\n                       # multiline ?
               (?:
@@ -477,7 +530,7 @@ class Lexer(object):
                 | \\[a-zA-Z!-\/:-@\[-`{-~] # or escaped characters
                 | \\x[0-9a-fA-F]{2}        # or hex_escape_sequence
                 | \\u[0-9a-fA-F]{4}        # or unicode_escape_sequence
-                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence (spec B.1.2)
+                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence
               )*?                          # zero or many times
             )*
         ')                                 # closing single quote
@@ -517,6 +570,9 @@ class Lexer(object):
         return token
 
     def t_error(self, token):
-        # TODO figure out how to report column instead of lexpos.
-        raise ECMASyntaxError('Illegal character %r at %s:%s after %s' % (
-            token.value[0], token.lineno, token.lexpos, self.cur_token))
+        raise ECMASyntaxError(
+            'Illegal character %r at %s:%s after %s' % (
+                token.value[0], token.lineno, self._get_colno(token),
+                format_lex_token(self.cur_token),
+            )
+        )

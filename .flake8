@@ -8,8 +8,6 @@ ignore =
     E221,
 
     # E501 line too long
-    # Pretty hard to deal with when it comes to multi-line strings.
-    # - src/calmjs/parse/lexers/es5.py
     # - src/calmjs/parse/tests/test_es5_lexer.py
     E501,
 

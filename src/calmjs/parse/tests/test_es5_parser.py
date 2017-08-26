@@ -30,6 +30,7 @@ from calmjs.parse import es5
 from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.exceptions import ECMARegexSyntaxError
 from calmjs.parse.parsers.es5 import Parser
+from calmjs.parse.parsers.es5 import parse
 from calmjs.parse.visitors import generic
 from calmjs.parse.visitors.es5 import pretty_print
 
@@ -49,7 +50,7 @@ class ParserTestCase(unittest.TestCase):
             parser.parse('var\x01 blagh = 1;')
         self.assertEqual(
             e.exception.args[0],
-            "Illegal character '\\x01' at 1:3 after LexToken(VAR,'var',1,0)"
+            "Illegal character '\\x01' at 1:4 after 'var' at 1:1"
         )
 
     # XXX: function expression ?
@@ -91,7 +92,7 @@ class ParserTestCase(unittest.TestCase):
         function add(x, y) {
           return x + y;
         }
-        """)
+        """).strip()
         parser = Parser()
         tree = parser.parse(text)
         self.assertTrue(bool(tree.children()))
@@ -105,10 +106,40 @@ class ParserTestCase(unittest.TestCase):
 
     # https://github.com/rspivak/slimit/issues/29
     def test_that_parsing_eventually_stops(self):
-        text = """var a;
-        , b;"""
+        text = textwrap.dedent("""
+        var a;
+        , b;
+        """).strip()
         parser = Parser()
-        self.assertRaises(ECMASyntaxError, parser.parse, text)
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            str(e.exception),
+            "Unexpected ',' at 2:1 between '\\n' at 1:7 and 'b' at 2:3")
+
+    def test_bare_start(self):
+        text = textwrap.dedent("""
+        <
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            str(e.exception),
+            "Unexpected '<' at 1:1")
+
+    def test_previous_token(self):
+        # XXX do note that the auto-semi _looks_ like a real token and
+        # so it shouldn't be flagged if it isn't there.
+        text = textwrap.dedent("""
+        throw;
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            str(e.exception),
+            "Unexpected ';' at 1:6 after 'throw' at 1:1")
 
     def test_ecma_262_whitespace_slimt_issue_84(self):
         text = u'''\uFEFF
@@ -123,11 +154,23 @@ class ParserTestCase(unittest.TestCase):
         self.assertTrue(bool(Parser().parse(text).children()))
 
 
+class SourcemapCompatRemovalTestCase(unittest.TestCase):
+    """
+    Remove this test when that flag is gone.
+    """
+
+    def test_to_be_removed(self):
+        # if this test fails, remove this entire class because this is a
+        # temporary feature.
+        parser = Parser()
+        self.assertTrue(hasattr(parser, '_sourcemap_compat'))
+
+
 repr_visitor = generic.ReprVisitor()
 
 
 def parse_to_repr(value):
-    return repr_visitor.visit(es5(value))
+    return repr_visitor.visit(es5(value), pos=True)
 
 
 def singleline(s):
@@ -137,8 +180,14 @@ def singleline(s):
     return ''.join(clean(t) for t in textwrap.dedent(s).splitlines())
 
 
-ParsedNodeTypeTestCase = build_equality_testcase(
-    'ParsedNodeTypeTestCase', parse_to_repr, ((
+def _parse_to_repr_sourcemap_compat(value):
+    return repr_visitor.visit(parse(value), pos=True)
+
+
+# Note: this tests for affected changes compared to previous behavior,
+# which is slated for removal in 1.0.0
+ParsedNodeTypeSrcmapCompatTestCase = build_equality_testcase(
+    'ParsedNodeTypeSrcmapCompatTestCase', _parse_to_repr_sourcemap_compat, ((
         label,
         textwrap.dedent(argument).strip(),
         singleline(result),
@@ -150,10 +199,12 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[<Block ?children=[
-          <VarStatement ?children=[<VarDecl identifier=<Identifier value='a'>,
-            initializer=<Number value='5'>>]>
-        ]>]>
+        <ES5Program @1:1 ?children=[
+          <Block @1:1 ?children=[<VarStatement @2:3 ?children=[
+            <VarDecl @2:7 identifier=<Identifier @2:7 value='a'>,
+              initializer=<Number @2:11 value='5'>>
+          ]>]>
+        ]>
         """,
     ), (
         'variable_statement',
@@ -165,28 +216,32 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         var a = 5, b = 7;
         """,
         """
-        <ES5Program ?children=[
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier value='a'>, initializer=None>
+        <ES5Program @1:1 ?children=[
+          <VarStatement @1:1 ?children=[
+            <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+              initializer=None>
           ]>,
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier value='b'>, initializer=None>
+          <VarStatement @2:1 ?children=[
+            <VarDecl @2:5 identifier=<Identifier @2:5 value='b'>,
+              initializer=None>
           ]>,
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier value='a'>, initializer=None>,
-            <VarDecl identifier=<Identifier value='b'>, initializer=<
-              Number value='3'>>
+          <VarStatement @3:1 ?children=[
+            <VarDecl @3:5 identifier=<Identifier @3:5 value='a'>,
+              initializer=None>,
+            <VarDecl @3:8 identifier=<Identifier @3:8 value='b'>,
+              initializer=<Number @3:12 value='3'>>
           ]>,
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier value='a'>,
-              initializer=<Number value='1'>>,
-            <VarDecl identifier=<Identifier value='b'>, initializer=None>
+          <VarStatement @4:1 ?children=[
+            <VarDecl @4:5 identifier=<Identifier @4:5 value='a'>,
+              initializer=<Number @4:9 value='1'>>,
+            <VarDecl @4:12 identifier=<Identifier @4:12 value='b'>,
+              initializer=None>
           ]>,
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier value='a'>, initializer=<
-              Number value='5'>>,
-            <VarDecl identifier=<Identifier value='b'>, initializer=<
-              Number value='7'>>
+          <VarStatement @5:1 ?children=[
+            <VarDecl @5:5 identifier=<Identifier @5:5 value='a'>,
+              initializer=<Number @5:9 value='5'>>,
+            <VarDecl @5:12 identifier=<Identifier @5:12 value='b'>,
+              initializer=<Number @5:16 value='7'>>
           ]>
         ]>
         """,
@@ -198,21 +253,21 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         ;
         """,
         """
-        <ES5Program ?children=[
-          <EmptyStatement value=';'>,
-          <EmptyStatement value=';'>,
-          <EmptyStatement value=';'>
+        <ES5Program @1:1 ?children=[
+          <EmptyStatement @1:1 value=';'>,
+          <EmptyStatement @2:1 value=';'>,
+          <EmptyStatement @3:1 value=';'>
         ]>
         """,
     ), (
         'if_statement_inline',
         'if (true) var x = 100;',
         """
-        <ES5Program ?children=[<If alternative=None,
-          consequent=<VarStatement ?children=[
-            <VarDecl identifier=<Identifier value='x'>,
-              initializer=<Number value='100'>>
-          ]>, predicate=<Boolean value='true'>>
+        <ES5Program @1:1 ?children=[<If @1:1 alternative=None,
+          consequent=<VarStatement @1:11 ?children=[
+            <VarDecl @1:15 identifier=<Identifier @1:15 value='x'>,
+              initializer=<Number @1:19 value='100'>>
+          ]>, predicate=<Boolean @1:5 value='true'>>
         ]>
         """,
     ), (
@@ -224,36 +279,35 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[<If alternative=None,
-          consequent=<Block ?children=[
-            <VarStatement ?children=[
-              <VarDecl identifier=<Identifier value='x'>,
-                initializer=<Number value='100'>>
+        <ES5Program @1:1 ?children=[<If @1:1 alternative=None,
+          consequent=<Block @1:11 ?children=[
+            <VarStatement @2:3 ?children=[
+              <VarDecl @2:7 identifier=<Identifier @2:7 value='x'>,
+                initializer=<Number @2:11 value='100'>>
             ]>,
-            <VarStatement ?children=[
-              <VarDecl identifier=<Identifier value='y'>,
-                initializer=<Number value='200'>>
+            <VarStatement @3:3 ?children=[
+              <VarDecl @3:7 identifier=<Identifier @3:7 value='y'>,
+                initializer=<Number @3:11 value='200'>>
             ]>
           ]>,
-          predicate=<Boolean value='true'>>
+          predicate=<Boolean @1:5 value='true'>>
         ]>
         """,
     ), (
         'if_else_inline',
         'if (true) if (true) var x = 100; else var y = 200;',
         """
-        <ES5Program ?children=[<
-          If alternative=None,
-          consequent=<If alternative=<VarStatement ?children=[
-            <VarDecl identifier=<Identifier value='y'>,
-              initializer=<Number value='200'>>
+        <ES5Program @1:1 ?children=[
+          <If @1:1 alternative=None,
+            consequent=<If @1:11 alternative=<VarStatement @1:39 ?children=[
+              <VarDecl @1:43 identifier=<Identifier @1:43 value='y'>,
+                initializer=<Number @1:47 value='200'>>
             ]>,
-            consequent=<VarStatement ?children=[
-              <VarDecl identifier=<Identifier value='x'>,
-                initializer=<Number value='100'>>
-            ]>,
-            predicate=<Boolean value='true'>>,
-          predicate=<Boolean value='true'>>
+            consequent=<VarStatement @1:21 ?children=[
+              <VarDecl @1:25 identifier=<Identifier @1:25 value='x'>,
+                initializer=<Number @1:29 value='100'>>
+            ]>, predicate=<Boolean @1:15 value='true'>>,
+            predicate=<Boolean @1:5 value='true'>>
         ]>
         """,
     ), (
@@ -266,18 +320,20 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[
-          <If alternative=<Block ?children=[
-            <VarStatement ?children=[
-              <VarDecl identifier=<Identifier value='y'>,
-                initializer=<Number value='200'>>
-            ]>
-          ]>, consequent=<Block ?children=[
-            <VarStatement ?children=[
-              <VarDecl identifier=<Identifier value='x'>,
-                initializer=<Number value='100'>>
-            ]>
-          ]>, predicate=<Boolean value='true'>>
+        <ES5Program @1:1 ?children=[
+          <If @1:1 alternative=<Block @3:8 ?children=[
+            <VarStatement @4:3 ?children=[
+              <VarDecl @4:7 identifier=<Identifier @4:7 value='y'>,
+                initializer=<Number @4:11 value='200'>>
+              ]>
+            ]>,
+            consequent=<Block @1:11 ?children=[
+              <VarStatement @2:3 ?children=[
+                <VarDecl @2:7 identifier=<Identifier @2:7 value='x'>,
+                  initializer=<Number @2:11 value='100'>>
+                ]>
+              ]>,
+            predicate=<Boolean @1:5 value='true'>>
         ]>
         """,
     ), (
@@ -288,19 +344,23 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[
-          <For cond=<BinOp left=<Identifier value='i'>, op='<', right=<
-            Number value='10'>>, count=<
-              UnaryOp op='++', postfix=True, value=<Identifier value='i'>>,
-            init=<VarStatement ?children=[
-              <VarDecl identifier=<Identifier value='i'>,
-                initializer=<Number value='0'>>
-            ]>, statement=<Block ?children=[
-              <ExprStatement expr=<Assign left=<Identifier value='x'>,
-                op='=', right=<BinOp left=<Number value='10'>, op='*',
-                  right=<Identifier value='i'>>>>
-            ]
-          >>
+        <ES5Program @1:1 ?children=[
+          <For @1:1 cond=<ExprStatement @1:17 expr=<BinOp @1:19 left=<
+                Identifier @1:17 value='i'>,
+              op='<',
+              right=<Number @1:21 value='10'>>>,
+            count=<PostfixExpr @1:26 op='++', value=<
+              Identifier @1:25 value='i'>>,
+            init=<VarStatement @1:6 ?children=[
+                <VarDecl @1:10 identifier=<Identifier @1:10 value='i'>,
+                  initializer=<Number @1:14 value='0'>>
+              ]>,
+            statement=<Block @1:30 ?children=[
+              <ExprStatement @2:3 expr=<Assign @2:5 left=<
+                Identifier @2:3 value='x'>, op='=', right=<
+                  BinOp @2:10 left=<Number @2:7 value='10'>, op='*', right=<
+                    Identifier @2:12 value='i'>>>>
+            ]>>
         ]>
         """,
     ), (
@@ -311,22 +371,29 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[<For cond=<BinOp left=<BinOp left=<
-          Identifier value='i'>, op='<', right=<Identifier value='j'>>,
-          op='&&', right=<BinOp left=<Identifier value='j'>, op='<', right=<
-            Number value='15'>>>,
-          count=<Comma left=<UnaryOp op='++', postfix=True, value=<
-            Identifier value='i'>>, right=<UnaryOp op='++', postfix=True
-            , value=<Identifier value='j'>>>,
-          init=<Comma left=<Assign left=<Identifier value='i'>,
-            op='=', right=<Number value='0'>>, right=<Assign left=<
-              Identifier value='j'>, op='=', right=<Number value='10'>>>,
-          statement=<Block ?children=[
-            <ExprStatement expr=<Assign left=<Identifier value='x'>, op='=',
-              right=<BinOp left=<Identifier value='i'>, op='*',
-              right=<Identifier value='j'>>>>
-          ]>>
-        ]>
+        <ES5Program @1:1 ?children=[<For @1:1 cond=<ExprStatement @1:21 expr=<
+          BinOp @1:27 left=<
+            BinOp @1:23 left=<Identifier @1:21 value='i'>, op='<', right=<
+                Identifier @1:25 value='j'>>,
+              op='&&', right=<BinOp @1:32 left=<Identifier @1:30 value='j'>,
+                op='<', right=<Number @1:34 value='15'>>>>,
+          count=<Comma @1:41 left=<PostfixExpr @1:39 op='++',
+              value=<Identifier @1:38 value='i'>>,
+            right=<PostfixExpr @1:44 op='++', value=<
+              Identifier @1:43 value='j'>>>,
+          init=<ExprStatement @1:6 expr=<
+            Comma @1:11 left=<Assign @1:8 left=<
+                Identifier @1:6 value='i'>,
+              op='=', right=<Number @1:10 value='0'>>, right=<
+                  Assign @1:15 left=<Identifier @1:13 value='j'>, op='=',
+                right=<Number @1:17 value='10'>>>>,
+          statement=<Block @1:48 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='x'>, op='=', right=<
+                BinOp @2:9 left=<Identifier @2:7 value='i'>, op='*',
+                  right=<Identifier @2:11 value='j'>>>>
+          ]
+        >>]>
         """,
 
     ), (
@@ -337,9 +404,9 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[
-          <ForIn item=<Identifier value='p'>,
-            iterable=<Identifier value='obj'>, statement=<Block >>
+        <ES5Program @1:1 ?children=[
+          <ForIn @1:1 item=<Identifier @1:6 value='p'>,
+            iterable=<Identifier @1:11 value='obj'>, statement=<Block @1:16 >>
         ]>
         """,
     ), (
@@ -351,16 +418,23 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[<For cond=<BinOp left=<Identifier value='d'>,
-          op='<', right=<Identifier value='b'>>, count=None,
-          init=<BinOp left=<Identifier value='Q'>, op='||',
-            right=<Assign left=<Identifier value='Q'>, op='=',
-              right=<Array items=[]>>>,
-          statement=<Block ?children=[
-            <ExprStatement expr=<Assign left=<Identifier value='d'>,
-              op='=', right=<Number value='1'>>>
-          ]>>
-        ]>
+        <ES5Program @1:1 ?children=[<For @1:1 cond=
+          <ExprStatement @1:21 expr=<BinOp @1:23 left=<
+            Identifier @1:21 value='d'>, op='<', right=<
+            Identifier @1:25 value='b'>>>,
+          count=None,
+          init=<ExprStatement @1:6 expr=<BinOp @1:8 left=<
+            Identifier @1:6 value='Q'>,
+              op='||', right=<GroupingOp @1:11 expr=<Assign @1:14 left=
+                <Identifier @1:12 value='Q'>,
+                op='=', right=<Array @1:16 items=[]>
+            >>>>,
+          statement=<Block @1:30 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='d'>, op='=',
+              right=<Number @2:7 value='1'>>>
+          ]
+        >>]>
         """,
     ), (
         'iteration_ternary_initializer',
@@ -370,17 +444,25 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[<For cond=<Number value='21'>, count=None,
-          init=<BinOp left=<BinOp left=<Number value='2'>, op='>>', right=<
-            Conditional alternative=<Number value='43'>,
-            consequent=<Number value='32'>,
-            predicate=<Identifier value='foo'>>>, op='&&',
-            right=<Number value='54'>>, statement=<
-              Block ?children=[
-                <ExprStatement expr=<Assign left=<Identifier value='a'>,
-                  op='=', right=<Identifier value='c'>>>
-              ]>>
-        ]>
+        <ES5Program @1:1 ?children=[<For @1:1 cond=
+          <ExprStatement @1:34 expr=<Number @1:34 value='21'>>,
+          count=None,
+          init=<ExprStatement @1:6 expr=<
+            BinOp @1:27 left=<BinOp @1:8 left=<
+              Number @1:6 value='2'>, op='>>', right=
+                <GroupingOp @1:11 expr=
+                  <Conditional @1:16 alternative=<Number @1:23 value='43'>,
+                    consequent=<Number @1:18 value='32'>,
+                    predicate=<Identifier @1:12 value='foo'>>
+              >>, op='&&', right=<Number @1:30 value='54'>>>,
+          statement=<
+            Block @1:40 ?children=[
+              <ExprStatement @2:3 expr=<Assign @2:5 left=<
+                Identifier @2:3 value='a'>, op='=', right=<
+                  Identifier @2:7 value='c'>>>
+            ]
+          >
+        >]>
         """,
     ), (
         'iteration_regex_initialiser',
@@ -390,15 +472,17 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[
-          <For cond=<FunctionCall args=[],
-            identifier=<Identifier value='cond'>>,
-            count=<UnaryOp op='++', postfix=False,
-            value=<Identifier value='z'>>,
-            init=<Regex value='/^.+/g'>,
-            statement=<Block ?children=[
-              <ExprStatement expr=<FunctionCall args=[],
-                identifier=<Identifier value='ev'>>>
+        <ES5Program @1:1 ?children=[
+          <For @1:1 cond=<ExprStatement @1:14 expr=<FunctionCall @1:14 args=<
+              Arguments @1:18 items=[]>,
+              identifier=<Identifier @1:14 value='cond'>>>,
+            count=<UnaryOp @1:22 op='++', postfix=False,
+              value=<Identifier @1:24 value='z'>>,
+            init=<ExprStatement @1:6 expr=<Regex @1:6 value='/^.+/g'>>,
+            statement=<Block @1:27 ?children=[
+              <ExprStatement @2:3 expr=<FunctionCall @2:3 args=<
+                Arguments @2:5 items=[]>,
+                identifier=<Identifier @2:3 value='ev'>>>
             ]>>
         ]>
         """,
@@ -410,13 +494,14 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[<ForIn item=<VarDecl identifier=<
-          Identifier value='p'>, initializer=None>, iterable=<
-            Identifier value='obj'>, statement=<
-              Block ?children=[
-              <ExprStatement expr=<Assign left=<Identifier value='p'>,
-                op='=', right=<Number value='1'>>>
-              ]>
+        <ES5Program @1:1 ?children=[<ForIn @1:1 item=<
+          VarDeclNoIn @1:6 identifier=<Identifier @1:10 value='p'>,
+            initializer=None>, iterable=<Identifier @1:15 value='obj'>,
+          statement=<Block @1:20 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='p'>, op='=', right=<
+                Number @2:7 value='1'>>>
+          ]>
         >]>
         """,
     ), (
@@ -427,10 +512,12 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         } while (true);
         """,
         """
-        <ES5Program ?children=[<DoWhile predicate=<Boolean value='true'>,
-          statement=<Block ?children=[
-            <ExprStatement expr=<Assign left=<Identifier value='x'>,
-              op='+=', right=<Number value='1'>>>
+        <ES5Program @1:1 ?children=[<DoWhile @1:1 predicate=<
+            Boolean @3:10 value='true'>,
+          statement=<Block @1:4 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='x'>,
+              op='+=', right=<Number @2:8 value='1'>>>
           ]>>
         ]>
         """,
@@ -442,11 +529,12 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[
-          <While predicate=<Boolean value='false'>,
-            statement=<Block ?children=[
-              <ExprStatement expr=<Assign left=<Identifier value='x'>,
-                op='=', right=<Null value='null'>>>
+        <ES5Program @1:1 ?children=[
+          <While @1:1 predicate=<Boolean @1:8 value='false'>,
+            statement=<Block @1:15 ?children=[
+              <ExprStatement @2:3 expr=<Assign @2:5 left=
+                <Identifier @2:3 value='x'>,
+                op='=', right=<Null @2:7 value='null'>>>
             ]>
           >
         ]>
@@ -465,12 +553,15 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[
-          <While predicate=<Boolean value='true'>, statement=<Block ?children=[
-            <Continue identifier=None>,
-            <ExprStatement expr=<Assign left=<Identifier value='s'>,
-              op='=', right=<String value="'I am not reachable'">>>
-          ]>>
+        <ES5Program @1:1 ?children=[
+          <While @1:1 predicate=<Boolean @1:8 value='true'>,
+            statement=<Block @1:14 ?children=[
+              <Continue @2:3 identifier=None>,
+              <ExprStatement @3:3 expr=<Assign @3:5 left=
+                <Identifier @3:3 value='s'>, op='=',
+                right=<String @3:7 value="'I am not reachable'">>>
+            ]>
+          >
         ]>
         """,
     ), (
@@ -482,12 +573,15 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[
-          <While predicate=<Boolean value='true'>, statement=<Block ?children=[
-            <Continue identifier=<Identifier value='label1'>>,
-            <ExprStatement expr=<Assign left=<Identifier value='s'>,
-              op='=', right=<String value="'I am not reachable'">>>
-          ]>>
+        <ES5Program @1:1 ?children=[
+          <While @1:1 predicate=<Boolean @1:8 value='true'>,
+            statement=<Block @1:14 ?children=[
+              <Continue @2:3 identifier=<Identifier @2:12 value='label1'>>,
+              <ExprStatement @3:3 expr=<Assign @3:5 left=
+                <Identifier @3:3 value='s'>, op='=',
+                right=<String @3:7 value="'I am not reachable'">>>
+            ]>
+          >
         ]>
         """,
     ), (
@@ -503,14 +597,15 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
         # test 18
         """
-        <ES5Program ?children=[
-          <While predicate=<Boolean value='true'>,
-            statement=<Block ?children=[
-              <Break identifier=None>,
-              <ExprStatement expr=<Assign left=<Identifier value='s'>,
-                op='=', right=<String value="'I am not reachable'">>>
-            ]
-          >>
+        <ES5Program @1:1 ?children=[
+          <While @1:1 predicate=<Boolean @1:8 value='true'>,
+            statement=<Block @1:14 ?children=[
+              <Break @2:3 identifier=None>,
+              <ExprStatement @3:3 expr=<Assign @3:5 left=
+                <Identifier @3:3 value='s'>, op='=',
+                right=<String @3:7 value="'I am not reachable'">>>
+            ]>
+          >
         ]>
         """,
     ), (
@@ -522,12 +617,15 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[
-          <While predicate=<Boolean value='true'>, statement=<Block ?children=[
-            <Break identifier=<Identifier value='label1'>>,
-            <ExprStatement expr=<Assign left=<Identifier value='s'>,
-              op='=', right=<String value="'I am not reachable'">>>
-          ]>>
+        <ES5Program @1:1 ?children=[
+          <While @1:1 predicate=<Boolean @1:8 value='true'>,
+            statement=<Block @1:14 ?children=[
+              <Break @2:3 identifier=<Identifier @2:9 value='label1'>>,
+              <ExprStatement @3:3 expr=<Assign @3:5 left=
+                <Identifier @3:3 value='s'>, op='=',
+                right=<String @3:7 value="'I am not reachable'">>>
+            ]>
+          >
         ]>
         """,
     ), (
@@ -542,7 +640,8 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[<Block ?children=[<Return expr=None>]>]>
+        <ES5Program @1:1 ?children=[<Block @1:1 ?children=[
+          <Return @2:3 expr=None>]>]>
         """,
     ), (
         'return_1',
@@ -552,8 +651,8 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[
-          <Block ?children=[<Return expr=<Number value='1'>>]>]>
+        <ES5Program @1:1 ?children=[<Block @1:1 ?children=[
+          <Return @2:3 expr=<Number @2:10 value='1'>>]>]>
         """,
     ), (
         # test21
@@ -567,12 +666,13 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[
-          <With expr=<Identifier value='x'>, statement=<Block ?children=[
-            <VarStatement ?children=[
-              <VarDecl identifier=<Identifier value='y'>, initializer=
-                <BinOp left=<Identifier value='x'>, op='*', right=
-                <Number value='2'>>>
+        <ES5Program @1:1 ?children=[
+          <With @1:1 expr=<Identifier @1:7 value='x'>,
+            statement=<Block @1:10 ?children=[
+              <VarStatement @2:3 ?children=[
+                <VarDecl @2:7 identifier=<Identifier @2:7 value='y'>,
+                  initializer=<BinOp @2:13 left=<Identifier @2:11 value='x'>,
+                    op='*', right=<Number @2:15 value='2'>>>
             ]>
           ]>>
         ]>
@@ -589,12 +689,13 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[<Label identifier=<
-          Identifier value='label'>, statement=<
-            While predicate=<Boolean value='true'>,
-            statement=<Block ?children=[
-              <ExprStatement expr=<Assign left=<Identifier value='x'>,
-                op='*=', right=<Number value='3'>>>
+        <ES5Program @1:1 ?children=[<Label @1:6 identifier=<
+          Identifier @1:1 value='label'>, statement=<
+            While @1:8 predicate=<Boolean @1:15 value='true'>,
+            statement=<Block @1:21 ?children=[
+              <ExprStatement @2:3 expr=<Assign @2:5 left=<
+                Identifier @2:3 value='x'>, op='*=', right=<
+                  Number @2:8 value='3'>>>
             ]>
         >>]>
         """,
@@ -618,24 +719,69 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[<
-          Switch cases=[
-            <Case elements=[], expr=<Number value='6'>>,
-            <Case elements=[
-              <ExprStatement expr=<Assign left=<Identifier value='x'>,
-                op='=', right=<String value="'Weekend'">>>,
-              <Break identifier=None>
-            ], expr=<Number value='7'>>,
-            <Case elements=[
-              <ExprStatement expr=<Assign left=<Identifier value='x'>,
-                op='=', right=<String value="'Monday'">>>,
-              <Break identifier=None>
-            ], expr=<Number value='1'>>
-          ],
-          default=<Default elements=[
-            <Break identifier=None>
+        <ES5Program @1:1 ?children=[
+          <SwitchStatement @1:1 case_block=<CaseBlock @1:22 ?children=[
+            <Case @2:3 elements=[], expr=<Number @2:8 value='6'>>,
+            <Case @3:3 elements=[
+              <ExprStatement @4:5 expr=<Assign @4:7 left=<
+                Identifier @4:5 value='x'>, op='=', right=<
+                  String @4:9 value="'Weekend'">>>,
+              <Break @5:5 identifier=None>
+            ], expr=<Number @3:8 value='7'>>,
+            <Case @6:3 elements=[
+              <ExprStatement @7:5 expr=<Assign @7:7 left=<
+                Identifier @7:5 value='x'>, op='=', right=<
+                  String @7:9 value="'Monday'">>>,
+              <Break @8:5 identifier=None>
+            ], expr=<Number @6:8 value='1'>>,
+            <Default @9:3 elements=[
+              <Break @10:5 identifier=None>
+            ]>
           ]>,
-          expr=<Identifier value='day_of_week'>>
+          expr=<Identifier @1:9 value='day_of_week'>>
+        ]>
+        """,
+
+    ), (
+        'switch_statement_case_default_case',
+        """
+        switch (result) {
+          case 'good':
+            do_good();
+          case 'pass':
+            do_pass();
+            break;
+          default:
+            log_unexpected_result();
+          case 'error':
+            handle_error();
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <SwitchStatement @1:1 case_block=<CaseBlock @1:17 ?children=[
+            <Case @2:3 elements=[
+                <ExprStatement @3:5 expr=<FunctionCall @3:5 args=
+                  <Arguments @3:12 items=[]>,
+                  identifier=<Identifier @3:5 value='do_good'>>>
+            ], expr=<String @2:8 value="'good'">>,
+            <Case @4:3 elements=[
+              <ExprStatement @5:5 expr=<FunctionCall @5:5 args=
+                <Arguments @5:12 items=[]>,
+                identifier=<Identifier @5:5 value='do_pass'>>>,
+              <Break @6:5 identifier=None>
+            ], expr=<String @4:8 value="'pass'">>,
+            <Default @7:3 elements=[
+              <ExprStatement @8:5 expr=<FunctionCall @8:5 args=
+                <Arguments @8:26 items=[]>,
+                identifier=<Identifier @8:5 value='log_unexpected_result'>>>
+            ]>,
+            <Case @9:3 elements=[
+              <ExprStatement @10:5 expr=<FunctionCall @10:5 args=
+                <Arguments @10:17 items=[]>,
+                identifier=<Identifier @10:5 value='handle_error'>>>
+            ], expr=<String @9:8 value="'error'">>
+          ]>, expr=<Identifier @1:9 value='result'>>
         ]>
         """,
 
@@ -649,7 +795,9 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         throw 'exc';
         """,
         """
-        <ES5Program ?children=[<Throw expr=<String value="'exc'">>]>
+        <ES5Program @1:1 ?children=[
+          <Throw @1:1 expr=<String @1:7 value="'exc'">>
+        ]>
         """,
     ), (
         ################################
@@ -658,7 +806,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'debugger_statement',
         'debugger;',
         """
-        <ES5Program ?children=[<Debugger value='debugger'>]>
+        <ES5Program @1:1 ?children=[<Debugger @1:1 value='debugger'>]>
         """,
     ), (
         ################################
@@ -689,61 +837,72 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
 
         """
-        <ES5Program ?children=[
-          <ExprStatement expr=<BinOp left=<BinOp left=<Number value='5'>,
-            op='+', right=<Number value='7'>>, op='-',
-            right=<BinOp left=<Number value='20'>, op='*',
-              right=<Number value='10'>>>>,
-          <ExprStatement expr=<UnaryOp op='++', postfix=False, value=<
-            Identifier value='x'>>>,
-          <ExprStatement expr=<UnaryOp op='--', postfix=False, value=<
-            Identifier value='x'>>>,
-          <ExprStatement expr=<UnaryOp op='++', postfix=True, value=<
-            Identifier value='x'>>>,
-          <ExprStatement expr=<UnaryOp op='--', postfix=True, value=<
-            Identifier value='x'>>>,
-          <ExprStatement expr=<Assign left=<Identifier value='x'>, op='=',
-            right=<Assign left=<Number value='17'>, op='/=',
-              right=<Number value='3'>>>>,
-          <ExprStatement expr=<Assign left=<Identifier value='s'>, op='=',
-            right=<Conditional alternative=<BinOp left=<
-              Regex value='/x:3;x<5;y</g'>, op='/', right=<
-                Identifier value='i'>>,
-              consequent=<Identifier value='z'>,
-              predicate=<Identifier value='mot'>>>>,
-          <ExprStatement expr=<BinOp left=<Number value='1'>, op='<<',
-            right=<Number value='2'>>>,
-          <ExprStatement expr=<Assign left=<Identifier value='foo'>,
-            op='=', right=<BinOp left=<Number value='2'>, op='<<',
-              right=<Number value='3'>>>>,
-          <ExprStatement expr=<BinOp left=<Number value='1'>, op='<',
-            right=<Number value='2'>>>,
-          <ExprStatement expr=<Assign left=<Identifier value='bar'>, op='=',
-            right=<BinOp left=<Number value='1'>, op='<',
-              right=<Number value='2'>>>>,
-          <ExprStatement expr=<BinOp left=<Number value='1'>, op='|',
-            right=<Number value='2'>>>,
-          <ExprStatement expr=<Assign left=<Identifier value='bar'>, op='=',
-            right=<BinOp left=<Number value='1'>, op='&',
-              right=<Number value='2'>>>>,
-          <ExprStatement expr=<BinOp left=<Number value='1'>, op='|',
-            right=<BinOp left=<Number value='2'>, op='&',
-              right=<Number value='8'>>>>,
-          <ExprStatement expr=<Assign left=<Identifier value='bar'>, op='=',
-            right=<BinOp left=<BinOp left=<Number value='1'>, op='&',
-              right=<Number value='2'>>, op='|', right=<Number value='8'>>>>,
-          <ExprStatement expr=<BinOp left=<Identifier value='x'>, op='^',
-            right=<Identifier value='y'>>>,
-          <ExprStatement expr=<Assign left=<Identifier value='bar'>, op='=',
-            right=<BinOp left=<Identifier value='x'>, op='^',
-              right=<Identifier value='y'>>>>,
-          <ExprStatement expr=<BinOp left=<Identifier value='x'>, op='&&',
-            right=<Identifier value='y'>>>,
-          <ExprStatement expr=<Assign left=<Identifier value='bar'>, op='=',
-            right=<BinOp left=<Identifier value='x'>, op='&&',
-              right=<Identifier value='y'>>>>,
-          <ExprStatement expr=<Comma left=<Number value='1'>,
-            right=<Number value='2'>>>
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:7 left=<BinOp @1:3 left=<
+            Number @1:1 value='5'>, op='+', right=<Number @1:5 value='7'>>,
+              op='-', right=<BinOp @1:12 left=<Number @1:9 value='20'>, op='*',
+                right=<Number @1:14 value='10'>>>>,
+          <ExprStatement @2:1 expr=<UnaryOp @2:1 op='++', postfix=False,
+            value=<Identifier @2:3 value='x'>>>,
+          <ExprStatement @3:1 expr=<UnaryOp @3:1 op='--', postfix=False,
+            value=<Identifier @3:3 value='x'>>>,
+          <ExprStatement @4:1 expr=<PostfixExpr @4:2 op='++',
+            value=<Identifier @4:1 value='x'>>>,
+          <ExprStatement @5:1 expr=<PostfixExpr @5:2 op='--',
+            value=<Identifier @5:1 value='x'>>>,
+          <ExprStatement @6:1 expr=<Assign @6:3 left=<
+            Identifier @6:1 value='x'>, op='=',
+            right=<Assign @6:8 left=<Number @6:5 value='17'>, op='/=',
+              right=<Number @6:11 value='3'>>>>,
+          <ExprStatement @7:1 expr=<Assign @7:3 left=<
+            Identifier @7:1 value='s'>, op='=',
+            right=<Conditional @7:9 alternative=<
+              BinOp @7:29 left=<Regex @7:15 value='/x:3;x<5;y</g'>, op='/',
+              right=<Identifier @7:31 value='i'>>,
+              consequent=<Identifier @7:11 value='z'>,
+              predicate=<Identifier @7:5 value='mot'>>>>,
+          <ExprStatement @8:1 expr=<BinOp @8:3 left=<Number @8:1 value='1'>,
+            op='<<', right=<Number @8:6 value='2'>>>,
+          <ExprStatement @9:1 expr=<Assign @9:5 left=<
+            Identifier @9:1 value='foo'>, op='=', right=<BinOp @9:9 left=<
+              Number @9:7 value='2'>, op='<<', right=<
+                Number @9:12 value='3'>>>>,
+          <ExprStatement @10:1 expr=<BinOp @10:3 left=<Number @10:1 value='1'>,
+            op='<', right=<Number @10:5 value='2'>>>,
+          <ExprStatement @11:1 expr=<Assign @11:5 left=<
+            Identifier @11:1 value='bar'>, op='=', right=<BinOp @11:9 left=<
+              Number @11:7 value='1'>, op='<', right=<
+              Number @11:11 value='2'>>>>,
+          <ExprStatement @12:1 expr=<BinOp @12:3 left=<Number @12:1 value='1'>,
+            op='|', right=<Number @12:5 value='2'>>>,
+          <ExprStatement @13:1 expr=<Assign @13:5 left=<
+            Identifier @13:1 value='bar'>, op='=', right=<BinOp @13:9 left=<
+              Number @13:7 value='1'>, op='&', right=<
+              Number @13:11 value='2'>>>>,
+          <ExprStatement @14:1 expr=<BinOp @14:3 left=<Number @14:1 value='1'>,
+            op='|', right=<BinOp @14:7 left=<Number @14:5 value='2'>,
+              op='&', right=<Number @14:9 value='8'>>>>,
+          <ExprStatement @15:1 expr=<Assign @15:5 left=<
+            Identifier @15:1 value='bar'>, op='=', right=<BinOp @15:13 left=<
+              BinOp @15:9 left=<Number @15:7 value='1'>, op='&', right=<
+                Number @15:11 value='2'>>, op='|',
+                  right=<Number @15:15 value='8'>>>>,
+          <ExprStatement @16:1 expr=<BinOp @16:3 left=<
+            Identifier @16:1 value='x'>, op='^', right=<
+            Identifier @16:5 value='y'>>>,
+          <ExprStatement @17:1 expr=<Assign @17:5 left=<
+            Identifier @17:1 value='bar'>, op='=', right=<BinOp @17:9 left=<
+              Identifier @17:7 value='x'>, op='^', right=<
+              Identifier @17:11 value='y'>>>>,
+          <ExprStatement @18:1 expr=<BinOp @18:3 left=<
+            Identifier @18:1 value='x'>, op='&&', right=<
+            Identifier @18:6 value='y'>>>,
+          <ExprStatement @19:1 expr=<Assign @19:5 left=<
+            Identifier @19:1 value='bar'>, op='=', right=<BinOp @19:9 left=<
+              Identifier @19:7 value='x'>, op='&&', right=<
+              Identifier @19:12 value='y'>>>>,
+          <ExprStatement @20:1 expr=<Comma @20:2 left=<Number @20:1 value='1'>,
+            right=<Number @20:3 value='2'>>>
         ]>
         """,
 
@@ -761,17 +920,19 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[<Try catch=<
-          Catch elements=<Block ?children=[
-            <ExprStatement expr=<Assign left=<Identifier value='x'>,
-              op='=', right=<Identifier value='exc'>>>
+        <ES5Program @1:1 ?children=[<Try @1:1 catch=<
+          Catch @3:3 elements=<Block @3:15 ?children=[
+            <ExprStatement @4:3 expr=<Assign @4:5 left=<
+              Identifier @4:3 value='x'>, op='=', right=<
+                Identifier @4:7 value='exc'>>>
             ]>,
-            identifier=<Identifier value='exc'>
+            identifier=<Identifier @3:10 value='exc'>
           >,
           fin=None,
-          statements=<Block ?children=[
-            <ExprStatement expr=<Assign left=<Identifier value='x'>, op='=',
-              right=<Number value='3'>>>
+          statements=<Block @1:5 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='x'>, op='=',
+              right=<Number @2:7 value='3'>>>
           ]>
         >]>
         """,
@@ -785,19 +946,16 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[<Try catch=None,
-          fin=<Finally ?children=[
-            <ExprStatement expr=<Assign left=<Identifier value='x'>, op='=',
-              right=<Null value='null'>>>
-            ], elements=<Block ?children=[
-              <ExprStatement expr=<Assign left=<Identifier value='x'>,
-                op='=', right=<Null value='null'>>>
-              ]
-            >
-          >,
-          statements=<Block ?children=[
-            <ExprStatement expr=<Assign left=<Identifier value='x'>,
-              op='=', right=<Number value='3'>>>
+        <ES5Program @1:1 ?children=[<Try @1:1 catch=None,
+          fin=<Finally @3:3 elements=<Block @3:11 ?children=[
+            <ExprStatement @4:3 expr=<Assign @4:5 left=<
+              Identifier @4:3 value='x'>, op='=', right=<
+                Null @4:7 value='null'>>>
+          ]>>,
+          statements=<Block @1:5 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='x'>, op='=',
+              right=<Number @2:7 value='3'>>>
           ]>
         >]>
         """,
@@ -814,21 +972,23 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[<Try catch=<
-          Catch elements=<Block ?children=[
-            <ExprStatement expr=<Assign left=<Identifier value='x'>,
-              op='=', right=<Identifier value='exc'>>>
-            ]>, identifier=<Identifier value='exc'>>,
-          fin=<Finally ?children=[
-            <ExprStatement expr=<Assign left=<Identifier value='y'>, op='=',
-              right=<Null value='null'>>>
-            ], elements=<Block ?children=[
-              <ExprStatement expr=<Assign left=<Identifier value='y'>, op='=',
-                right=<Null value='null'>>>
-            ]>>,
-          statements=<Block ?children=[
-            <ExprStatement expr=<Assign left=<Identifier value='x'>, op='=',
-              right=<Number value='5'>>>
+        <ES5Program @1:1 ?children=[<Try @1:1 catch=<
+          Catch @3:3 elements=<Block @3:15 ?children=[
+            <ExprStatement @4:3 expr=<Assign @4:5 left=<
+              Identifier @4:3 value='x'>, op='=', right=<
+                Identifier @4:7 value='exc'>>>
+            ]>,
+            identifier=<Identifier @3:10 value='exc'>
+          >,
+          fin=<Finally @5:3 elements=<Block @5:11 ?children=[
+            <ExprStatement @6:3 expr=<Assign @6:5 left=<
+              Identifier @6:3 value='y'>, op='=', right=<
+                Null @6:7 value='null'>>>
+          ]>>,
+          statements=<Block @1:5 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='x'>, op='=',
+              right=<Number @2:7 value='5'>>>
           ]>
         >]>
         """,
@@ -845,16 +1005,18 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[
-          <FuncDecl elements=[
-            <ExprStatement expr=<Assign left=<Identifier value='z'>, op='=',
-              right=<Number value='10'>>>,
-            <Return expr=<BinOp left=<BinOp left=<
-              Identifier value='x'>, op='+', right=<
-              Identifier value='y'>
-            >, op='+', right=<Identifier value='z'>>>
-          ], identifier=<Identifier value='foo'>, parameters=[
-            <Identifier value='x'>, <Identifier value='y'>]>
+        <ES5Program @1:1 ?children=[
+          <FuncDecl @1:1 elements=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='z'>, op='=', right=<
+              Number @2:7 value='10'>>>,
+            <Return @3:3 expr=<BinOp @3:16 left=<BinOp @3:12 left=<
+                Identifier @3:10 value='x'>,
+                op='+', right=<Identifier @3:14 value='y'>>,
+              op='+', right=<Identifier @3:18 value='z'>>>
+          ], identifier=<Identifier @1:10 value='foo'>, parameters=[
+            <Identifier @1:14 value='x'>, <Identifier @1:17 value='y'>
+          ]>
         ]>
         """,
     ), (
@@ -865,9 +1027,10 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[
-          <FuncDecl elements=[<Return expr=<Number value='10'>>],
-            identifier=<Identifier value='foo'>, parameters=[]>
+        <ES5Program @1:1 ?children=[
+          <FuncDecl @1:1 elements=[
+            <Return @2:3 expr=<Number @2:10 value='10'>>],
+            identifier=<Identifier @1:10 value='foo'>, parameters=[]>
         ]>
         """,
     ), (
@@ -878,11 +1041,11 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <ES5Program ?children=[
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier value='a'>,
-              initializer=<FuncExpr elements=[
-                <Return expr=<Number value='10'>>
+        <ES5Program @1:1 ?children=[
+          <VarStatement @1:1 ?children=[
+            <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+              initializer=<FuncExpr @1:9 elements=[
+                <Return @2:3 expr=<Number @2:10 value='10'>>
               ],
               identifier=None, parameters=[]>
             >
@@ -898,14 +1061,15 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <ES5Program ?children=[
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier value='a'>,
-              initializer=<FuncExpr elements=[
-                <Return expr=<BinOp left=<Identifier value='x'>,
-                  op='+', right=<Identifier value='y'>>>
-              ], identifier=<Identifier value='foo'>, parameters=[
-                <Identifier value='x'>, <Identifier value='y'>
+        <ES5Program @1:1 ?children=[
+          <VarStatement @1:1 ?children=[
+            <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+              initializer=<FuncExpr @1:9 elements=[
+                <Return @2:3 expr=<BinOp @2:12 left=<
+                  Identifier @2:10 value='x'>, op='+',
+                  right=<Identifier @2:14 value='y'>>>
+              ], identifier=<Identifier @1:18 value='foo'>, parameters=[
+                <Identifier @1:22 value='x'>, <Identifier @1:25 value='y'>
               ]>
             >
           ]>]>
@@ -917,10 +1081,10 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <ES5Program ?children=[<VarStatement ?children=[
-          <VarDecl identifier=<Identifier value='x'>,
-            initializer=<FuncExpr elements=[],
-              identifier=<Identifier value='y'>, parameters=[]>>]>]>
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='x'>,
+            initializer=<FuncExpr @1:9 elements=[],
+              identifier=<Identifier @1:18 value='y'>, parameters=[]>>]>]>
         """,
     ), (
         # nested function declaration
@@ -933,12 +1097,10 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }
         """,
         """
-        <ES5Program ?children=[
-          <FuncDecl elements=[
-            <FuncDecl elements=[], identifier=<Identifier value='bar'>,
-              parameters=[]>
-            ], identifier=<Identifier value='foo'>, parameters=[]>
-        ]>
+        <ES5Program @1:1 ?children=[<FuncDecl @1:1 elements=[
+          <FuncDecl @2:3 elements=[], identifier=<
+            Identifier @2:12 value='bar'>, parameters=[]>
+        ], identifier=<Identifier @1:10 value='foo'>, parameters=[]>]>
         """,
     ), (
         # function call
@@ -949,12 +1111,14 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         var r = foo();
         """,
         """
-        <ES5Program ?children=[
-          <ExprStatement expr=<FunctionCall args=[], identifier=<
-            Identifier value='foo'>>>,
-          <VarStatement ?children=[<VarDecl identifier=<Identifier value='r'>,
-            initializer=<FunctionCall args=[],
-              identifier=<Identifier value='foo'>>>]>
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=<
+            Arguments @1:4 items=[]>, identifier=<
+            Identifier @1:1 value='foo'>>>,
+          <VarStatement @2:1 ?children=[
+            <VarDecl @2:5 identifier=<Identifier @2:5 value='r'>,
+              initializer=<FunctionCall @2:9 args=<Arguments @2:12 items=[]>,
+                identifier=<Identifier @2:9 value='foo'>>>]>
         ]>
         """,
     ), (
@@ -964,13 +1128,18 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         var r = foo(x, 7);
         """,
         """
-        <ES5Program ?children=[
-          <ExprStatement expr=<FunctionCall args=[
-            <Identifier value='x'>, <Number value='7'>
-          ], identifier=<Identifier value='foo'>>>,
-          <VarStatement ?children=[<VarDecl identifier=<Identifier value='r'>,
-            initializer=<FunctionCall args=[<Identifier value='x'>,
-              <Number value='7'>], identifier=<Identifier value='foo'>>>
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=<
+            Arguments @1:4 items=[
+              <Identifier @1:5 value='x'>, <Number @1:8 value='7'>
+            ]>,
+            identifier=<Identifier @1:1 value='foo'>>>,
+          <VarStatement @2:1 ?children=[
+            <VarDecl @2:5 identifier=<Identifier @2:5 value='r'>,
+              initializer=<FunctionCall @2:9 args=<Arguments @2:12 items=[
+                <Identifier @2:13 value='x'>, <Number @2:16 value='7'>
+              ]>,
+              identifier=<Identifier @2:9 value='foo'>>>
           ]>
         ]>
         """,
@@ -981,13 +1150,17 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         var j = foo()[10];
         """,
         """
-        <ES5Program ?children=[
-          <ExprStatement expr=<BracketAccessor expr=<Number value='10'>,
-            node=<FunctionCall args=[], identifier=<Identifier value='foo'>>>>,
-          <VarStatement ?children=[<VarDecl identifier=<Identifier value='j'>,
-            initializer=<BracketAccessor expr=<Number value='10'>,
-              node=<FunctionCall args=[], identifier=<
-                Identifier value='foo'>>>>
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BracketAccessor @1:6 expr=<
+              Number @1:7 value='10'>,
+            node=<FunctionCall @1:1 args=<Arguments @1:4 items=[]>,
+            identifier=<Identifier @1:1 value='foo'>>>>,
+          <VarStatement @2:1 ?children=[
+            <VarDecl @2:5 identifier=<Identifier @2:5 value='j'>,
+              initializer=<BracketAccessor @2:14 expr=<
+                Number @2:15 value='10'>, node=<FunctionCall @2:9 args=<
+                Arguments @2:12 items=[]>,
+                identifier=<Identifier @2:9 value='foo'>>>>
           ]>
         ]>
         """,
@@ -998,14 +1171,18 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         var bar = foo().foo;
         """,
         """
-        <ES5Program ?children=[
-          <ExprStatement expr=<DotAccessor identifier=<Identifier value='foo'>,
-            node=<FunctionCall args=[], identifier=<Identifier value='foo'>>>>,
-          <VarStatement ?children=[<VarDecl identifier=<
-            Identifier value='bar'>, initializer=<DotAccessor identifier=<
-              Identifier value='foo'>,
-            node=<FunctionCall args=[],
-              identifier=<Identifier value='foo'>>>>]>
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<DotAccessor @1:6 identifier=<
+              Identifier @1:7 value='foo'>,
+            node=<FunctionCall @1:1 args=<Arguments @1:4 items=[]>,
+            identifier=<Identifier @1:1 value='foo'>>>>,
+            <VarStatement @2:1 ?children=[
+              <VarDecl @2:5 identifier=<Identifier @2:5 value='bar'>,
+                initializer=<DotAccessor @2:16 identifier=<
+                  Identifier @2:17 value='foo'>,
+                node=<FunctionCall @2:11 args=<Arguments @2:14 items=[]>,
+                  identifier=<Identifier @2:11 value='foo'>>>>
+            ]>
         ]>
         """,
     ), (
@@ -1014,9 +1191,10 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         var foo = new Foo();
         """,
         """
-        <ES5Program ?children=[<VarStatement ?children=[
-          <VarDecl identifier=<Identifier value='foo'>, initializer=<
-            NewExpr args=[], identifier=<Identifier value='Foo'>>>
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='foo'>, initializer=<
+            NewExpr @1:11 args=<Arguments @1:18 items=[]>,
+            identifier=<Identifier @1:15 value='Foo'>>>
         ]>]>
         """,
     ), (
@@ -1024,10 +1202,12 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'new_keyword_dot_accessor',
         'var bar = new Foo.Bar();',
         """
-        <ES5Program ?children=[<VarStatement ?children=[
-          <VarDecl identifier=<Identifier value='bar'>, initializer=<
-            NewExpr args=[], identifier=<DotAccessor identifier=<
-              Identifier value='Bar'>, node=<Identifier value='Foo'>>>>
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='bar'>,
+            initializer=<NewExpr @1:11 args=<Arguments @1:22 items=[]>,
+              identifier=<DotAccessor @1:18 identifier=<
+                Identifier @1:19 value='Bar'>,
+              node=<Identifier @1:15 value='Foo'>>>>
         ]>]>
         """,
     ), (
@@ -1035,11 +1215,13 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'new_keyword_bracket_accessor',
         'var bar = new Foo.Bar()[7];',
         """
-        <ES5Program ?children=[<VarStatement ?children=[
-          <VarDecl identifier=<Identifier value='bar'>, initializer=<
-            BracketAccessor expr=<Number value='7'>, node=<
-              NewExpr args=[], identifier=<DotAccessor identifier=<
-                Identifier value='Bar'>, node=<Identifier value='Foo'>>>>>
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='bar'>,
+            initializer=<BracketAccessor @1:24 expr=<Number @1:25 value='7'>,
+              node=<NewExpr @1:11 args=<Arguments @1:22 items=[]>, identifier=<
+                DotAccessor @1:18 identifier=<
+                  Identifier @1:19 value='Bar'>,
+                node=<Identifier @1:15 value='Foo'>>>>>
         ]>]>
         """,
 
@@ -1053,13 +1235,13 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <ES5Program ?children=[<VarStatement ?children=[
-          <VarDecl identifier=<Identifier value='obj'>, initializer=<
-            Object properties=[
-              <Assign left=<Identifier value='foo'>, op=':', right=<
-                Number value='10'>>,
-              <Assign left=<Identifier value='bar'>, op=':', right=<
-                Number value='20'>>
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='obj'>, initializer=<
+            Object @1:11 properties=[
+              <Assign @2:6 left=<Identifier @2:3 value='foo'>, op=':', right=<
+                Number @2:8 value='10'>>,
+              <Assign @3:6 left=<Identifier @3:3 value='bar'>, op=':', right=<
+                Number @3:8 value='20'>>
             ]
           >>
         ]>]>
@@ -1073,13 +1255,13 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <ES5Program ?children=[<VarStatement ?children=[
-          <VarDecl identifier=<Identifier value='obj'>, initializer=<
-            Object properties=[
-              <Assign left=<Number value='1'>, op=':', right=<
-                String value="'a'">>,
-              <Assign left=<Number value='2'>, op=':', right=<
-                String value="'b'">>
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='obj'>, initializer=<
+            Object @1:11 properties=[
+              <Assign @2:4 left=<Number @2:3 value='1'>, op=':', right=<
+                String @2:6 value="'a'">>,
+              <Assign @3:4 left=<Number @3:3 value='2'>, op=':', right=<
+                String @3:6 value="'b'">>
             ]
           >>
         ]>]>
@@ -1091,30 +1273,34 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         new T().derp
         """,
         """
-        <ES5Program ?children=[
-          <ExprStatement expr=<NewExpr args=[], identifier=<
-            Identifier value='T'>>>,
-          <ExprStatement expr=<DotAccessor identifier=<
-            Identifier value='derp'>, node=<
-              NewExpr args=[], identifier=<Identifier value='T'>>>>
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<NewExpr @1:1 args=<
+            Arguments @1:6 items=[]>, identifier=<
+            Identifier @1:5 value='T'>>>,
+          <ExprStatement @2:1 expr=<DotAccessor @2:8 identifier=<
+            Identifier @2:9 value='derp'>, node=<
+              NewExpr @2:1 args=<Arguments @2:6 items=[]>,
+              identifier=<Identifier @2:5 value='T'>>>>
         ]>
         """
     ), (
         'new_new_expr',
+        # a function that returns a function, then used as a constructor
         # var T = function(){ return function (){} }
         """
         new new T()
         var x = new new T()
         """,
         """
-        <ES5Program ?children=[
-          <ExprStatement expr=<NewExpr args=[], identifier=<NewExpr args=[],
-            identifier=<Identifier value='T'>>>>,
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier value='x'>,
-              initializer=<NewExpr args=[],
-                identifier=<NewExpr args=[],
-                  identifier=<Identifier value='T'>>>>
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<NewExpr @1:1 args=[], identifier=<
+            NewExpr @1:5 args=<Arguments @1:10 items=[]>, identifier=<
+              Identifier @1:9 value='T'>>>>,
+          <VarStatement @2:1 ?children=[
+            <VarDecl @2:5 identifier=<Identifier @2:5 value='x'>,
+              initializer=<NewExpr @2:9 args=[], identifier=<
+                NewExpr @2:13 args=<Arguments @2:18 items=[]>,
+                  identifier=<Identifier @2:17 value='T'>>>>
           ]>
         ]>
         """
@@ -1127,13 +1313,13 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <ES5Program ?children=[<VarStatement ?children=[
-          <VarDecl identifier=<Identifier value='obj'>, initializer=<
-            Object properties=[
-              <Assign left=<String value="'a'">, op=':', right=<
-                Number value='100'>>,
-              <Assign left=<String value="'b'">, op=':', right=<
-                Number value='200'>>
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='obj'>, initializer=<
+            Object @1:11 properties=[
+              <Assign @2:6 left=<String @2:3 value="'a'">, op=':', right=<
+                Number @2:8 value='100'>>,
+              <Assign @3:6 left=<String @3:3 value="'b'">, op=':', right=<
+                Number @3:8 value='200'>>
             ]
           >>
         ]>]>
@@ -1145,9 +1331,9 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <ES5Program ?children=[<VarStatement ?children=[
-          <VarDecl identifier=<Identifier value='obj'>,
-            initializer=<Object properties=[]>>
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='obj'>,
+            initializer=<Object @1:11 properties=[]>>
         ]>]>
         """,
 
@@ -1159,17 +1345,17 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         delete obj.foo;
         """,
         """
-        <ES5Program ?children=[
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier value='obj'>, initializer=<
-              Object properties=[
-                <Assign left=<Identifier value='foo'>, op=':', right=<
-                  Number value='1'>>
-              ]>>
+        <ES5Program @1:1 ?children=[
+          <VarStatement @1:1 ?children=[
+            <VarDecl @1:5 identifier=<Identifier @1:5 value='obj'>,
+              initializer=<Object @1:11 properties=[
+                <Assign @1:15 left=<Identifier @1:12 value='foo'>, op=':',
+                  right=<Number @1:17 value='1'>>
+                ]>>
           ]>,
-          <ExprStatement expr=<UnaryOp op='delete', postfix=False,
-            value=<DotAccessor identifier=<Identifier value='foo'>,
-              node=<Identifier value='obj'>>>>
+          <ExprStatement @2:1 expr=<UnaryOp @2:1 op='delete', postfix=False,
+            value=<DotAccessor @2:11 identifier=<Identifier @2:12 value='foo'>,
+              node=<Identifier @2:8 value='obj'>>>>
         ]>
         """,
     ), (
@@ -1178,9 +1364,9 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         void 0;
         """,
         """
-        <ES5Program ?children=[
-          <ExprStatement expr=<UnaryOp op='void', postfix=False,
-            value=<Number value='0'>>>
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<UnaryOp @1:1 op='void', postfix=False,
+            value=<Number @1:6 value='0'>>>
         ]>
         """,
     ), (
@@ -1190,26 +1376,48 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         var a = [1,2,3,4,5];
         var b = [1,];
         var c = [1,,];
+        var d = [1,,,];
+        var e = [1,,,,];
         var res = a[3];
         """,
         """
-        <ES5Program ?children=[
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier value='a'>,
-              initializer=<Array items=[
-                <Number value='1'>, <Number value='2'>, <Number value='3'>,
-                <Number value='4'>, <Number value='5'>]>>]>,
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier value='b'>,
-              initializer=<Array items=[<Number value='1'>]>>]>,
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier value='c'>,
-              initializer=<Array items=[
-                <Number value='1'>, <Elision value=','>]>>]>,
-          <VarStatement ?children=[
-            <VarDecl identifier=<Identifier value='res'>,
-              initializer=<BracketAccessor expr=<Number value='3'>,
-                node=<Identifier value='a'>>>]>
+        <ES5Program @1:1 ?children=[
+          <VarStatement @1:1 ?children=[
+            <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+              initializer=<Array @1:9 items=[
+                <Number @1:10 value='1'>, <Number @1:12 value='2'>,
+                <Number @1:14 value='3'>, <Number @1:16 value='4'>,
+                <Number @1:18 value='5'>
+              ]>>
+          ]>,
+          <VarStatement @2:1 ?children=[
+            <VarDecl @2:5 identifier=<Identifier @2:5 value='b'>,
+              initializer=<Array @2:9 items=[<Number @2:10 value='1'>
+            ]>>
+          ]>,
+          <VarStatement @3:1 ?children=[
+            <VarDecl @3:5 identifier=<Identifier @3:5 value='c'>, initializer=<
+              Array @3:9 items=[
+                <Number @3:10 value='1'>, <Elision @3:12 value=1>
+              ]>>
+          ]>,
+          <VarStatement @4:1 ?children=[
+            <VarDecl @4:5 identifier=<Identifier @4:5 value='d'>, initializer=<
+              Array @4:9 items=[
+                <Number @4:10 value='1'>, <Elision @4:12 value=2>
+              ]>>
+          ]>,
+          <VarStatement @5:1 ?children=[
+            <VarDecl @5:5 identifier=<Identifier @5:5 value='e'>, initializer=<
+              Array @5:9 items=[
+                <Number @5:10 value='1'>, <Elision @5:12 value=3>
+              ]>>
+          ]>,
+          <VarStatement @6:1 ?children=[
+            <VarDecl @6:5 identifier=<Identifier @6:5 value='res'>,
+              initializer=<BracketAccessor @6:12 expr=<Number @6:13 value='3'>,
+                node=<Identifier @6:11 value='a'>>>
+          ]>
         ]>
         """,
     ), (
@@ -1217,10 +1425,10 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'elision_1',
         'var a = [,,,];',
         """
-        <ES5Program ?children=[<VarStatement ?children=[
-          <VarDecl identifier=<Identifier value='a'>,
-            initializer=<Array items=[
-              <Elision value=','>, <Elision value=','>, <Elision value=','>
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+            initializer=<Array @1:9 items=[
+              <Elision @1:10 value=3>
             ]>>
           ]>
         ]>
@@ -1229,11 +1437,12 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'elision_2',
         'var a = [1,,,4];',
         """
-        <ES5Program ?children=[<VarStatement ?children=[
-          <VarDecl identifier=<Identifier value='a'>,
-            initializer=<Array items=[
-              <Number value='1'>, <Elision value=','>, <Elision value=','>,
-              <Number value='4'>
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+            initializer=<Array @1:9 items=[
+              <Number @1:10 value='1'>,
+              <Elision @1:12 value=2>,
+              <Number @1:14 value='4'>
             ]>>
           ]>
         ]>
@@ -1242,11 +1451,40 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'elision_3',
         'var a = [1,,3,,5];',
         """
-        <ES5Program ?children=[<VarStatement ?children=[
-          <VarDecl identifier=<Identifier value='a'>,
-            initializer=<Array items=[
-              <Number value='1'>, <Elision value=','>, <Number value='3'>,
-              <Elision value=','>, <Number value='5'>
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+            initializer=<Array @1:9 items=[
+              <Number @1:10 value='1'>,
+              <Elision @1:12 value=1>,
+              <Number @1:13 value='3'>,
+              <Elision @1:15 value=1>,
+              <Number @1:16 value='5'>
+            ]>>
+          ]>
+        ]>
+        """,
+    ), (
+        'elision_4',
+        'var a = [1,,,,];',
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+            initializer=<Array @1:9 items=[
+              <Number @1:10 value='1'>,
+              <Elision @1:12 value=3>
+            ]>>
+          ]>
+        ]>
+        """,
+    ), (
+        'elision_5',
+        'var a = [,,,, 1];',
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+            initializer=<Array @1:9 items=[
+              <Elision @1:10 value=4>,
+              <Number @1:15 value='1'>
             ]>>
           ]>
         ]>
@@ -1262,38 +1500,45 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         r'Expr.match[type].source + (/(?![^\[]*\])(?![^\(]*\))/.source);',
 
         r"""
-        <ES5Program ?children=[<ExprStatement expr=<BinOp left=<
-          DotAccessor identifier=<Identifier value='source'>, node=<
-            BracketAccessor expr=<Identifier value='type'>, node=<
-              DotAccessor identifier=<Identifier value='match'>,
-              node=<Identifier value='Expr'>>>>,
-          op='+', right=<DotAccessor identifier=<Identifier value='source'>,
-            node=<Regex value='/(?![^\\[]*\\])(?![^\\(]*\\))/'>>>>]>
+        <ES5Program @1:1 ?children=[<ExprStatement @1:1 expr=<
+          BinOp @1:25 left=<DotAccessor @1:17 identifier=<
+            Identifier @1:18 value='source'>,
+            node=<BracketAccessor @1:11 expr=<Identifier @1:12 value='type'>,
+              node=<DotAccessor @1:5 identifier=<
+                Identifier @1:6 value='match'>, node=<
+                  Identifier @1:1 value='Expr'>>>>,
+          op='+', right=<GroupingOp @1:27 expr=<
+            DotAccessor @1:54 identifier=<Identifier @1:55 value='source'>,
+              node=<Regex @1:28 value='/(?![^\\[]*\\])(?![^\\(]*\\))/'>>>>>
+        ]>
         """,
     ), (
         'comparison',
         '(options = arguments[i]) != null;',
         # test 54
         """
-        <ES5Program ?children=[
-          <ExprStatement expr=<
-            BinOp left=<
-              Assign left=<Identifier value='options'>, op='=',
-                right=<BracketAccessor expr=<Identifier value='i'>,
-                node=<Identifier value='arguments'>>
-            >, op='!=', right=<Null value='null'>
-          >>
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:26 left=<GroupingOp @1:1 expr=
+            <Assign @1:10 left=<
+              Identifier @1:2 value='options'>, op='=',
+              right=<BracketAccessor @1:21 expr=<Identifier @1:22 value='i'>,
+            node=<Identifier @1:12 value='arguments'>>>>,
+            op='!=', right=<Null @1:29 value='null'>>>
         ]>
         """,
     ), (
         'regex_test',
         'return (/h\d/i).test(elem.nodeName);',
         r"""
-        <ES5Program ?children=[<Return expr=<FunctionCall args=[
-          <DotAccessor identifier=<Identifier value='nodeName'>,
-            node=<Identifier value='elem'>>], identifier=<
-              DotAccessor identifier=<Identifier value='test'>,
-                node=<Regex value='/h\\d/i'>>>>]>
+        <ES5Program @1:1 ?children=[<Return @1:1 expr=<FunctionCall @1:8 args=<
+          Arguments @1:21 items=[
+            <DotAccessor @1:26 identifier=<Identifier @1:27 value='nodeName'>,
+              node=<Identifier @1:22 value='elem'>>
+          ]>,
+          identifier=<
+            DotAccessor @1:16 identifier=<Identifier @1:17 value='test'>,
+            node=<GroupingOp @1:8 expr=<Regex @1:9 value='/h\\d/i'>>>>>]>
+
         """,
 
     ), (
@@ -1303,42 +1548,43 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         e.b(d) ? (a = [c.f(j[1])], e.fn.attr.call(a, d, !0)) : a = [k.f(j[1])];
         """,
         """
-        <ES5Program ?children=[
-          <ExprStatement expr=<Conditional alternative=<Assign left=<
-            Identifier value='a'>, op='=', right=<Array items=[
-              <FunctionCall args=[<BracketAccessor expr=<Number value='1'>,
-                node=<Identifier value='j'>>],
-                identifier=<DotAccessor identifier=<Identifier value='f'>,
-                node=<Identifier value='k'>>>
-            ]>>, consequent=
-              <Comma left=<Assign left=<Identifier value='a'>,
-                op='=', right=<Array items=[
-                  <FunctionCall args=[
-                    <BracketAccessor expr=<Number value='1'>,
-                      node=<Identifier value='j'>>
-                    ], identifier=<DotAccessor identifier=<
-                      Identifier value='f'>, node=<Identifier value='c'>>>
-                  ]>
-                >,
-                right=<FunctionCall args=[
-                  <Identifier value='a'>,
-                  <Identifier value='d'>,
-                  <UnaryOp op='!', postfix=False, value=<Number value='0'>>
-                ],
-                identifier=<DotAccessor identifier=<Identifier value='call'>,
-                  node=<DotAccessor identifier=<Identifier value='attr'>,
-                    node=<DotAccessor identifier=<Identifier value='fn'>,
-                      node=<Identifier value='e'>
-                    >
-                  >>
-                >
-              >,
-            predicate=<FunctionCall args=[
-              <Identifier value='d'>
-            ], identifier=<DotAccessor identifier=<Identifier value='b'>,
-              node=<Identifier value='e'>
-            >>
-          >>
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<Conditional @1:8 alternative=<
+              Assign @1:58 left=<Identifier @1:56 value='a'>, op='=',
+              right=<Array @1:60 items=[
+            <FunctionCall @1:61 args=<Arguments @1:64 items=[
+              <BracketAccessor @1:66 expr=<Number @1:67 value='1'>,
+                node=<Identifier @1:65 value='j'>>
+            ]>, identifier=<DotAccessor @1:62 identifier=<
+              Identifier @1:63 value='f'>, node=<Identifier @1:61 value='k'>>>
+          ]>>,
+          consequent=<GroupingOp @1:10 expr=<Comma @1:26 left=<
+                Assign @1:13 left=<Identifier @1:11 value='a'>, op='=',
+              right=<Array @1:15 items=[
+                <FunctionCall @1:16 args=<Arguments @1:19 items=[
+                  <BracketAccessor @1:21 expr=<Number @1:22 value='1'>,
+                    node=<Identifier @1:20 value='j'>>
+                ]>, identifier=<DotAccessor @1:17 identifier=<
+                  Identifier @1:18 value='f'>,
+                  node=<Identifier @1:16 value='c'>>>
+              ]>>,
+            right=<FunctionCall @1:28 args=<Arguments @1:42 items=[
+                <Identifier @1:43 value='a'>,
+                <Identifier @1:46 value='d'>,
+                <UnaryOp @1:49 op='!', postfix=False, value=<
+                  Number @1:50 value='0'>>
+              ]>,
+              identifier=<DotAccessor @1:37 identifier=<
+                Identifier @1:38 value='call'>, node=<
+                  DotAccessor @1:32 identifier=<
+                      Identifier @1:33 value='attr'>,
+                    node=<DotAccessor @1:29 identifier=<
+                      Identifier @1:30 value='fn'>,
+                        node=<Identifier @1:28 value='e'>>>>>>>,
+          predicate=<FunctionCall @1:1 args=<Arguments @1:4 items=[
+            <Identifier @1:5 value='d'>
+          ]>, identifier=<DotAccessor @1:2 identifier=<
+            Identifier @1:3 value='b'>, node=<Identifier @1:1 value='e'>>>>>
         ]>
         """,
     ), (
@@ -1349,45 +1595,51 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         }());
         """,
         """
-        <ES5Program ?children=[
-          <ExprStatement expr=<FunctionCall args=[],
-            identifier=<FuncExpr elements=[
-              <ExprStatement expr=<Assign left=<Identifier value='x'>,
-                op='=', right=<Number value='5'>>>
-            ], identifier=None, parameters=[]>>>
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<GroupingOp @1:1 expr=<
+            FunctionCall @1:2 args=<Arguments @3:2 items=[]>,
+            identifier=<FuncExpr @1:2 elements=[
+              <ExprStatement @2:3 expr=<Assign @2:5 left=<
+                Identifier @2:3 value='x'>, op='=',
+                right=<Number @2:7 value='5'>>>
+            ],
+            identifier=None, parameters=[]>>>>
         ]>
         """,
     ), (
         'return_statement_negation',
         'return !(match === true || elem.getAttribute("classid") !== match);',
         """
-        <ES5Program ?children=[<Return expr=<
-          UnaryOp op='!', postfix=False, value=<BinOp left=<BinOp left=<
-            Identifier value='match'>,
-            op='===', right=<Boolean value='true'>>, op='||', right=<
-              BinOp left=<FunctionCall args=[<String value='"classid"'>],
-                identifier=<DotAccessor identifier=<
-                  Identifier value='getAttribute'
-                >, node=<Identifier value='elem'>>>, op='!==',
-              right=<Identifier value='match'>>>
-        >>]>
+        <ES5Program @1:1 ?children=[<Return @1:1 expr=<
+          UnaryOp @1:8 op='!', postfix=False,
+            value=<GroupingOp @1:9 expr=<BinOp @1:25 left=<
+              BinOp @1:16 left=<Identifier @1:10 value='match'>, op='===',
+                right=<Boolean @1:20 value='true'>>, op='||', right=<
+            BinOp @1:57 left=<FunctionCall @1:28 args=<Arguments @1:45 items=[
+              <String @1:46 value='"classid"'>
+            ]>,
+            identifier=<DotAccessor @1:32 identifier=<
+              Identifier @1:33 value='getAttribute'>, node=<
+                Identifier @1:28 value='elem'>>>, op='!==', right=<
+                  Identifier @1:61 value='match'>>>>>>
+        ]>
         """,
     ), (
         # test 57
         'ternary_dot_accessor',
         'var el = (elem ? elem.ownerDocument || elem : 0).documentElement;',
         """
-        <ES5Program ?children=[<VarStatement ?children=[
-          <VarDecl identifier=<Identifier value='el'>,
-            initializer=<DotAccessor identifier=<
-              Identifier value='documentElement'>,
-              node=<Conditional alternative=<Number value='0'>,
-              consequent=<BinOp left=<DotAccessor identifier=<
-                Identifier value='ownerDocument'>,
-                node=<Identifier value='elem'>
-              >,
-              op='||', right=<Identifier value='elem'>>,
-            predicate=<Identifier value='elem'>>>
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='el'>,
+            initializer=<DotAccessor @1:49 identifier=<
+              Identifier @1:50 value='documentElement'>,
+              node=<GroupingOp @1:10 expr=<Conditional @1:16 alternative=<
+                Number @1:47 value='0'>,
+                consequent=<BinOp @1:37 left=<DotAccessor @1:22 identifier=<
+                  Identifier @1:23 value='ownerDocument'>,
+                  node=<Identifier @1:18 value='elem'>
+                >, op='||', right=<Identifier @1:40 value='elem'>>,
+            predicate=<Identifier @1:11 value='elem'>>>>
           >
         ]>]>
         """,
@@ -1396,11 +1648,12 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'typeof',
         'typeof second.length === "number";',
         """
-        <ES5Program ?children=[
-          <ExprStatement expr=<BinOp left=<UnaryOp op='typeof',
-            postfix=False, value=<DotAccessor identifier=
-              <Identifier value='length'>, node=<Identifier value='second'>>>,
-            op='===', right=<String value='"number"'
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:22 left=<UnaryOp @1:1 op='typeof',
+            postfix=False, value=<DotAccessor @1:14 identifier=
+              <Identifier @1:15 value='length'>, node=<
+                Identifier @1:8 value='second'>>>,
+            op='===', right=<String @1:26 value='"number"'
           >>>
         ]>
         """,
@@ -1408,9 +1661,10 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'instanceof',
         'x instanceof y',
         """
-        <ES5Program ?children=[
-          <ExprStatement expr=<BinOp left=<Identifier value='x'>,
-            op='instanceof', right=<Identifier value='y'>>>
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:3 left=<
+            Identifier @1:1 value='x'>,
+            op='instanceof', right=<Identifier @1:14 value='y'>>>
         ]>
         """,
     ), (
@@ -1420,9 +1674,9 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         1 in s;
         """,
         """
-        <ES5Program ?children=[
-          <ExprStatement expr=<BinOp left=<Number value='1'>, op='in',
-            right=<Identifier value='s'>>>
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:3 left=<Number @1:1 value='1'>,
+            op='in', right=<Identifier @1:6 value='s'>>>
         ]>
         """,
     ), (
@@ -1435,12 +1689,17 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
 
         """
-        <ES5Program ?children=[
-          <For cond=<BinOp left=<Identifier value='i'>, op='<',
-            right=<Number value='3'>>, count=<UnaryOp op='++', postfix=True,
-            value=<Identifier value='i'>>, init=<
-              FunctionCall args=[], identifier=<Identifier value='o'>>,
-            statement=<Block >>
+        <ES5Program @1:1 ?children=[
+          <For @1:1 cond=
+            <ExprStatement @1:11 expr=
+              <BinOp @1:13 left=<Identifier @1:11 value='i'>,
+                op='<', right=<Number @1:15 value='3'>>>,
+            count=<PostfixExpr @1:19 op='++',
+              value=<Identifier @1:18 value='i'>>,
+            init=<ExprStatement @1:6 expr=<FunctionCall @1:6 args=<
+              Arguments @1:7 items=[]>,
+              identifier=<Identifier @1:6 value='o'>>>,
+            statement=<Block @1:23 >>
         ]>
         """,
     ), (
@@ -1453,38 +1712,70 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         for (o & (p & q);;);
         for (a ? (b ? c : d) : false;;);
         for (var x;;);
+        for (var x, y, z;;);
         """,
         """
-        <ES5Program ?children=[
-          <For cond=None, count=None, init=<BinOp left=<Identifier value='o'>,
-              op='<', right=<BinOp left=<Identifier value='p'>, op='<',
-            right=<Identifier value='q'>>>,
-            statement=<EmptyStatement value=';'>>,
-          <For cond=None, count=None, init=<BinOp left=<Identifier value='o'>,
-              op='==', right=<BinOp left=<Identifier value='p'>, op='==',
-            right=<Identifier value='q'>>>,
-            statement=<EmptyStatement value=';'>>,
-          <For cond=None, count=None, init=<BinOp left=<Identifier value='o'>,
-              op='^', right=<BinOp left=<Identifier value='p'>, op='^',
-            right=<Identifier value='q'>>>,
-            statement=<EmptyStatement value=';'>>,
-          <For cond=None, count=None, init=<BinOp left=<Identifier value='o'>,
-              op='|', right=<BinOp left=<Identifier value='p'>, op='|',
-            right=<Identifier value='q'>>>,
-            statement=<EmptyStatement value=';'>>,
-          <For cond=None, count=None, init=<BinOp left=<Identifier value='o'>,
-              op='&', right=<BinOp left=<Identifier value='p'>, op='&',
-            right=<Identifier value='q'>>>,
-            statement=<EmptyStatement value=';'>>,
-          <For cond=None, count=None, init=<Conditional alternative=<
-              Boolean value='false'>, consequent=<Conditional alternative=<
-                Identifier value='d'>, consequent=<Identifier value='c'>,
-                  predicate=<Identifier value='b'>>,
-                predicate=<Identifier value='a'>>,
-            statement=<EmptyStatement value=';'>>,
-          <For cond=None, count=None, init=<VarStatement ?children=[
-              <VarDecl identifier=<Identifier value='x'>, initializer=None>]>,
-            statement=<EmptyStatement value=';'>>
+        <ES5Program @1:1 ?children=[
+          <For @1:1 cond=<EmptyStatement @1:18 value=';'>, count=None,
+            init=<ExprStatement @1:6 expr=<BinOp @1:8 left=<
+              Identifier @1:6 value='o'>, op='<',
+              right=<GroupingOp @1:10 expr=<BinOp @1:13 left=<
+                Identifier @1:11 value='p'>, op='<',
+                right=<Identifier @1:15 value='q'>>>>>,
+            statement=<EmptyStatement @1:20 value=';'>>,
+          <For @2:1 cond=<EmptyStatement @2:20 value=';'>, count=None,
+            init=<ExprStatement @2:6 expr=<BinOp @2:8 left=<
+              Identifier @2:6 value='o'>, op='==', right=<
+                GroupingOp @2:11 expr=<BinOp @2:14 left=<
+                  Identifier @2:12 value='p'>, op='==',
+                  right=<Identifier @2:17 value='q'>>>>>,
+            statement=<EmptyStatement @2:22 value=';'>>,
+          <For @3:1 cond=<EmptyStatement @3:18 value=';'>, count=None,
+            init=<ExprStatement @3:6 expr=<BinOp @3:8 left=<
+              Identifier @3:6 value='o'>, op='^',
+              right=<GroupingOp @3:10 expr=<BinOp @3:13 left=<
+                Identifier @3:11 value='p'>, op='^',
+                right=<Identifier @3:15 value='q'>>>>>,
+            statement=<EmptyStatement @3:20 value=';'>>,
+          <For @4:1 cond=<EmptyStatement @4:18 value=';'>, count=None, init=<
+            ExprStatement @4:6 expr=<BinOp @4:8 left=<
+              Identifier @4:6 value='o'>, op='|',
+              right=<GroupingOp @4:10 expr=<BinOp @4:13 left=<
+                Identifier @4:11 value='p'>, op='|',
+                  right=<Identifier @4:15 value='q'>>>>>,
+            statement=<EmptyStatement @4:20 value=';'>>,
+          <For @5:1 cond=<EmptyStatement @5:18 value=';'>, count=None, init=<
+            ExprStatement @5:6 expr=<BinOp @5:8 left=<
+              Identifier @5:6 value='o'>, op='&',
+              right=<GroupingOp @5:10 expr=<BinOp @5:13 left=<
+                Identifier @5:11 value='p'>, op='&', right=<
+                Identifier @5:15 value='q'>>>>>,
+            statement=<EmptyStatement @5:20 value=';'>>,
+          <For @6:1 cond=<EmptyStatement @6:30 value=';'>, count=None, init=<
+            ExprStatement @6:6 expr=<Conditional @6:8 alternative=<
+              Boolean @6:24 value='false'>,
+              consequent=<GroupingOp @6:10 expr=<
+                Conditional @6:13 alternative=<Identifier @6:19 value='d'>,
+                consequent=<Identifier @6:15 value='c'>,
+                predicate=<Identifier @6:11 value='b'>>>,
+              predicate=<Identifier @6:6 value='a'>>>,
+            statement=<EmptyStatement @6:32 value=';'>>,
+          <For @7:1 cond=<EmptyStatement @7:12 value=';'>, count=None, init=<
+            VarStatement @7:6 ?children=[
+              <VarDecl @7:10 identifier=<Identifier @7:10 value='x'>,
+                initializer=None>
+              ]>,
+            statement=<EmptyStatement @7:14 value=';'>>,
+          <For @8:1 cond=<EmptyStatement @8:18 value=';'>, count=None, init=<
+            VarStatement @8:6 ?children=[
+              <VarDecl @8:10 identifier=<Identifier @8:10 value='x'>,
+                initializer=None>,
+              <VarDecl @8:13 identifier=<Identifier @8:13 value='y'>,
+                initializer=None>,
+              <VarDecl @8:16 identifier=<Identifier @8:16 value='z'>,
+                initializer=None>
+              ]>,
+            statement=<EmptyStatement @8:20 value=';'>>
         ]>
         """,
 
@@ -1494,13 +1785,17 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         for (var x = foo() in (bah())) {};
         """,
         """
-        <ES5Program ?children=[<ForIn item=<VarDecl identifier=<
-          Identifier value='x'>, initializer=<FunctionCall args=[],
-            identifier=<Identifier value='foo'>>>, iterable=<
-              FunctionCall args=[], identifier=<
-                Identifier value='bah'>>,
-            statement=<Block >>,
-          <EmptyStatement value=';'>
+        <ES5Program @1:1 ?children=[
+          <ForIn @1:1 item=<VarDeclNoIn @1:6 identifier=<
+                Identifier @1:10 value='x'>,
+              initializer=<FunctionCall @1:14 args=<Arguments @1:17 items=[
+              ]>,
+              identifier=<Identifier @1:14 value='foo'>>>,
+            iterable=<GroupingOp @1:23 expr=<FunctionCall @1:24 args=<
+              Arguments @1:27 items=[]>,
+              identifier=<Identifier @1:24 value='bah'>>>,
+            statement=<Block @1:32 >>,
+          <EmptyStatement @1:34 value=';'>
         ]>
         """,
 
@@ -1520,40 +1815,49 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         };
         """,
         """
-        <ES5Program ?children=[<
-          ExprStatement expr=<Assign left=<DotAccessor identifier=<
-            Identifier value='prototype'>, node=<
-              Identifier value='Name'>>,
-            op='=', right=<Object properties=[
-              <GetPropAssign elements=[
-                <Return expr=<BinOp left=<BinOp left=<DotAccessor identifier=<
-                  Identifier value='first'>, node=<This >>,
-                  op='+', right=<String value='" "'>>,
-                  op='+', right=<DotAccessor identifier=<
-                    Identifier value='last'>, node=<This >>>>
-                ], prop_name=<Identifier value='fullName'>>,
-                <SetPropAssign elements=[
-                  <VarStatement ?children=[
-                    <VarDecl identifier=<Identifier value='names'>,
-                      initializer=<FunctionCall args=[<String value='" "'>],
-                        identifier=<
-                          DotAccessor identifier=<Identifier value='split'>,
-                          node=<Identifier value='name'>>>>
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<Assign @1:16 left=<
+              DotAccessor @1:5 identifier=<
+                Identifier @1:6 value='prototype'>,
+                node=<Identifier @1:1 value='Name'>>,
+              op='=', right=<Object @1:18 properties=[
+                <GetPropAssign @2:3 elements=[
+                  <Return @3:5 expr=<BinOp @3:29 left=<BinOp @3:23 left=<
+                      DotAccessor @3:16 identifier=<
+                        Identifier @3:17 value='first'>, node=<This @3:12 >>,
+                      op='+', right=<String @3:25 value='" "'>>,
+                    op='+', right=<DotAccessor @3:35 identifier=<
+                      Identifier @3:36 value='last'>, node=<This @3:31 >>>>
+                ],
+                prop_name=<Identifier @2:7 value='fullName'>>,
+                <SetPropAssign @5:3 elements=[
+                  <VarStatement @6:5 ?children=[
+                    <VarDecl @6:9 identifier=<Identifier @6:9 value='names'>,
+                      initializer=<FunctionCall @6:17 args=<
+                        Arguments @6:27 items=[
+                          <String @6:28 value='" "'>
+                        ]>,
+                        identifier=<DotAccessor @6:21 identifier=<
+                        Identifier @6:22 value='split'>, node=<
+                        Identifier @6:17 value='name'>>>>
                   ]>,
-                  <ExprStatement expr=<
-                    Assign left=<DotAccessor identifier=<
-                      Identifier value='first'>, node=<This >
-                    >, op='=', right=<BracketAccessor expr=<Number value='0'>,
-                      node=<Identifier value='names'>>>>,
-                  <ExprStatement expr=<Assign left=<DotAccessor identifier=<
-                    Identifier value='last'>, node=<This >>,
-                    op='=', right=<BracketAccessor expr=<Number value='1'>,
-                      node=<Identifier value='names'>>>>
-                  ], parameters=[<Identifier value='name'>],
-                  prop_name=<Identifier value='fullName'>>
-            ]>
-          >
-        >]>
+                  <ExprStatement @7:5 expr=<Assign @7:16 left=<
+                    DotAccessor @7:9 identifier=<
+                      Identifier @7:10 value='first'>, node=<This @7:5 >>,
+                    op='=', right=<BracketAccessor @7:23 expr=<
+                      Number @7:24 value='0'>, node=<
+                        Identifier @7:18 value='names'>>>>,
+                  <ExprStatement @8:5 expr=<Assign @8:15 left=<
+                    DotAccessor @8:9 identifier=<
+                      Identifier @8:10 value='last'>, node=<This @8:5 >>,
+                      op='=', right=<BracketAccessor @8:22 expr=<
+                        Number @8:23 value='1'>,
+                          node=<Identifier @8:17 value='names'>>>>
+                ],
+                parameters=<Identifier @5:16 value='name'>,
+                prop_name=<Identifier @5:7 value='fullName'>>
+          ]>>>
+        ]>
         """,
     ), (
         'dot_accessor_on_integer',
@@ -1561,10 +1865,12 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         (0).toString();
         """,
         """
-        <ES5Program ?children=[
-          <ExprStatement expr=<FunctionCall args=[], identifier=<
-            DotAccessor identifier=<Identifier value='toString'>,
-            node=<Number value='0'>>>>
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=<
+              Arguments @1:13 items=[]>,
+            identifier=<DotAccessor @1:4 identifier=<
+              Identifier @1:5 value='toString'>,
+              node=<GroupingOp @1:1 expr=<Number @1:2 value='0'>>>>>
         ]>
         """,
     ), (
@@ -1573,9 +1879,9 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         e.case;
         """,
         """
-        <ES5Program ?children=[<ExprStatement expr=<
-          DotAccessor identifier=<Identifier value='case'>,
-            node=<Identifier value='e'>>>
+        <ES5Program @1:1 ?children=[<ExprStatement @1:1 expr=<
+          DotAccessor @1:2 identifier=<Identifier @1:3 value='case'>,
+          node=<Identifier @1:1 value='e'>>>
         ]>
         """
     ), (
@@ -1584,31 +1890,73 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         for (x = e.case;;);
         """,
         """
-        <ES5Program ?children=[
-          <For cond=None, count=None, init=<Assign left=<Identifier value='x'>,
-            op='=', right=<DotAccessor identifier=<Identifier value='case'>,
-              node=<Identifier value='e'>>>,
-                statement=<EmptyStatement value=';'>>
+        <ES5Program @1:1 ?children=[
+          <For @1:1 cond=<EmptyStatement @1:17 value=';'>,
+            count=None, init=<ExprStatement @1:6 expr=<Assign @1:8 left=<
+              Identifier @1:6 value='x'>, op='=', right=<
+                DotAccessor @1:11 identifier=<Identifier @1:12 value='case'>,
+                node=<Identifier @1:10 value='e'>>>>,
+            statement=<EmptyStatement @1:19 value=';'>>
+        ]>
+        """
+    ), (
+        'logical_or_expr_nobf',
+        """
+        (true || true) || (false && false);
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:16 left=<
+              GroupingOp @1:1 expr=<BinOp @1:7 left=<
+                Boolean @1:2 value='true'>, op='||', right=<
+                Boolean @1:10 value='true'>>>,
+            op='||', right=<
+              GroupingOp @1:19 expr=<BinOp @1:26 left=<
+                Boolean @1:20 value='false'>, op='&&', right=<
+                Boolean @1:29 value='false'>>>>>
+        ]>
+        """,
+    ), (
+        'multiplicative_expr_nobf',
+        """
+        !0 % 1
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:4 left=<UnaryOp @1:1 op='!',
+              postfix=False, value=<Number @1:2 value='0'>>,
+            op='%', right=<Number @1:6 value='1'>>>
+        ]>
+        """
+    ), (
+        'function_expr_1',
+        """
+        function(arg) {};
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<FuncExpr @1:1 elements=[],
+            identifier=None, parameters=[<Identifier @1:10 value='arg'>]>>
         ]>
         """
     ), (
         'octal_slimit_issue_70',
         r"var x = '\071[90m%s';",
         r"""
-        <ES5Program ?children=[<VarStatement ?children=[
-          <VarDecl identifier=<Identifier value='x'>, initializer=<
-            String value="'\\071[90m%s'">>
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='x'>, initializer=<
+            String @1:9 value="'\\071[90m%s'">>
         ]>]>
         """
     ), (
         'special_array_char_slimit_issue_82',
         r"var x = ['a','\n'];",
         r"""
-        <ES5Program ?children=[<VarStatement ?children=[
-          <VarDecl identifier=<Identifier value='x'>,
-            initializer=<Array items=[
-              <String value="'a'">,
-              <String value="'\\n'">
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='x'>,
+            initializer=<Array @1:9 items=[
+              <String @1:10 value="'a'">,
+              <String @1:14 value="'\\n'">
             ]>
           >
         ]>]>
@@ -1617,19 +1965,24 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'special_string_slimit_issue_82',
         r"var x = '\n';",
         r"""
-        <ES5Program ?children=[<VarStatement ?children=[
-          <VarDecl identifier=<Identifier value='x'>,
-            initializer=<String value="'\\n'">>
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='x'>,
+            initializer=<String @1:9 value="'\\n'">>
         ]>]>
         """
     ), (
         'for_in_without_braces',
         "for (index in [1,2,3]) index",
         """
-        <ES5Program ?children=[
-          <ForIn item=<Identifier value='index'>, iterable=<Array items=[
-            <Number value='1'>, <Number value='2'>, <Number value='3'>
-          ]>, statement=<ExprStatement expr=<Identifier value='index'>>>
+        <ES5Program @1:1 ?children=[
+          <ForIn @1:1 item=<Identifier @1:6 value='index'>,
+            iterable=<Array @1:15 items=[
+              <Number @1:16 value='1'>,
+              <Number @1:18 value='2'>,
+              <Number @1:20 value='3'>
+            ]>,
+            statement=<ExprStatement @1:24 expr=<
+              Identifier @1:24 value='index'>>>
         ]>
         """
     ), (
@@ -1637,10 +1990,1730 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         # "for (index in [1,2,3]) /^salign$/i.test('salign')",
         "for (index in [1,2,3]) /^salign$/",
         """
-        <ES5Program ?children=[
-          <ForIn item=<Identifier value='index'>, iterable=<Array items=[
-            <Number value='1'>, <Number value='2'>, <Number value='3'>
-          ]>, statement=<ExprStatement expr=<Regex value='/^salign$/'>>>
+        <ES5Program @1:1 ?children=[
+          <ForIn @1:1 item=<Identifier @1:6 value='index'>,
+            iterable=<Array @1:15 items=[
+              <Number @1:16 value='1'>,
+              <Number @1:18 value='2'>,
+              <Number @1:20 value='3'>
+            ]>,
+            statement=<ExprStatement @1:24 expr=<
+              Regex @1:24 value='/^salign$/'>>>
+        ]>
+        """
+    ), (
+        'parse_closure_scope',
+        """
+        (function() {
+          x = 5;
+        }());
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<GroupingOp @1:1 expr=<
+            FunctionCall @1:2 args=<Arguments @3:2 items=[]>, identifier=<
+              FuncExpr @1:2 elements=[
+                <ExprStatement @2:3 expr=<Assign @2:5 left=<
+                  Identifier @2:3 value='x'>, op='=',
+                  right=<Number @2:7 value='5'>>>
+              ],
+              identifier=None, parameters=[]>>>>
+        ]>
+        """,
+    ), (
+        'excessive_grouping_normalized',
+        """
+        ((((value)))).toString();
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=<
+            Arguments @1:23 items=[]>,
+            identifier=<DotAccessor @1:14 identifier=<
+              Identifier @1:15 value='toString'>,
+              node=<GroupingOp @1:4 expr=<Identifier @1:5 value='value'>>>>>
+        ]>
+        """
+    )])
+)
+
+
+ParsedNodeTypeTestCase = build_equality_testcase(
+    'ParsedNodeTypeTestCase', parse_to_repr, ((
+        label,
+        textwrap.dedent(argument).strip(),
+        singleline(result),
+    ) for label, argument, result in [(
+        'block',
+        """
+        {
+          var a = 5;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <Block @1:1 ?children=[<VarStatement @2:3 ?children=[
+            <VarDecl @2:7 identifier=<Identifier @2:7 value='a'>,
+              initializer=<Number @2:11 value='5'>>
+          ]>]>
+        ]>
+        """,
+    ), (
+        'variable_statement',
+        """
+        var a;
+        var b;
+        var a, b = 3;
+        var a = 1, b;
+        var a = 5, b = 7;
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <VarStatement @1:1 ?children=[
+            <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+              initializer=None>
+          ]>,
+          <VarStatement @2:1 ?children=[
+            <VarDecl @2:5 identifier=<Identifier @2:5 value='b'>,
+              initializer=None>
+          ]>,
+          <VarStatement @3:1 ?children=[
+            <VarDecl @3:5 identifier=<Identifier @3:5 value='a'>,
+              initializer=None>,
+            <VarDecl @3:8 identifier=<Identifier @3:8 value='b'>,
+              initializer=<Number @3:12 value='3'>>
+          ]>,
+          <VarStatement @4:1 ?children=[
+            <VarDecl @4:5 identifier=<Identifier @4:5 value='a'>,
+              initializer=<Number @4:9 value='1'>>,
+            <VarDecl @4:12 identifier=<Identifier @4:12 value='b'>,
+              initializer=None>
+          ]>,
+          <VarStatement @5:1 ?children=[
+            <VarDecl @5:5 identifier=<Identifier @5:5 value='a'>,
+              initializer=<Number @5:9 value='5'>>,
+            <VarDecl @5:12 identifier=<Identifier @5:12 value='b'>,
+              initializer=<Number @5:16 value='7'>>
+          ]>
+        ]>
+        """,
+    ), (
+        'empty_statement',
+        """
+        ;
+        ;
+        ;
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <EmptyStatement @1:1 value=';'>,
+          <EmptyStatement @2:1 value=';'>,
+          <EmptyStatement @3:1 value=';'>
+        ]>
+        """,
+    ), (
+        'if_statement_inline',
+        'if (true) var x = 100;',
+        """
+        <ES5Program @1:1 ?children=[<If @1:1 alternative=None,
+          consequent=<VarStatement @1:11 ?children=[
+            <VarDecl @1:15 identifier=<Identifier @1:15 value='x'>,
+              initializer=<Number @1:19 value='100'>>
+          ]>, predicate=<Boolean @1:5 value='true'>>
+        ]>
+        """,
+    ), (
+        'if_statement_block',
+        """
+        if (true) {
+          var x = 100;
+          var y = 200;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<If @1:1 alternative=None,
+          consequent=<Block @1:11 ?children=[
+            <VarStatement @2:3 ?children=[
+              <VarDecl @2:7 identifier=<Identifier @2:7 value='x'>,
+                initializer=<Number @2:11 value='100'>>
+            ]>,
+            <VarStatement @3:3 ?children=[
+              <VarDecl @3:7 identifier=<Identifier @3:7 value='y'>,
+                initializer=<Number @3:11 value='200'>>
+            ]>
+          ]>,
+          predicate=<Boolean @1:5 value='true'>>
+        ]>
+        """,
+    ), (
+        'if_else_inline',
+        'if (true) if (true) var x = 100; else var y = 200;',
+        """
+        <ES5Program @1:1 ?children=[
+          <If @1:1 alternative=None,
+            consequent=<If @1:11 alternative=<VarStatement @1:39 ?children=[
+              <VarDecl @1:43 identifier=<Identifier @1:43 value='y'>,
+                initializer=<Number @1:47 value='200'>>
+            ]>,
+            consequent=<VarStatement @1:21 ?children=[
+              <VarDecl @1:25 identifier=<Identifier @1:25 value='x'>,
+                initializer=<Number @1:29 value='100'>>
+            ]>, predicate=<Boolean @1:15 value='true'>>,
+            predicate=<Boolean @1:5 value='true'>>
+        ]>
+        """,
+    ), (
+        'if_else_block',
+        """
+        if (true) {
+          var x = 100;
+        } else {
+          var y = 200;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <If @1:1 alternative=<Block @3:8 ?children=[
+            <VarStatement @4:3 ?children=[
+              <VarDecl @4:7 identifier=<Identifier @4:7 value='y'>,
+                initializer=<Number @4:11 value='200'>>
+              ]>
+            ]>,
+            consequent=<Block @1:11 ?children=[
+              <VarStatement @2:3 ?children=[
+                <VarDecl @2:7 identifier=<Identifier @2:7 value='x'>,
+                  initializer=<Number @2:11 value='100'>>
+                ]>
+              ]>,
+            predicate=<Boolean @1:5 value='true'>>
+        ]>
+        """,
+    ), (
+        'iteration_var',
+        """
+        for (var i = 0; i < 10; i++) {
+          x = 10 * i;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <For @1:1 cond=<BinOp @1:19 left=<
+                Identifier @1:17 value='i'>,
+              op='<',
+              right=<Number @1:21 value='10'>>,
+            count=<UnaryOp @1:26 op='++', postfix=True, value=<
+              Identifier @1:25 value='i'>>,
+            init=<VarStatement @1:6 ?children=[
+                <VarDecl @1:10 identifier=<Identifier @1:10 value='i'>,
+                  initializer=<Number @1:14 value='0'>>
+              ]>,
+            statement=<Block @1:30 ?children=[
+              <ExprStatement @2:3 expr=<Assign @2:5 left=<
+                Identifier @2:3 value='x'>, op='=', right=<
+                  BinOp @2:10 left=<Number @2:7 value='10'>, op='*', right=<
+                    Identifier @2:12 value='i'>>>>
+            ]>>
+        ]>
+        """,
+    ), (
+        'iteration_multi_value',
+        """
+        for (i = 0, j = 10; i < j && j < 15; i++, j++) {
+          x = i * j;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<For @1:1 cond=<BinOp @1:27 left=<
+          BinOp @1:23 left=<Identifier @1:21 value='i'>, op='<', right=<
+              Identifier @1:25 value='j'>>,
+            op='&&', right=<BinOp @1:32 left=<Identifier @1:30 value='j'>,
+              op='<', right=<Number @1:34 value='15'>>>,
+          count=<Comma @1:41 left=<UnaryOp @1:39 op='++', postfix=True,
+              value=<Identifier @1:38 value='i'>>,
+            right=<UnaryOp @1:44 op='++', postfix=True, value=<
+              Identifier @1:43 value='j'>>>,
+          init=<Comma @1:11 left=<Assign @1:8 left=<Identifier @1:6 value='i'>,
+            op='=', right=<Number @1:10 value='0'>>,
+          right=<Assign @1:15 left=<Identifier @1:13 value='j'>, op='=',
+            right=<Number @1:17 value='10'>>>,
+          statement=<Block @1:48 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='x'>, op='=', right=<
+                BinOp @2:9 left=<Identifier @2:7 value='i'>, op='*',
+                  right=<Identifier @2:11 value='j'>>>>
+          ]
+        >>]>
+        """,
+
+    ), (
+        'iteration_in',
+        """
+        for (p in obj) {
+
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ForIn @1:1 item=<Identifier @1:6 value='p'>,
+            iterable=<Identifier @1:11 value='obj'>, statement=<Block @1:16 >>
+        ]>
+        """,
+    ), (
+        # retain the semicolon in the initialiser part of a 'for' statement
+        'iteration_conditional_initializer',
+        """
+        for (Q || (Q = []); d < b; ) {
+          d = 1;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<For @1:1 cond=<BinOp @1:23 left=<
+          Identifier @1:21 value='d'>, op='<', right=<
+            Identifier @1:25 value='b'>
+          >, count=None, init=<BinOp @1:8 left=<Identifier @1:6 value='Q'>,
+            op='||', right=<Assign @1:14 left=<Identifier @1:12 value='Q'>,
+              op='=', right=<Array @1:16 items=[]>
+          >>, statement=<Block @1:30 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='d'>, op='=',
+              right=<Number @2:7 value='1'>>>
+          ]
+        >>]>
+        """,
+    ), (
+        'iteration_ternary_initializer',
+        """
+        for (2 >> (foo ? 32 : 43) && 54; 21; ) {
+          a = c;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<For @1:1 cond=<Number @1:34 value='21'>,
+          count=None, init=<BinOp @1:27 left=<BinOp @1:8 left=<
+            Number @1:6 value='2'>, op='>>', right=<
+              Conditional @1:16 alternative=<Number @1:23 value='43'>,
+                consequent=<Number @1:18 value='32'>,
+                predicate=<Identifier @1:12 value='foo'>
+          >>, op='&&', right=<Number @1:30 value='54'>>, statement=<
+            Block @1:40 ?children=[
+              <ExprStatement @2:3 expr=<Assign @2:5 left=<
+                Identifier @2:3 value='a'>, op='=', right=<
+                  Identifier @2:7 value='c'>>>
+            ]
+          >
+        >]>
+        """,
+    ), (
+        'iteration_regex_initializer',
+        """
+        for (/^.+/g; cond(); ++z) {
+          ev();
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <For @1:1 cond=<FunctionCall @1:14 args=[],
+            identifier=<Identifier @1:14 value='cond'>>,
+            count=<UnaryOp @1:22 op='++', postfix=False,
+              value=<Identifier @1:24 value='z'>>,
+            init=<Regex @1:6 value='/^.+/g'>, statement=<
+              Block @1:27 ?children=[
+                <ExprStatement @2:3 expr=<FunctionCall @2:3 args=[],
+                  identifier=<Identifier @2:3 value='ev'>>>
+              ]>>
+        ]>
+        """,
+    ), (
+        'iteration_var_in_obj',
+        """
+        for (var p in obj) {
+          p = 1;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<ForIn @1:1 item=<VarDecl @1:6 identifier=<
+          Identifier @1:10 value='p'>, initializer=None>, iterable=<
+            Identifier @1:15 value='obj'>, statement=<Block @1:20 ?children=[
+              <ExprStatement @2:3 expr=<Assign @2:5 left=<
+                Identifier @2:3 value='p'>, op='=', right=<
+                  Number @2:7 value='1'>>>
+            ]>
+        >]>
+        """,
+    ), (
+        'iteration_do_while',
+        """
+        do {
+          x += 1;
+        } while (true);
+        """,
+        """
+        <ES5Program @1:1 ?children=[<DoWhile @1:1 predicate=<
+            Boolean @3:10 value='true'>,
+          statement=<Block @1:4 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='x'>,
+              op='+=', right=<Number @2:8 value='1'>>>
+          ]>>
+        ]>
+        """,
+    ), (
+        'while_loop',
+        """
+        while (false) {
+          x = null;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <While @1:1 predicate=<Boolean @1:8 value='false'>,
+            statement=<Block @1:15 ?children=[
+              <ExprStatement @2:3 expr=<Assign @2:5 left=
+                <Identifier @2:3 value='x'>,
+                op='=', right=<Null @2:7 value='null'>>>
+            ]>
+          >
+        ]>
+        """,
+    ), (
+        # test 15
+        ################################
+        # continue statement
+        ################################
+
+        'while_loop_continue',
+        """
+        while (true) {
+          continue;
+          s = 'I am not reachable';
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <While @1:1 predicate=<Boolean @1:8 value='true'>,
+            statement=<Block @1:14 ?children=[
+              <Continue @2:3 identifier=None>,
+              <ExprStatement @3:3 expr=<Assign @3:5 left=
+                <Identifier @3:3 value='s'>, op='=',
+                right=<String @3:7 value="'I am not reachable'">>>
+            ]>
+          >
+        ]>
+        """,
+    ), (
+        'while_loop_continue_label',
+        """
+        while (true) {
+          continue label1;
+          s = 'I am not reachable';
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <While @1:1 predicate=<Boolean @1:8 value='true'>,
+            statement=<Block @1:14 ?children=[
+              <Continue @2:3 identifier=<Identifier @2:12 value='label1'>>,
+              <ExprStatement @3:3 expr=<Assign @3:5 left=
+                <Identifier @3:3 value='s'>, op='=',
+                right=<String @3:7 value="'I am not reachable'">>>
+            ]>
+          >
+        ]>
+        """,
+    ), (
+        ################################
+        # break statement
+        ################################
+        'while_loop_break',
+        """
+        while (true) {
+          break;
+          s = 'I am not reachable';
+        }
+        """,
+        # test 18
+        """
+        <ES5Program @1:1 ?children=[
+          <While @1:1 predicate=<Boolean @1:8 value='true'>,
+            statement=<Block @1:14 ?children=[
+              <Break @2:3 identifier=None>,
+              <ExprStatement @3:3 expr=<Assign @3:5 left=
+                <Identifier @3:3 value='s'>, op='=',
+                right=<String @3:7 value="'I am not reachable'">>>
+            ]>
+          >
+        ]>
+        """,
+    ), (
+        'while_loop_break_label',
+        """
+        while (true) {
+          break label1;
+          s = 'I am not reachable';
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <While @1:1 predicate=<Boolean @1:8 value='true'>,
+            statement=<Block @1:14 ?children=[
+              <Break @2:3 identifier=<Identifier @2:9 value='label1'>>,
+              <ExprStatement @3:3 expr=<Assign @3:5 left=
+                <Identifier @3:3 value='s'>, op='=',
+                right=<String @3:7 value="'I am not reachable'">>>
+            ]>
+          >
+        ]>
+        """,
+    ), (
+        ################################
+        # return statement
+        ################################
+
+        'return_empty',
+        """
+        {
+          return;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<Block @1:1 ?children=[
+          <Return @2:3 expr=None>]>]>
+        """,
+    ), (
+        'return_1',
+        """
+        {
+          return 1;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<Block @1:1 ?children=[
+          <Return @2:3 expr=<Number @2:10 value='1'>>]>]>
+        """,
+    ), (
+        # test21
+        ################################
+        # with statement
+        ################################
+        'with_statement',
+        """
+        with (x) {
+          var y = x * 2;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <With @1:1 expr=<Identifier @1:7 value='x'>,
+            statement=<Block @1:10 ?children=[
+              <VarStatement @2:3 ?children=[
+                <VarDecl @2:7 identifier=<Identifier @2:7 value='y'>,
+                  initializer=<BinOp @2:13 left=<Identifier @2:11 value='x'>,
+                    op='*', right=<Number @2:15 value='2'>>>
+            ]>
+          ]>>
+        ]>
+        """,
+    ), (
+        ################################
+        # labelled statement
+        ################################
+
+        'labelled_statement',
+        """
+        label: while (true) {
+          x *= 3;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<Label @1:6 identifier=<
+          Identifier @1:1 value='label'>, statement=<
+            While @1:8 predicate=<Boolean @1:15 value='true'>,
+            statement=<Block @1:21 ?children=[
+              <ExprStatement @2:3 expr=<Assign @2:5 left=<
+                Identifier @2:3 value='x'>, op='*=', right=<
+                  Number @2:8 value='3'>>>
+            ]>
+        >>]>
+        """,
+
+    ), (
+        ################################
+        # switch statement
+        ################################
+        'switch_statement',
+        """
+        switch (day_of_week) {
+          case 6:
+          case 7:
+            x = 'Weekend';
+            break;
+          case 1:
+            x = 'Monday';
+            break;
+          default:
+            break;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <Switch @1:1 cases=[
+            <Case @2:3 elements=[], expr=<Number @2:8 value='6'>>,
+            <Case @3:3 elements=[
+              <ExprStatement @4:5 expr=<Assign @4:7 left=<
+                Identifier @4:5 value='x'>, op='=', right=<
+                  String @4:9 value="'Weekend'">>>,
+              <Break @5:5 identifier=None>
+            ], expr=<Number @3:8 value='7'>>,
+            <Case @6:3 elements=[
+              <ExprStatement @7:5 expr=<Assign @7:7 left=<
+                Identifier @7:5 value='x'>, op='=', right=<
+                  String @7:9 value="'Monday'">>>,
+              <Break @8:5 identifier=None>
+            ], expr=<Number @6:8 value='1'>>
+          ],
+          default=<Default @9:3 elements=[
+            <Break @10:5 identifier=None>
+          ]>,
+          expr=<Identifier @1:9 value='day_of_week'>>
+        ]>
+        """,
+
+    ), (
+        # test 24
+        ################################
+        # throw statement
+        ################################
+        'throw_statement',
+        """
+        throw 'exc';
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <Throw @1:1 expr=<String @1:7 value="'exc'">>
+        ]>
+        """,
+    ), (
+        ################################
+        # debugger statement
+        ################################
+        'debugger_statement',
+        'debugger;',
+        """
+        <ES5Program @1:1 ?children=[<Debugger @1:1 value='debugger'>]>
+        """,
+    ), (
+        ################################
+        # expression statement
+        ################################
+        'expression_statement',
+        """
+        5 + 7 - 20 * 10;
+        ++x;
+        --x;
+        x++;
+        x--;
+        x = 17 /= 3;
+        s = mot ? z : /x:3;x<5;y</g / i;
+        1 << 2;
+        foo = 2 << 3;
+        1 < 2;
+        bar = 1 < 2;
+        1 | 2;
+        bar = 1 & 2;
+        1 | 2 & 8;
+        bar = 1 & 2 | 8;
+        x ^ y;
+        bar = x ^ y;
+        x && y;
+        bar = x && y;
+        1,2;
+        """,
+
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:7 left=<BinOp @1:3 left=<
+            Number @1:1 value='5'>, op='+', right=<Number @1:5 value='7'>>,
+              op='-', right=<BinOp @1:12 left=<Number @1:9 value='20'>, op='*',
+                right=<Number @1:14 value='10'>>>>,
+          <ExprStatement @2:1 expr=<UnaryOp @2:1 op='++', postfix=False,
+            value=<Identifier @2:3 value='x'>>>,
+          <ExprStatement @3:1 expr=<UnaryOp @3:1 op='--', postfix=False,
+            value=<Identifier @3:3 value='x'>>>,
+          <ExprStatement @4:1 expr=<UnaryOp @4:2 op='++', postfix=True,
+            value=<Identifier @4:1 value='x'>>>,
+          <ExprStatement @5:1 expr=<UnaryOp @5:2 op='--', postfix=True,
+            value=<Identifier @5:1 value='x'>>>,
+          <ExprStatement @6:1 expr=<Assign @6:3 left=<
+            Identifier @6:1 value='x'>, op='=',
+            right=<Assign @6:8 left=<Number @6:5 value='17'>, op='/=',
+              right=<Number @6:11 value='3'>>>>,
+          <ExprStatement @7:1 expr=<Assign @7:3 left=<
+            Identifier @7:1 value='s'>, op='=',
+            right=<Conditional @7:9 alternative=<
+              BinOp @7:29 left=<Regex @7:15 value='/x:3;x<5;y</g'>, op='/',
+              right=<Identifier @7:31 value='i'>>,
+              consequent=<Identifier @7:11 value='z'>,
+              predicate=<Identifier @7:5 value='mot'>>>>,
+          <ExprStatement @8:1 expr=<BinOp @8:3 left=<Number @8:1 value='1'>,
+            op='<<', right=<Number @8:6 value='2'>>>,
+          <ExprStatement @9:1 expr=<Assign @9:5 left=<
+            Identifier @9:1 value='foo'>, op='=', right=<BinOp @9:9 left=<
+              Number @9:7 value='2'>, op='<<', right=<
+                Number @9:12 value='3'>>>>,
+          <ExprStatement @10:1 expr=<BinOp @10:3 left=<Number @10:1 value='1'>,
+            op='<', right=<Number @10:5 value='2'>>>,
+          <ExprStatement @11:1 expr=<Assign @11:5 left=<
+            Identifier @11:1 value='bar'>, op='=', right=<BinOp @11:9 left=<
+              Number @11:7 value='1'>, op='<', right=<
+              Number @11:11 value='2'>>>>,
+          <ExprStatement @12:1 expr=<BinOp @12:3 left=<Number @12:1 value='1'>,
+            op='|', right=<Number @12:5 value='2'>>>,
+          <ExprStatement @13:1 expr=<Assign @13:5 left=<
+            Identifier @13:1 value='bar'>, op='=', right=<BinOp @13:9 left=<
+              Number @13:7 value='1'>, op='&', right=<
+              Number @13:11 value='2'>>>>,
+          <ExprStatement @14:1 expr=<BinOp @14:3 left=<Number @14:1 value='1'>,
+            op='|', right=<BinOp @14:7 left=<Number @14:5 value='2'>,
+              op='&', right=<Number @14:9 value='8'>>>>,
+          <ExprStatement @15:1 expr=<Assign @15:5 left=<
+            Identifier @15:1 value='bar'>, op='=', right=<BinOp @15:13 left=<
+              BinOp @15:9 left=<Number @15:7 value='1'>, op='&', right=<
+                Number @15:11 value='2'>>, op='|',
+                  right=<Number @15:15 value='8'>>>>,
+          <ExprStatement @16:1 expr=<BinOp @16:3 left=<
+            Identifier @16:1 value='x'>, op='^', right=<
+            Identifier @16:5 value='y'>>>,
+          <ExprStatement @17:1 expr=<Assign @17:5 left=<
+            Identifier @17:1 value='bar'>, op='=', right=<BinOp @17:9 left=<
+              Identifier @17:7 value='x'>, op='^', right=<
+              Identifier @17:11 value='y'>>>>,
+          <ExprStatement @18:1 expr=<BinOp @18:3 left=<
+            Identifier @18:1 value='x'>, op='&&', right=<
+            Identifier @18:6 value='y'>>>,
+          <ExprStatement @19:1 expr=<Assign @19:5 left=<
+            Identifier @19:1 value='bar'>, op='=', right=<BinOp @19:9 left=<
+              Identifier @19:7 value='x'>, op='&&', right=<
+              Identifier @19:12 value='y'>>>>,
+          <ExprStatement @20:1 expr=<Comma @20:2 left=<Number @20:1 value='1'>,
+            right=<Number @20:3 value='2'>>>
+        ]>
+        """,
+
+    ), (
+        # test 27
+        ################################
+        # try statement
+        ################################
+        'try_catch_statement',
+        """
+        try {
+          x = 3;
+        } catch (exc) {
+          x = exc;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<Try @1:1 catch=<
+          Catch @3:3 elements=<Block @3:15 ?children=[
+            <ExprStatement @4:3 expr=<Assign @4:5 left=<
+              Identifier @4:3 value='x'>, op='=', right=<
+                Identifier @4:7 value='exc'>>>
+            ]>,
+            identifier=<Identifier @3:10 value='exc'>
+          >,
+          fin=None,
+          statements=<Block @1:5 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='x'>, op='=',
+              right=<Number @2:7 value='3'>>>
+          ]>
+        >]>
+        """,
+    ), (
+        'try_finally_statement',
+        """
+        try {
+          x = 3;
+        } finally {
+          x = null;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<Try @1:1 catch=None,
+          fin=<Finally @3:3 elements=<Block @3:11 ?children=[
+            <ExprStatement @4:3 expr=<Assign @4:5 left=<
+              Identifier @4:3 value='x'>, op='=', right=<
+                Null @4:7 value='null'>>>
+          ]>>,
+          statements=<Block @1:5 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='x'>, op='=',
+              right=<Number @2:7 value='3'>>>
+          ]>
+        >]>
+        """,
+
+    ), (
+        'try_catch_finally_statement',
+        """
+        try {
+          x = 5;
+        } catch (exc) {
+          x = exc;
+        } finally {
+          y = null;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<Try @1:1 catch=<
+          Catch @3:3 elements=<Block @3:15 ?children=[
+            <ExprStatement @4:3 expr=<Assign @4:5 left=<
+              Identifier @4:3 value='x'>, op='=', right=<
+                Identifier @4:7 value='exc'>>>
+            ]>,
+            identifier=<Identifier @3:10 value='exc'>
+          >,
+          fin=<Finally @5:3 elements=<Block @5:11 ?children=[
+            <ExprStatement @6:3 expr=<Assign @6:5 left=<
+              Identifier @6:3 value='y'>, op='=', right=<
+                Null @6:7 value='null'>>>
+          ]>>,
+          statements=<Block @1:5 ?children=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='x'>, op='=',
+              right=<Number @2:7 value='5'>>>
+          ]>
+        >]>
+        """,
+    ), (
+        # test 30
+        ################################
+        # function
+        ################################
+        'function_with_arguments',
+        """
+        function foo(x, y) {
+          z = 10;
+          return x + y + z;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <FuncDecl @1:1 elements=[
+            <ExprStatement @2:3 expr=<Assign @2:5 left=<
+              Identifier @2:3 value='z'>, op='=', right=<
+              Number @2:7 value='10'>>>,
+            <Return @3:3 expr=<BinOp @3:16 left=<BinOp @3:12 left=<
+                Identifier @3:10 value='x'>,
+                op='+', right=<Identifier @3:14 value='y'>>,
+              op='+', right=<Identifier @3:18 value='z'>>>
+          ], identifier=<Identifier @1:10 value='foo'>, parameters=[
+            <Identifier @1:14 value='x'>, <Identifier @1:17 value='y'>
+          ]>
+        ]>
+        """,
+    ), (
+        'function_without_arguments',
+        """
+        function foo() {
+          return 10;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <FuncDecl @1:1 elements=[
+            <Return @2:3 expr=<Number @2:10 value='10'>>],
+            identifier=<Identifier @1:10 value='foo'>, parameters=[]>
+        ]>
+        """,
+    ), (
+        'var_function_without_arguments',
+        """
+        var a = function() {
+          return 10;
+        };
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <VarStatement @1:1 ?children=[
+            <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+              initializer=<FuncExpr @1:9 elements=[
+                <Return @2:3 expr=<Number @2:10 value='10'>>
+              ],
+              identifier=None, parameters=[]>
+            >
+          ]>
+        ]>
+        """,
+    ), (
+        # test 33
+        'var_function_with_arguments',
+        """
+        var a = function foo(x, y) {
+          return x + y;
+        };
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <VarStatement @1:1 ?children=[
+            <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+              initializer=<FuncExpr @1:9 elements=[
+                <Return @2:3 expr=<BinOp @2:12 left=<
+                  Identifier @2:10 value='x'>, op='+',
+                  right=<Identifier @2:14 value='y'>>>
+              ], identifier=<Identifier @1:18 value='foo'>, parameters=[
+                <Identifier @1:22 value='x'>, <Identifier @1:25 value='y'>
+              ]>
+            >
+          ]>]>
+        """,
+    ), (
+        'var_function_named',
+        """
+        var x = function y() {
+        };
+        """,
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='x'>,
+            initializer=<FuncExpr @1:9 elements=[],
+              identifier=<Identifier @1:18 value='y'>, parameters=[]>>]>]>
+        """,
+    ), (
+        # nested function declaration
+        'function_nested_declaration',
+        """
+        function foo() {
+          function bar() {
+
+          }
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[<FuncDecl @1:1 elements=[
+          <FuncDecl @2:3 elements=[], identifier=<
+            Identifier @2:12 value='bar'>, parameters=[]>
+        ], identifier=<Identifier @1:10 value='foo'>, parameters=[]>]>
+        """,
+    ), (
+        # function call
+        # test 36
+        'function_call',
+        """
+        foo();
+        var r = foo();
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=[], identifier=<
+            Identifier @1:1 value='foo'>>>,
+          <VarStatement @2:1 ?children=[
+            <VarDecl @2:5 identifier=<Identifier @2:5 value='r'>,
+              initializer=<FunctionCall @2:9 args=[],
+                identifier=<Identifier @2:9 value='foo'>>>]>
+        ]>
+        """,
+    ), (
+        'function_call_argument',
+        """
+        foo(x, 7);
+        var r = foo(x, 7);
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=[
+            <Identifier @1:5 value='x'>, <Number @1:8 value='7'>
+          ], identifier=<Identifier @1:1 value='foo'>>>,
+          <VarStatement @2:1 ?children=[
+            <VarDecl @2:5 identifier=<Identifier @2:5 value='r'>,
+              initializer=<FunctionCall @2:9 args=[
+                <Identifier @2:13 value='x'>, <Number @2:16 value='7'>
+              ],
+              identifier=<Identifier @2:9 value='foo'>>>
+          ]>
+        ]>
+        """,
+    ), (
+        'function_call_access_element',
+        """
+        foo()[10];
+        var j = foo()[10];
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BracketAccessor @1:6 expr=<
+              Number @1:7 value='10'>,
+            node=<FunctionCall @1:1 args=[],
+            identifier=<Identifier @1:1 value='foo'>>>>,
+          <VarStatement @2:1 ?children=[
+            <VarDecl @2:5 identifier=<Identifier @2:5 value='j'>,
+              initializer=<BracketAccessor @2:14 expr=<
+                Number @2:15 value='10'>, node=<FunctionCall @2:9 args=[],
+                identifier=<Identifier @2:9 value='foo'>>>>
+          ]>
+        ]>
+        """,
+    ), (
+        'function_call_access_attribute',
+        """
+        foo().foo;
+        var bar = foo().foo;
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<DotAccessor @1:6 identifier=<
+              Identifier @1:7 value='foo'>,
+            node=<FunctionCall @1:1 args=[],
+            identifier=<Identifier @1:1 value='foo'>>>>,
+            <VarStatement @2:1 ?children=[
+              <VarDecl @2:5 identifier=<Identifier @2:5 value='bar'>,
+                initializer=<DotAccessor @2:16 identifier=<
+                  Identifier @2:17 value='foo'>,
+                node=<FunctionCall @2:11 args=[],
+                  identifier=<Identifier @2:11 value='foo'>>>>
+            ]>
+        ]>
+        """,
+    ), (
+        'new_keyword',
+        """
+        var foo = new Foo();
+        """,
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='foo'>, initializer=<
+            NewExpr @1:11 args=[], identifier=<Identifier @1:15 value='Foo'>>>
+        ]>]>
+        """,
+    ), (
+        # dot accessor
+        'new_keyword_dot_accessor',
+        'var bar = new Foo.Bar();',
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='bar'>,
+            initializer=<NewExpr @1:11 args=[],
+              identifier=<DotAccessor @1:18 identifier=<
+                Identifier @1:19 value='Bar'>,
+              node=<Identifier @1:15 value='Foo'>>>>
+        ]>]>
+        """,
+    ), (
+        # bracket accessor
+        'new_keyword_bracket_accessor',
+        'var bar = new Foo.Bar()[7];',
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='bar'>,
+            initializer=<BracketAccessor @1:24 expr=<Number @1:25 value='7'>,
+              node=<NewExpr @1:11 args=[], identifier=<
+                DotAccessor @1:18 identifier=<
+                  Identifier @1:19 value='Bar'>,
+                node=<Identifier @1:15 value='Foo'>>>>>
+        ]>]>
+        """,
+
+    ), (
+        # object literal
+        'object_literal_literal_keys',
+        """
+        var obj = {
+          foo: 10,
+          bar: 20
+        };
+        """,
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='obj'>, initializer=<
+            Object @1:11 properties=[
+              <Assign @2:6 left=<Identifier @2:3 value='foo'>, op=':', right=<
+                Number @2:8 value='10'>>,
+              <Assign @3:6 left=<Identifier @3:3 value='bar'>, op=':', right=<
+                Number @3:8 value='20'>>
+            ]
+          >>
+        ]>]>
+        """,
+    ), (
+        'object_literal_numeric_keys',
+        """
+        var obj = {
+          1: 'a',
+          2: 'b'
+        };
+        """,
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='obj'>, initializer=<
+            Object @1:11 properties=[
+              <Assign @2:4 left=<Number @2:3 value='1'>, op=':', right=<
+                String @2:6 value="'a'">>,
+              <Assign @3:4 left=<Number @3:3 value='2'>, op=':', right=<
+                String @3:6 value="'b'">>
+            ]
+          >>
+        ]>]>
+        """,
+    ), (
+        'new_expr_lhs',
+        """
+        new T()
+        new T().derp
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<NewExpr @1:1 args=[], identifier=<
+            Identifier @1:5 value='T'>>>,
+          <ExprStatement @2:1 expr=<DotAccessor @2:8 identifier=<
+            Identifier @2:9 value='derp'>, node=<
+              NewExpr @2:1 args=[], identifier=<Identifier @2:5 value='T'>>>>
+        ]>
+        """
+    ), (
+        'new_new_expr',
+        # var T = function(){ return function (){} }
+        """
+        new new T()
+        var x = new new T()
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<NewExpr @1:1 args=[], identifier=<
+              NewExpr @1:5 args=[], identifier=<
+                Identifier @1:9 value='T'>>>>,
+          <VarStatement @2:1 ?children=[
+            <VarDecl @2:5 identifier=<Identifier @2:5 value='x'>,
+              initializer=<NewExpr @2:9 args=[], identifier=<
+                NewExpr @2:13 args=[], identifier=<
+                  Identifier @2:17 value='T'>>>>
+          ]>
+        ]>
+        """
+    ), (
+        'object_literal_string_keys',
+        """
+        var obj = {
+          'a': 100,
+          'b': 200
+        };
+        """,
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='obj'>, initializer=<
+            Object @1:11 properties=[
+              <Assign @2:6 left=<String @2:3 value="'a'">, op=':', right=<
+                Number @2:8 value='100'>>,
+              <Assign @3:6 left=<String @3:3 value="'b'">, op=':', right=<
+                Number @3:8 value='200'>>
+            ]
+          >>
+        ]>]>
+        """,
+    ), (
+        'object_literal_empty',
+        """
+        var obj = {
+        };
+        """,
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='obj'>,
+            initializer=<Object @1:11 properties=[]>>
+        ]>]>
+        """,
+
+    ), (
+        # delete
+        'delete_keyword',
+        """
+        var obj = {foo: 1};
+        delete obj.foo;
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <VarStatement @1:1 ?children=[
+            <VarDecl @1:5 identifier=<Identifier @1:5 value='obj'>,
+              initializer=<Object @1:11 properties=[
+                <Assign @1:15 left=<Identifier @1:12 value='foo'>, op=':',
+                  right=<Number @1:17 value='1'>>
+                ]>>
+          ]>,
+          <ExprStatement @2:1 expr=<UnaryOp @2:1 op='delete', postfix=False,
+            value=<DotAccessor @2:11 identifier=<Identifier @2:12 value='foo'>,
+              node=<Identifier @2:8 value='obj'>>>>
+        ]>
+        """,
+    ), (
+        'void_keyword',
+        """
+        void 0;
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<UnaryOp @1:1 op='void', postfix=False,
+            value=<Number @1:6 value='0'>>>
+        ]>
+        """,
+    ), (
+        # array
+        'array_create_access',
+        """
+        var a = [1,2,3,4,5];
+        var b = [1,];
+        var c = [1,,];
+        var res = a[3];
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <VarStatement @1:1 ?children=[
+            <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+              initializer=<Array @1:9 items=[
+                <Number @1:10 value='1'>, <Number @1:12 value='2'>,
+                <Number @1:14 value='3'>, <Number @1:16 value='4'>,
+                <Number @1:18 value='5'>
+              ]>>
+          ]>,
+          <VarStatement @2:1 ?children=[
+            <VarDecl @2:5 identifier=<Identifier @2:5 value='b'>,
+              initializer=<Array @2:9 items=[<Number @2:10 value='1'>
+            ]>>
+          ]>,
+          <VarStatement @3:1 ?children=[
+            <VarDecl @3:5 identifier=<Identifier @3:5 value='c'>, initializer=<
+              Array @3:9 items=[
+                <Number @3:10 value='1'>, <Elision @3:12 value=','>
+              ]>>
+          ]>,
+          <VarStatement @4:1 ?children=[
+            <VarDecl @4:5 identifier=<Identifier @4:5 value='res'>,
+              initializer=<BracketAccessor @4:12 expr=<Number @4:13 value='3'>,
+                node=<Identifier @4:11 value='a'>>>
+          ]>
+        ]>
+        """,
+    ), (
+        # elision
+        'elision_1',
+        'var a = [,,,];',
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+            initializer=<Array @1:9 items=[
+              <Elision @1:10 value=','>,
+              <Elision @1:11 value=','>,
+              <Elision @1:12 value=','>
+            ]>>
+          ]>
+        ]>
+        """,
+    ), (
+        'elision_2',
+        'var a = [1,,,4];',
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+            initializer=<Array @1:9 items=[
+              <Number @1:10 value='1'>,
+              <Elision @1:12 value=','>,
+              <Elision @1:13 value=','>,
+              <Number @1:14 value='4'>
+            ]>>
+          ]>
+        ]>
+        """,
+    ), (
+        'elision_3',
+        'var a = [1,,3,,5];',
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='a'>,
+            initializer=<Array @1:9 items=[
+              <Number @1:10 value='1'>,
+              <Elision @1:12 value=','>,
+              <Number @1:13 value='3'>,
+              <Elision @1:15 value=','>,
+              <Number @1:16 value='5'>
+            ]>>
+          ]>
+        ]>
+        """,
+    ), (
+
+        #######################################
+        # Make sure parentheses are not removed
+        #######################################
+
+        # ... Expected an identifier and instead saw '/'
+        'parentheses_not_removed',
+        r'Expr.match[type].source + (/(?![^\[]*\])(?![^\(]*\))/.source);',
+
+        r"""
+        <ES5Program @1:1 ?children=[<ExprStatement @1:1 expr=<
+          BinOp @1:25 left=<DotAccessor @1:17 identifier=<
+            Identifier @1:18 value='source'>,
+            node=<BracketAccessor @1:11 expr=<Identifier @1:12 value='type'>,
+              node=<DotAccessor @1:5 identifier=<
+                Identifier @1:6 value='match'>, node=<
+                  Identifier @1:1 value='Expr'>>>>,
+          op='+', right=<DotAccessor @1:54 identifier=<
+            Identifier @1:55 value='source'>,
+            node=<Regex @1:28 value='/(?![^\\[]*\\])(?![^\\(]*\\))/'>>>>]>
+        """,
+    ), (
+        'comparison',
+        '(options = arguments[i]) != null;',
+        # test 54
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:26 left=<Assign @1:10 left=<
+              Identifier @1:2 value='options'>, op='=',
+              right=<BracketAccessor @1:21 expr=<Identifier @1:22 value='i'>,
+            node=<Identifier @1:12 value='arguments'>>>,
+            op='!=', right=<Null @1:29 value='null'>>>
+        ]>
+        """,
+    ), (
+        'regex_test',
+        'return (/h\d/i).test(elem.nodeName);',
+        r"""
+        <ES5Program @1:1 ?children=[<Return @1:1 expr=<FunctionCall @1:8 args=[
+          <DotAccessor @1:26 identifier=<Identifier @1:27 value='nodeName'>,
+            node=<Identifier @1:22 value='elem'>>], identifier=<
+              DotAccessor @1:16 identifier=<Identifier @1:17 value='test'>,
+                node=<Regex @1:9 value='/h\\d/i'>>>>]>
+
+        """,
+
+    ), (
+        # https://github.com/rspivak/slimit/issues/42
+        'slimit_issue_42',
+        """
+        e.b(d) ? (a = [c.f(j[1])], e.fn.attr.call(a, d, !0)) : a = [k.f(j[1])];
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<Conditional @1:8 alternative=<
+              Assign @1:58 left=<Identifier @1:56 value='a'>, op='=',
+              right=<Array @1:60 items=[
+            <FunctionCall @1:61 args=[
+              <BracketAccessor @1:66 expr=<Number @1:67 value='1'>,
+                node=<Identifier @1:65 value='j'>>
+            ], identifier=<DotAccessor @1:62 identifier=<
+              Identifier @1:63 value='f'>, node=<Identifier @1:61 value='k'>>>
+          ]>>,
+          consequent=<Comma @1:26 left=<Assign @1:13 left=<
+              Identifier @1:11 value='a'>, op='=', right=<Array @1:15 items=[
+            <FunctionCall @1:16 args=[
+              <BracketAccessor @1:21 expr=<Number @1:22 value='1'>,
+                node=<Identifier @1:20 value='j'>>
+            ], identifier=<DotAccessor @1:17 identifier=<
+              Identifier @1:18 value='f'>, node=<Identifier @1:16 value='c'>>>
+          ]>>, right=<FunctionCall @1:28 args=[
+            <Identifier @1:43 value='a'>,
+            <Identifier @1:46 value='d'>,
+            <UnaryOp @1:49 op='!', postfix=False, value=<
+              Number @1:50 value='0'>>
+          ],
+          identifier=<DotAccessor @1:37 identifier=<
+            Identifier @1:38 value='call'>, node=<
+              DotAccessor @1:32 identifier=<
+                  Identifier @1:33 value='attr'>,
+                node=<DotAccessor @1:29 identifier=<
+                  Identifier @1:30 value='fn'>,
+                    node=<Identifier @1:28 value='e'>>>>>>,
+          predicate=<FunctionCall @1:1 args=[
+            <Identifier @1:5 value='d'>
+          ], identifier=<DotAccessor @1:2 identifier=<
+            Identifier @1:3 value='b'>, node=<Identifier @1:1 value='e'>>>>>
+        ]>
+        """,
+    ), (
+        'closure_scope',
+        """
+        (function() {
+          x = 5;
+        }());
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<FunctionCall @1:2 args=[], identifier=<
+            FuncExpr @1:2 elements=[
+              <ExprStatement @2:3 expr=<Assign @2:5 left=<
+                Identifier @2:3 value='x'>, op='=',
+                right=<Number @2:7 value='5'>>>
+            ],
+            identifier=None, parameters=[]>>>
+        ]>
+        """,
+    ), (
+        'return_statement_negation',
+        'return !(match === true || elem.getAttribute("classid") !== match);',
+        """
+        <ES5Program @1:1 ?children=[<Return @1:1 expr=<
+          UnaryOp @1:8 op='!', postfix=False, value=<BinOp @1:25 left=<
+            BinOp @1:16 left=<Identifier @1:10 value='match'>, op='===',
+            right=<Boolean @1:20 value='true'>>, op='||', right=<
+          BinOp @1:57 left=<FunctionCall @1:28 args=[
+            <String @1:46 value='"classid"'>
+          ],
+          identifier=<DotAccessor @1:32 identifier=<
+            Identifier @1:33 value='getAttribute'>, node=<
+              Identifier @1:28 value='elem'>>>, op='!==', right=<
+                Identifier @1:61 value='match'>>>>>
+        ]>
+        """,
+    ), (
+        # test 57
+        'ternary_dot_accessor',
+        'var el = (elem ? elem.ownerDocument || elem : 0).documentElement;',
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='el'>,
+            initializer=<DotAccessor @1:49 identifier=<
+              Identifier @1:50 value='documentElement'>,
+              node=<Conditional @1:16 alternative=<Number @1:47 value='0'>,
+              consequent=<BinOp @1:37 left=<DotAccessor @1:22 identifier=<
+                Identifier @1:23 value='ownerDocument'>,
+                node=<Identifier @1:18 value='elem'>
+              >, op='||', right=<Identifier @1:40 value='elem'>>,
+            predicate=<Identifier @1:11 value='elem'>>>
+          >
+        ]>]>
+        """,
+    ), (
+        # typeof
+        'typeof',
+        'typeof second.length === "number";',
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:22 left=<UnaryOp @1:1 op='typeof',
+            postfix=False, value=<DotAccessor @1:14 identifier=
+              <Identifier @1:15 value='length'>, node=<
+                Identifier @1:8 value='second'>>>,
+            op='===', right=<String @1:26 value='"number"'
+          >>>
+        ]>
+        """,
+    ), (
+        'instanceof',
+        'x instanceof y',
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:3 left=<
+            Identifier @1:1 value='x'>,
+            op='instanceof', right=<Identifier @1:14 value='y'>>>
+        ]>
+        """,
+    ), (
+        # membership
+        'membership_in',
+        """
+        1 in s;
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:3 left=<Number @1:1 value='1'>,
+            op='in', right=<Identifier @1:6 value='s'>>>
+        ]>
+        """,
+    ), (
+        # function call in FOR init
+        'function_call_in_for_init',
+        """
+        for (o(); i < 3; i++) {
+
+        }
+        """,
+
+        """
+        <ES5Program @1:1 ?children=[
+          <For @1:1 cond=<BinOp @1:13 left=<Identifier @1:11 value='i'>,
+            op='<', right=<Number @1:15 value='3'>>,
+            count=<UnaryOp @1:19 op='++', postfix=True,
+            value=<Identifier @1:18 value='i'>>, init=<
+              FunctionCall @1:6 args=[],
+            identifier=<Identifier @1:6 value='o'>>,
+            statement=<Block @1:23 >>
+        ]>
+        """,
+    ), (
+        'for_loop_chained_noin',
+        """
+        for (o < (p < q);;);
+        for (o == (p == q);;);
+        for (o ^ (p ^ q);;);
+        for (o | (p | q);;);
+        for (o & (p & q);;);
+        for (a ? (b ? c : d) : false;;);
+        for (var x;;);
+        for (var x, y, z;;);
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <For @1:1 cond=None, count=None, init=<BinOp @1:8 left=<
+              Identifier @1:6 value='o'>, op='<', right=<BinOp @1:13 left=<
+                Identifier @1:11 value='p'>, op='<', right=<
+                  Identifier @1:15 value='q'>>>,
+            statement=<EmptyStatement @1:20 value=';'>>,
+          <For @2:1 cond=None, count=None, init=<BinOp @2:8 left=<
+              Identifier @2:6 value='o'>, op='==', right=<BinOp @2:14 left=<
+                Identifier @2:12 value='p'>, op='==', right=<
+                  Identifier @2:17 value='q'>>>,
+            statement=<EmptyStatement @2:22 value=';'>>,
+          <For @3:1 cond=None, count=None, init=<BinOp @3:8 left=<
+              Identifier @3:6 value='o'>, op='^', right=<BinOp @3:13 left=<
+                Identifier @3:11 value='p'>, op='^', right=<
+                  Identifier @3:15 value='q'>>>,
+            statement=<EmptyStatement @3:20 value=';'>>,
+          <For @4:1 cond=None, count=None, init=<BinOp @4:8 left=<
+              Identifier @4:6 value='o'>, op='|', right=<BinOp @4:13 left=<
+                Identifier @4:11 value='p'>, op='|', right=<
+                  Identifier @4:15 value='q'>>>,
+            statement=<EmptyStatement @4:20 value=';'>>,
+          <For @5:1 cond=None, count=None, init=<BinOp @5:8 left=<
+              Identifier @5:6 value='o'>, op='&', right=<BinOp @5:13 left=<
+                Identifier @5:11 value='p'>, op='&', right=<
+                  Identifier @5:15 value='q'>>>,
+            statement=<EmptyStatement @5:20 value=';'>>,
+          <For @6:1 cond=None, count=None,
+            init=<Conditional @6:8 alternative=<Boolean @6:24 value='false'>,
+                consequent=<Conditional @6:13 alternative=<
+                    Identifier @6:19 value='d'>,
+                  consequent=<Identifier @6:15 value='c'>,
+                predicate=<Identifier @6:11 value='b'>>,
+              predicate=<Identifier @6:6 value='a'>>,
+            statement=<EmptyStatement @6:32 value=';'>>,
+          <For @7:1 cond=None, count=None, init=<VarStatement @7:6 ?children=[
+              <VarDecl @7:10 identifier=<Identifier @7:10 value='x'>,
+                initializer=None>
+            ]>,
+            statement=<EmptyStatement @7:14 value=';'>>,
+          <For @8:1 cond=None, count=None, init=<VarStatement @8:6 ?children=[
+              <VarDecl @8:10 identifier=<Identifier @8:10 value='x'>,
+                initializer=None>,
+              <VarDecl @8:13 identifier=<Identifier @8:13 value='y'>,
+                initializer=None>,
+              <VarDecl @8:16 identifier=<Identifier @8:16 value='z'>,
+                initializer=None>
+            ]>,
+            statement=<EmptyStatement @8:20 value=';'>>
+        ]>
+        """,
+
+    ), (
+        'for_initializer_noin',
+        """
+        for (var x = foo() in (bah())) {};
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ForIn @1:1 item=<VarDecl @1:6 identifier=<
+                Identifier @1:10 value='x'>,
+              initializer=<FunctionCall @1:14 args=[
+              ],
+              identifier=<Identifier @1:14 value='foo'>>>,
+            iterable=<FunctionCall @1:24 args=[],
+              identifier=<Identifier @1:24 value='bah'>>,
+            statement=<Block @1:32 >>,
+          <EmptyStatement @1:34 value=';'>
+        ]>
+        """,
+
+    ), (
+        # https://github.com/rspivak/slimit/issues/32
+        'slimit_issue_32',
+        """
+        Name.prototype = {
+          get fullName() {
+            return this.first + " " + this.last;
+          },
+          set fullName(name) {
+            var names = name.split(" ");
+            this.first = names[0];
+            this.last = names[1];
+          }
+        };
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<Assign @1:16 left=<
+              DotAccessor @1:5 identifier=<
+                Identifier @1:6 value='prototype'>,
+                node=<Identifier @1:1 value='Name'>>,
+              op='=', right=<Object @1:18 properties=[
+                <GetPropAssign @2:3 elements=[
+                  <Return @3:5 expr=<BinOp @3:29 left=<BinOp @3:23 left=<
+                      DotAccessor @3:16 identifier=<
+                        Identifier @3:17 value='first'>, node=<This @3:12 >>,
+                      op='+', right=<String @3:25 value='" "'>>,
+                    op='+', right=<DotAccessor @3:35 identifier=<
+                      Identifier @3:36 value='last'>, node=<This @3:31 >>>>
+                ],
+                prop_name=<Identifier @2:7 value='fullName'>>,
+                <SetPropAssign @5:3 elements=[
+                  <VarStatement @6:5 ?children=[
+                    <VarDecl @6:9 identifier=<Identifier @6:9 value='names'>,
+                      initializer=<FunctionCall @6:17 args=[
+                        <String @6:28 value='" "'>
+                      ], identifier=<DotAccessor @6:21 identifier=<
+                        Identifier @6:22 value='split'>, node=<
+                        Identifier @6:17 value='name'>>>>
+                  ]>,
+                  <ExprStatement @7:5 expr=<Assign @7:16 left=<
+                    DotAccessor @7:9 identifier=<
+                      Identifier @7:10 value='first'>, node=<This @7:5 >>,
+                    op='=', right=<BracketAccessor @7:23 expr=<
+                      Number @7:24 value='0'>, node=<
+                        Identifier @7:18 value='names'>>>>,
+                  <ExprStatement @8:5 expr=<Assign @8:15 left=<
+                    DotAccessor @8:9 identifier=<
+                      Identifier @8:10 value='last'>, node=<This @8:5 >>,
+                      op='=', right=<BracketAccessor @8:22 expr=<
+                        Number @8:23 value='1'>,
+                          node=<Identifier @8:17 value='names'>>>>
+                ],
+                parameters=[
+                  <Identifier @5:16 value='name'>
+                ],
+                prop_name=<Identifier @5:7 value='fullName'>>
+          ]>>>
+        ]>
+        """,
+    ), (
+        'dot_accessor_on_integer',
+        """
+        (0).toString();
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=[], identifier=<
+            DotAccessor @1:4 identifier=<Identifier @1:5 value='toString'>,
+            node=<Number @1:2 value='0'>>>>
+        ]>
+        """,
+    ), (
+        'dot_reserved_word',
+        """
+        e.case;
+        """,
+        """
+        <ES5Program @1:1 ?children=[<ExprStatement @1:1 expr=<
+          DotAccessor @1:2 identifier=<Identifier @1:3 value='case'>,
+          node=<Identifier @1:1 value='e'>>>
+        ]>
+        """
+    ), (
+        'dot_reserved_word_nobf',
+        """
+        for (x = e.case;;);
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <For @1:1 cond=None, count=None, init=<Assign @1:8 left=<
+              Identifier @1:6 value='x'>, op='=', right=<
+                DotAccessor @1:11 identifier=<Identifier @1:12 value='case'>,
+                node=<Identifier @1:10 value='e'>>>,
+            statement=<EmptyStatement @1:19 value=';'>>
+        ]>
+        """
+    ), (
+        'logical_or_expr_nobf',
+        """
+        (true || true) || (false && false);
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:16 left=<
+              BinOp @1:7 left=<Boolean @1:2 value='true'>,
+                op='||', right=<Boolean @1:10 value='true'>>,
+            op='||', right=<
+              BinOp @1:26 left=<Boolean @1:20 value='false'>,
+                op='&&', right=<Boolean @1:29 value='false'>>>>
+        ]>
+        """
+    ), (
+        'multiplicative_expr_nobf',
+        """
+        !0 % 1
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:4 left=<UnaryOp @1:1 op='!',
+              postfix=False, value=<Number @1:2 value='0'>>,
+            op='%', right=<Number @1:6 value='1'>>>
+        ]>
+        """
+    ), (
+        'function_expr_1',
+        """
+        function(arg) {};
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<FuncExpr @1:1 elements=[],
+            identifier=None, parameters=[<Identifier @1:10 value='arg'>]>>
+        ]>
+        """
+    ), (
+        'octal_slimit_issue_70',
+        r"var x = '\071[90m%s';",
+        r"""
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='x'>, initializer=<
+            String @1:9 value="'\\071[90m%s'">>
+        ]>]>
+        """
+    ), (
+        'special_array_char_slimit_issue_82',
+        r"var x = ['a','\n'];",
+        r"""
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='x'>,
+            initializer=<Array @1:9 items=[
+              <String @1:10 value="'a'">,
+              <String @1:14 value="'\\n'">
+            ]>
+          >
+        ]>]>
+        """
+    ), (
+        'special_string_slimit_issue_82',
+        r"var x = '\n';",
+        r"""
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='x'>,
+            initializer=<String @1:9 value="'\\n'">>
+        ]>]>
+        """
+    ), (
+        'for_in_without_braces',
+        "for (index in [1,2,3]) index",
+        """
+        <ES5Program @1:1 ?children=[
+          <ForIn @1:1 item=<Identifier @1:6 value='index'>,
+            iterable=<Array @1:15 items=[
+              <Number @1:16 value='1'>,
+              <Number @1:18 value='2'>,
+              <Number @1:20 value='3'>
+            ]>,
+            statement=<ExprStatement @1:24 expr=<
+              Identifier @1:24 value='index'>>>
+        ]>
+        """
+    ), (
+        'for_loop_into_regex_slimit_issue_54',
+        # "for (index in [1,2,3]) /^salign$/i.test('salign')",
+        "for (index in [1,2,3]) /^salign$/",
+        """
+        <ES5Program @1:1 ?children=[
+          <ForIn @1:1 item=<Identifier @1:6 value='index'>,
+            iterable=<Array @1:15 items=[
+              <Number @1:16 value='1'>,
+              <Number @1:18 value='2'>,
+              <Number @1:20 value='3'>
+            ]>,
+            statement=<ExprStatement @1:24 expr=<
+              Regex @1:24 value='/^salign$/'>>>
         ]>
         """
     )])
@@ -1994,6 +4067,15 @@ ECMASyntaxErrorsTestCase = build_exception_testcase(
         throw
           'exc';
         """
+    ), (
+        'setter_single_arg',
+        """
+        Name.prototype = {
+          set failure(arg1, arg2) {
+            return {1:{2:{3:{4:4}}}};
+          }
+        };
+        """,
     )]), ECMASyntaxError
 )
 

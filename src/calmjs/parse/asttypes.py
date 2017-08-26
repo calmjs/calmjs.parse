@@ -24,16 +24,66 @@
 
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
+from collections import defaultdict
+
+# This should be nodetypes; asttypes means type of AST, and defining a
+# type for the entire tree is not the scope of what's being defined here
+
 
 class Node(object):
-    def __init__(self, children=None, p=None):
-        self._children_list = [] if children is None else children
-        self.setpos(p)
+    lexpos = lineno = colno = None
 
-    def setpos(self, p):
-        self.lexpos = None if p is None else p.lexpos(1)
-        self.lineno = None if p is None else p.lineno(1)
-        # print 'setpos', self, p, self.lexpos, self.lineno
+    def __init__(self, children=None):
+        self._children_list = [] if children is None else children
+        self._token_map = {}
+
+    def getpos(self, s, idx):
+        token_map = getattr(self, '_token_map', NotImplemented)
+        if token_map is NotImplemented:
+            return (None, None, None)
+
+        token_list = token_map.get(s, [])
+        if idx < len(token_list):
+            return token_list[idx]
+        else:
+            return (0, 0, 0)
+
+    def findpos(self, p, idx):
+        lexpos = p.lexpos(idx)
+        lineno = p.lineno(idx)
+        # YaccProduction does not provide helpers for colno, so query
+        # for a helper out of class and see if it helps...
+        colno = (
+            p.lexer.lookup_colno(lineno, lexpos)
+            if lineno > 0 and callable(getattr(p.lexer, 'lookup_colno', None))
+            else 0)
+        return lexpos, lineno, colno
+
+    def setpos(self, p, idx=1, additional=()):
+        self._token_map = defaultdict(list)
+        self.lexpos, self.lineno, self.colno = self.findpos(p, idx)
+        for i, token in enumerate(p):
+            if not isinstance(token, str):
+                continue
+            self._token_map[token].append(self.findpos(p, i))
+
+        for token, i in additional:
+            self._token_map[token].append(self.findpos(p, i))
+
+        # the very ugly debugger invocation for locating the special
+        # cases that are required
+
+        # if not self.lexpos and not self.lineno:
+        #     print('setpos', self.__class__.__name__, p.stack,
+        #           self.lexpos, self.lineno, self.colno)
+        #     # uncomment when yacc_tracking is True
+        #     # import pdb;pdb.set_trace()
+        #     # uncomment when yacc_tracking is False
+        #     # import sys
+        #     # from traceback import extract_stack
+        #     # _src = extract_stack(sys._getframe(1), 1)[0].line
+        #     # if '# require yacc_tracking' not in _src:
+        #     #     import pdb;pdb.set_trace()
 
     def __iter__(self):
         for child in self.children():
@@ -95,6 +145,19 @@ class Array(Node):
         return self.items
 
 
+class List(Node):
+    # in JavaScript, this is distinctive from Array.
+    def __init__(self, items):
+        self.items = items
+
+    def children(self):
+        return self.items
+
+
+class Arguments(List):
+    pass
+
+
 class Object(Node):
     def __init__(self, properties=None):
         self.properties = [] if properties is None else properties
@@ -106,6 +169,7 @@ class Object(Node):
 class NewExpr(Node):
     def __init__(self, identifier, args=None):
         self.identifier = identifier
+        # TODO should simply be args
         self.args = [] if args is None else args
 
     def children(self):
@@ -115,10 +179,17 @@ class NewExpr(Node):
 class FunctionCall(Node):
     def __init__(self, identifier, args=None):
         self.identifier = identifier
+        # TODO should simply be args
         self.args = [] if args is None else args
 
     def children(self):
-        return [self.identifier] + self.args
+        if isinstance(self.args, list):
+            # XXX legacy version
+            # TODO deprecate remove this
+            return [self.identifier] + self.args
+        else:
+            # source map supported version
+            return [self.identifier, self.args]
 
 
 class BracketAccessor(Node):
@@ -167,7 +238,10 @@ class SetPropAssign(Node):
         self.elements = elements or []
 
     def children(self):
-        return [self.prop_name] + self.parameters + self.elements
+        # XXX sourcemap compat has changed parameters to singular.
+        p = self.parameters if isinstance(self.parameters, list) else [
+            self.parameters]
+        return [self.prop_name] + p + self.elements
 
 
 class VarStatement(Node):
@@ -175,24 +249,36 @@ class VarStatement(Node):
 
 
 class VarDecl(Node):
-    def __init__(self, identifier, initializer=None, p=None):
+    def __init__(self, identifier, initializer=None):
         self.identifier = identifier
-        self.identifier._mangle_candidate = True
         self.initializer = initializer
-        self.setpos(p)
 
     def children(self):
         return [self.identifier, self.initializer]
 
 
+class VarDeclNoIn(VarDecl):
+    """
+    Specialized for the ForIn Node.
+    """
+
+
 class UnaryOp(Node):
+    # XXX should be rennamed to UnaryExpr
     def __init__(self, op, value, postfix=False):
         self.op = op
         self.value = value
+        # XXX deprecated
         self.postfix = postfix
 
     def children(self):
         return [self.value]
+
+
+class PostfixExpr(UnaryOp):
+    def __init__(self, op, value):
+        self.op = op
+        self.value = value
 
 
 class BinOp(Node):
@@ -203,6 +289,14 @@ class BinOp(Node):
 
     def children(self):
         return [self.left, self.right]
+
+
+class GroupingOp(Node):
+    def __init__(self, expr):
+        self.expr = expr
+
+    def children(self):
+        return [self.expr]
 
 
 class Conditional(Node):
@@ -308,6 +402,20 @@ class Switch(Node):
         return [self.expr] + self.cases + [self.default]
 
 
+class SwitchStatement(Node):
+
+    def __init__(self, expr, case_block):
+        self.expr = expr
+        self.case_block = case_block
+
+    def children(self):
+        return [self.expr, self.case_block]
+
+
+class CaseBlock(Block):
+    pass
+
+
 class Case(Node):
     def __init__(self, expr, elements):
         self.expr = expr
@@ -355,8 +463,6 @@ class Try(Node):
 class Catch(Node):
     def __init__(self, identifier, elements):
         self.identifier = identifier
-        # CATCH identifiers are subject to name mangling. we need to mark them.
-        self.identifier._mangle_candidate = True
         self.elements = elements
 
     def children(self):
@@ -368,7 +474,7 @@ class Finally(Node):
         self.elements = elements
 
     def children(self):
-        return self.elements
+        return [self.elements]
 
 
 class Debugger(Node):
@@ -381,15 +487,6 @@ class FuncBase(Node):
         self.identifier = identifier
         self.parameters = parameters if parameters is not None else []
         self.elements = elements if elements is not None else []
-        self._init_ids()
-
-    def _init_ids(self):
-        # function declaration/expression name and parameters are identifiers
-        # and therefore are subject to name mangling. we need to mark them.
-        if self.identifier is not None:
-            self.identifier._mangle_candidate = True
-        for param in self.parameters:
-            param._mangle_candidate = True
 
     def children(self):
         return [self.identifier] + self.parameters + self.elements

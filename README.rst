@@ -166,11 +166,11 @@ immediate access to the parsing feature.  It may be used like so:
     ... console.log(main('world'));
     ... ''')
     >>> program  # for a simple repr-like nested view of the ast
-    <ES5Program ?children=[
-      <VarStatement ?children=[
-        <VarDecl identifier=<Identifier ...>, initializer=<FuncExpr ...>>
+    <ES5Program @3:1 ?children=[
+      <VarStatement @3:1 ?children=[
+        <VarDecl @3:5 identifier=<Identifier ...>, initializer=<FuncExpr ...>>
       ]>,
-      <ExprStatement expr=<FunctionCall args=[
+      <ExprStatement @7:1 expr=<FunctionCall @7:1 args=[
         <FunctionCall ...>
       ], identifier=<DotAccessor ...>>>
     ]>
@@ -240,7 +240,7 @@ A workaround helper script is provided, it may be executed like so:
 
     $ python -m calmjs.parse.parsers.optimize
 
-For more details, refer to the ``Manual optimization`` section of this
+For more details, refer to the `Manual optimization`_ section of this
 document.
 
 

@@ -31,3 +31,8 @@ def generate_tab_names(name):
     lextab = '%s.lextab_%s_py%d_ply%s' % data
     yacctab = '%s.yacctab_%s_py%d_ply%s' % data
     return lextab, yacctab
+
+
+def format_lex_token(token):
+    return '%r at %s:%s' % (
+        token.value, token.lineno, getattr(token, 'colno', '?'))
