@@ -226,13 +226,13 @@ parser instance.  An example:
     >>> parser = es5.Parser()
     Traceback (most recent call last):
       ...
-      File "c:\python35\lib\site-packages\ply-3.10-py3.5.egg\ply\lex.py", line 1043, in lex
+      File "c:\python35\....\ply\lex.py", line 1043, in lex
         lexobj.writetab(lextab, outputdir)
-      File "c:\python35\lib\site-packages\ply-3.10-py3.5.egg\ply\lex.py", line 195, in writetab
+      File "c:\python35\....\ply\lex.py", line 195, in writetab
         tf.write('_lexstatere   = %s\n' % repr(tabre))
       File "c:\python35\lib\encodings\cp1252.py", line 19, in encode
         return codecs.charmap_encode(input,self.errors,encoding_table)[0]
-    UnicodeEncodeError: 'charmap' codec can't encode character '\u02c1' in position 2488: character maps to <undefined>
+    UnicodeEncodeError: 'charmap' codec can't encode character '\u02c1' ...
 
 A workaround helper script is provided, it may be executed like so:
 
