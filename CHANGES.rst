@@ -1,7 +1,7 @@
 Changelog
 =========
 
-0.10.0 - Unreleased
+0.10.0 - 2017-08-26
 -------------------
 
 - Corrected the line number reporting for the lexer, and correct the
