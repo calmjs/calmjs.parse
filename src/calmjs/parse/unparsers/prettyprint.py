@@ -123,9 +123,9 @@ class State(object):
 def visitor(state, node, definition):
     """
     The default, standalone visitor function following the standard
-    argument format, where the first argument is a PrettyPrintState,
-    second being the node, third being the definition tuple to follow
-    from for generating a rendering of the node.
+    argument format, where the first argument is a State, second being
+    the node, third being the definition tuple to follow from for
+    generating a rendering of the node.
 
     While the state object is able to provide the lookup directly, this
     extra definition argument allow more flexibility in having Token

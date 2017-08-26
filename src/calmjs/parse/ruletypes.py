@@ -86,7 +86,7 @@ class Token(Rule):
         visitor
             the visitor function
         state
-            a PrettyPrintState instance.
+            a prettyprint.State instance.
         node
             a Node instance.
         """
