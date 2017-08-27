@@ -362,14 +362,14 @@ class OtherUsageTestCase(unittest.TestCase):
 
 
 def parse_to_sourcemap_tokens_pretty(text):
-    return list(Unparser(layouts=(
+    return list(Unparser(rules=(
         default_layout_handlers,
         layout.indentation(),
     ))(parse(text)))
 
 
 def parse_to_sourcemap_tokens_min(text):
-    return list(Unparser(layouts=(
+    return list(Unparser(rules=(
         minimum_layout_handlers,
     ))(parse(text)))
 

@@ -276,11 +276,17 @@ class Unparser(BaseUnparser):
             self,
             definitions=definitions,
             token_handler=token_handler_str_default,
-            layouts=(default_layout_handlers,),
-            layout_handlers=None):
+            rules=(default_layout_handlers,),
+            layout_handlers=None,
+            deferred_handlers=None):
 
         super(Unparser, self).__init__(
-            definitions, token_handler, layouts, layout_handlers)
+            definitions=definitions,
+            token_handler=token_handler,
+            rules=rules,
+            layout_handlers=layout_handlers,
+            deferred_handlers=deferred_handlers,
+        )
 
 
 def pretty_printer(indent_str='    '):
@@ -288,8 +294,10 @@ def pretty_printer(indent_str='    '):
     Construct a pretty printing unparser
     """
 
-    return Unparser(layouts=(default_layout_handlers, indentation(
-        indent_str=indent_str)))
+    return Unparser(rules=(
+        default_layout_handlers,
+        indentation(indent_str=indent_str),
+    ))
 
 
 def pretty_print(ast, indent_str='  '):

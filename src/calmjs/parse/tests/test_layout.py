@@ -26,7 +26,7 @@ class LayoutHandlerTestCase(unittest.TestCase):
 
     def test_space_optional_pretty(self):
         # initialise a barebone dispatcher.
-        dispatcher = Dispatcher({}, None, {})
+        dispatcher = Dispatcher({}, None, {}, {})
 
         def run(a, b):
             return list(layout_handler_space_optional_pretty(
@@ -76,7 +76,7 @@ class LayoutHandlerTestCase(unittest.TestCase):
 
     def test_space_minimum(self):
         # initialise a barebone dispatcher.
-        dispatcher = Dispatcher({}, None, {})
+        dispatcher = Dispatcher({}, None, {}, {})
 
         def run(a, b):
             return list(layout_handler_space_minimum(
@@ -106,7 +106,7 @@ class LayoutHandlerTestCase(unittest.TestCase):
     def test_layout_handler_newline_optional_pretty(self):
         # yes using the lteral <CR><LF> is pretty hilarious, but just to
         # show that this is implemented to support whatever.
-        dispatcher = Dispatcher({}, None, {}, newline_str='<CR><LF>')
+        dispatcher = Dispatcher({}, None, {}, {}, newline_str='<CR><LF>')
         newline = [('<CR><LF>', 0, 0, None)]
 
         def run(before, after, prev):
@@ -133,8 +133,8 @@ class LayoutHandlerTestCase(unittest.TestCase):
 
     def test_indentation(self):
         # initialise a barebone dispatcher.
-        dispatcher = Dispatcher({}, None, {}, indent_str='<TAB>')
-        layout = indentation()()
+        dispatcher = Dispatcher({}, None, {}, {}, indent_str='<TAB>')
+        layout = indentation()()['layout_handlers']
         newline = ('\n', 0, 0, None)
         indent1 = ('<TAB>', None, None, None)
         indent2 = ('<TAB><TAB>', None, None, None)
@@ -160,7 +160,7 @@ class LayoutHandlerTestCase(unittest.TestCase):
         self.assertIsNone(run(Indent))
         self.assertEqual(list(run(Newline)), [newline])
 
-        layout = indentation(indent_str='    ')()
+        layout = indentation(indent_str='    ')()['layout_handlers']
         self.assertIsNone(run(Indent))
         self.assertEqual(list(run(Newline)), [
             newline, ('    ', None, None, None)])

@@ -13,6 +13,9 @@ Changelog
 - Legacy visitor module and classes removed.
 - Renamed and moved the source map generation function from vlqsm to
   sourcemap.
+- There is now a Deferred type for marking certain Tokens that need
+  extra handling.  The support for this has changed the various API
+  that deals with setting up of this.
 
 0.10.1 - 2017-08-26
 -------------------

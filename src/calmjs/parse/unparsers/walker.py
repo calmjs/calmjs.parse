@@ -6,6 +6,7 @@ possible.
 
 from itertools import chain
 from calmjs.parse.ruletypes import Token
+from calmjs.parse.ruletypes import Deferred
 from calmjs.parse.ruletypes import LayoutRuleChunk
 
 # the default noop.
@@ -46,7 +47,8 @@ class Dispatcher(object):
     """
 
     def __init__(
-            self, definitions, token_handler, layout_handlers,
+            self, definitions, token_handler,
+            layout_handlers, deferred_handlers,
             indent_str='  ', newline_str='\n'):
         """
         The constructor takes three arguments.
@@ -74,16 +76,27 @@ class Dispatcher(object):
 
         layout_handlers
             A map (dictionary) from Layout types to the handlers, which
-            are callables that accepts these four arguments
+            are callables that accepts these five arguments
 
             dispatcher
                 an instance of this class
             node
-                a Node instance (from asttypes)
+                an asttypes.Node instance.
             before
                 a value that was yielded by the previous token
             after
                 a value to be yielded by the subsequent token
+            prev
+                the previously yielded layout token
+
+        deferred_handlers
+            A map (dictionary) from Deferred types to the handlers, which
+            are callables that accepts these two arguments
+
+            dispatcher
+                an instance of this class
+            node
+                an asttypes.Node instance.
 
         indent_str
             The string used to indent a line with.  Default is '  '.
@@ -99,19 +112,38 @@ class Dispatcher(object):
         self.__token_handler = token_handler
         self.__layout_handlers = {}
         self.__layout_handlers.update(layout_handlers)
+        self.__deferred_handlers = {}
+        self.__deferred_handlers.update(deferred_handlers)
         self.__definitions = {}
         self.__definitions.update(definitions)
         self.__indent_str = indent_str
         self.__newline_str = newline_str
 
     def __getitem__(self, key):
-        # TODO figure out how to do proper lookup by the type, rather
-        # than this string hack.
+        """
+        This is for getting at the definition for a particular asttype.
+        """
+
+        # TODO figure out how to do lookup by the type itself directly,
+        # rather than this string hack.
+        # The reason why the types were not used simply because it would
+        # be a bit annoying to deal with subclasses, as resolution will
+        # have to be done for the parent class, given that asttypes are
+        # always subclassed.  While working with types directly is the
+        # correct way to handle that, it is however rather complicated
+        # for this particular goal when this naive solution achieves the
+        # goal without too much issues.
         return self.__definitions[key.__class__.__name__]
 
     def __call__(self, rule):
+        """
+        This is to find a callable for the particular rule encountered.
+        """
+
         if isinstance(rule, Token):
             return self.__token_handler
+        if isinstance(rule, Deferred):
+            return self.__deferred_handlers.get(type(rule), NotImplemented)
         else:
             return self.__layout_handlers.get(rule, NotImplemented)
 

@@ -29,7 +29,7 @@ from calmjs.parse.layout import (
 
 
 def default_layout_handlers():
-    return {
+    return {'layout_handlers': {
         Space: layout_handler_space_imply,
         OptionalSpace: layout_handler_space_optional_pretty,
         Newline: layout_handler_newline_simple,
@@ -37,14 +37,14 @@ def default_layout_handlers():
         # if an indent is immediately followed by dedent without actual
         # content, simply do nothing.
         (Indent, Newline, Dedent): rule_handler_noop,
-    }
+    }}
 
 
 def minimum_layout_handlers():
-    return {
+    return {'layout_handlers': {
         Space: layout_handler_space_minimum,
         OptionalSpace: layout_handler_space_minimum,
-    }
+    }}
 
 
 class BaseUnparser(object):
@@ -57,8 +57,9 @@ class BaseUnparser(object):
             self,
             definitions,
             token_handler=token_handler_str_default,
-            layouts=(default_layout_handlers,),
+            rules=(default_layout_handlers,),
             layout_handlers=None,
+            deferred_handlers=None,
             walk=walk,
             dispatcher_cls=Dispatcher):
         """
@@ -68,30 +69,38 @@ class BaseUnparser(object):
             The definition for unparsing.
         token_handler
             passed onto the dispatcher object; this is the handler that
-            will process
-        layouts
-            An tuple of callables that will provide the setup of
-            indentation.  The callables must return a layout_handlers
-            mapping, which is a dict with the key being the layout class
-            and the value being the callable that accept a
-            Dispatcher instance, a Node, before and after chunk.
+            will process the token in to chunks.
+        rules
+            A tuple of callables that will set up the various rules that
+            will be passed to the dispatcher instance.  It should return
+            the mappings for layout_handlers and deferred_handlers.
         layout_handlers
-            Additional layout handlers, given in the mapping that was
-            described above.
+            Additional layout handlers for the Dispatcher instance.
+        deferred_handlers
+            Additional deferred handlers for the Dispatcher instance.
         walk
             The walk function - defaults to the version from the walker
             module
         dispatcher_cls
             The Dispatcher class - defaults to the version from the
-            prettyprint module
+            walker module
         """
 
         self.token_handler = token_handler
         self.layout_handlers = {}
-        for layout in layouts:
-            self.layout_handlers.update(layout())
+        self.deferred_handlers = {}
+
+        for rule in rules:
+            r = rule()
+            self.layout_handlers.update(r.get('layout_handlers', {}))
+            self.deferred_handlers.update(r.get('deferred_handlers', {}))
+
         if layout_handlers:
             self.layout_handlers.update(layout_handlers)
+
+        if deferred_handlers:
+            self.deferred_handlers.update(deferred_handlers)
+
         self.definitions = {}
         self.definitions.update(definitions)
         self.walk = walk
@@ -99,6 +108,10 @@ class BaseUnparser(object):
 
     def __call__(self, node):
         dispatcher = self.dispatcher_cls(
-            self.definitions, self.token_handler, self.layout_handlers)
+            self.definitions,
+            self.token_handler,
+            self.layout_handlers,
+            self.deferred_handlers,
+        )
         for chunk in self.walk(dispatcher, node, dispatcher[node]):
             yield chunk

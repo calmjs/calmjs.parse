@@ -37,14 +37,20 @@ def setup_handlers(testcase):
         yield SimpleChunk(' ')
 
     # return token_handler, layout_handlers for Dispatcher init
-    return simple_token_maker, {Space: simple_space}
+    return (
+        simple_token_maker, {
+            Space: simple_space,
+        }, {
+        },
+    )
 
 
 class PPVisitorTestCase(unittest.TestCase):
 
     def setUp(self):
         # provide just enough of the everything that is required.
-        token_handler, layout_handlers = setup_handlers(self)
+        token_handler, layout_handlers, deferred_handlers = (
+            setup_handlers(self))
         self.dispatcher = Dispatcher(
             definitions={
                 'ES5Program': (children_newline, Newline,),
@@ -61,6 +67,7 @@ class PPVisitorTestCase(unittest.TestCase):
             },
             token_handler=token_handler,
             layout_handlers=layout_handlers,
+            deferred_handlers=deferred_handlers,
         )
 
     def test_layouts_buffering(self):
