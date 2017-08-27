@@ -7,7 +7,7 @@ regenerating for a given type of AST back into a string.
 from collections import namedtuple
 from calmjs.parse.asttypes import Node
 from calmjs.parse.asttypes import Elision
-# from calmjs.parse.asttypes import Identifier
+from calmjs.parse.asttypes import Identifier
 
 LayoutRuleChunk = namedtuple('LayoutRuleChunk', [
     'rule', 'handler', 'node'])
@@ -324,11 +324,11 @@ class Declare(Deferred):
         target = getattr(node, self.attr)
 
         # This check is probably needed...
-        # if not isinstance(target, Identifier):
-        #     raise TypeError(
-        #         "the resolved attribute '%s' in %r is not an Identifier" %
-        #         self.attr, node
-        #     )
+        if not isinstance(target, Identifier):
+            raise TypeError(
+                "the resolved attribute '%s' in %r is not an Identifier" %
+                (self.attr, node)
+            )
 
         # look up the layout handler for this deferred type
         handler = dispatcher(self)
@@ -339,6 +339,23 @@ class Declare(Deferred):
 
         # finally, return the actual attribute
         return target
+
+
+class Resolve(Deferred):
+    """
+    Resolve an identifier.  Naturally, this is used by the Identifier
+    asttype to look up previously declared names.
+    """
+
+    def __call__(self, dispatcher, node):
+        if not isinstance(node, Identifier):
+            raise TypeError("the Resolve deferred only works with Identifier")
+
+        handler = dispatcher(self)
+        if handler is not NotImplemented:
+            # the handler will return the value
+            return handler(dispatcher, node)
+        return node.value
 
 
 children_newline = JoinAttr(Iter(), value=(Newline,))

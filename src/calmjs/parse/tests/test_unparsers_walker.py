@@ -2,7 +2,7 @@
 import unittest
 from collections import namedtuple
 
-from calmjs.parse import es5
+from calmjs.parse.parsers.es5 import parse as es5
 from calmjs.parse.asttypes import VarStatement
 from calmjs.parse.asttypes import VarDecl
 from calmjs.parse.unparsers.walker import Dispatcher
@@ -16,6 +16,7 @@ from calmjs.parse.ruletypes import (
     Newline,
     Iter,
     Declare,
+    Resolve,
 )
 
 SimpleChunk = namedtuple('SimpleChunk', ['text'])
@@ -25,9 +26,13 @@ children_comma = JoinAttr(Iter(), value=(Text(value=','), Space,))
 
 def setup_handlers(testcase):
     # only provide the bare minimum needed for the tests here.
+    testcase.replacement = {}
     testcase.tokens_handled = []
     testcase.layouts_handled = []
     declared_vars = []
+
+    def replace(dispatcher, node):
+        return testcase.replacement.get(node.value, node.value)
 
     def declare(dispatcher, node):
         declared_vars.append(node.value)
@@ -47,6 +52,7 @@ def setup_handlers(testcase):
             Space: simple_space,
         }, {
             Declare: declare,
+            Resolve: replace,
         },
         declared_vars,
     )
@@ -69,8 +75,19 @@ class PPVisitorTestCase(unittest.TestCase):
                     Space, Operator(value='='), Space,
                     Attr('initializer'),
                 ),
-                'Identifier': (Attr('value'),),
+                'Identifier': (Attr(Resolve()),),
                 'Number': (Attr('value'),),
+                'DotAccessor': (
+                    Attr('node'), Text(value='.'), Attr('identifier'),
+                ),
+                'FunctionCall': (
+                    Attr('identifier'), Attr('args'),
+                ),
+                'Arguments': (
+                    Text(value='('),
+                    JoinAttr('items', value=(Text(value=','), Space)),
+                    Text(value=')'),
+                ),
             },
             token_handler=token_handler,
             layout_handlers=layout_handlers,
@@ -96,3 +113,11 @@ class PPVisitorTestCase(unittest.TestCase):
         self.assertTrue(isinstance(self.layouts_handled[1][1], VarDecl))
         self.assertTrue(isinstance(self.layouts_handled[2][1], VarDecl))
         self.assertEqual(['a'], self.declared_vars)
+
+    def test_deferred_resolve(self):
+        # define the replacement in the map that was set up.
+        self.replacement['$'] = 'jq'
+        tree = es5('var w = $(window).width();')
+        recreated = ''.join(c.text for c in walk(
+            self.dispatcher, tree, self.dispatcher[tree]))
+        self.assertEqual('var w = jq(window).width();', recreated)

@@ -25,6 +25,7 @@ from calmjs.parse.ruletypes import (
 )
 from calmjs.parse.ruletypes import (
     Declare,
+    Resolve,
 )
 from calmjs.parse.ruletypes import (
     children_newline,
@@ -66,7 +67,7 @@ definitions = {
     'GroupingOp': (
         Text(value='('), Attr('expr'), Text(value=')'),
     ),
-    'Identifier': value,
+    'Identifier': (Attr(Resolve()),),
     'Assign': (
         Attr('left'), OptionalSpace, Attr('op'), Space, Attr('right'),
     ),
