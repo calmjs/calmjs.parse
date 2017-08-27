@@ -15,6 +15,7 @@ from calmjs.parse.ruletypes import (
     Space,
     Newline,
     Iter,
+    Declare,
 )
 
 SimpleChunk = namedtuple('SimpleChunk', ['text'])
@@ -26,6 +27,10 @@ def setup_handlers(testcase):
     # only provide the bare minimum needed for the tests here.
     testcase.tokens_handled = []
     testcase.layouts_handled = []
+    declared_vars = []
+
+    def declare(dispatcher, node):
+        declared_vars.append(node.value)
 
     def simple_token_maker(token, dispatcher, node, subnode):
         testcase.tokens_handled.append((token, dispatcher, node, subnode,))
@@ -41,7 +46,9 @@ def setup_handlers(testcase):
         simple_token_maker, {
             Space: simple_space,
         }, {
+            Declare: declare,
         },
+        declared_vars,
     )
 
 
@@ -49,7 +56,7 @@ class PPVisitorTestCase(unittest.TestCase):
 
     def setUp(self):
         # provide just enough of the everything that is required.
-        token_handler, layout_handlers, deferred_handlers = (
+        token_handler, layout_handlers, deferred_handlers, declared_vars = (
             setup_handlers(self))
         self.dispatcher = Dispatcher(
             definitions={
@@ -58,7 +65,7 @@ class PPVisitorTestCase(unittest.TestCase):
                     Text(value='var'), Space, children_comma, Text(value=';'),
                 ),
                 'VarDecl': (
-                    Attr('identifier'),
+                    Attr(Declare('identifier')),
                     Space, Operator(value='='), Space,
                     Attr('initializer'),
                 ),
@@ -69,6 +76,7 @@ class PPVisitorTestCase(unittest.TestCase):
             layout_handlers=layout_handlers,
             deferred_handlers=deferred_handlers,
         )
+        self.declared_vars = declared_vars
 
     def test_layouts_buffering(self):
         # The buffered layout rule handler should be invoked with the
@@ -87,3 +95,4 @@ class PPVisitorTestCase(unittest.TestCase):
         # last two are in VarDecl
         self.assertTrue(isinstance(self.layouts_handled[1][1], VarDecl))
         self.assertTrue(isinstance(self.layouts_handled[2][1], VarDecl))
+        self.assertEqual(['a'], self.declared_vars)

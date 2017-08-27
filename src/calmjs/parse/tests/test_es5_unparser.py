@@ -3,6 +3,7 @@ import unittest
 import textwrap
 
 from calmjs.parse import asttypes
+from calmjs.parse.ruletypes import Declare
 from calmjs.parse.ruletypes import Space
 from calmjs.parse.ruletypes import Text
 from calmjs.parse import layout
@@ -47,6 +48,20 @@ class BaseVisitorTestCase(unittest.TestCase):
             ('0', 1, 9, None), (';', 1, 10, None),
             ('\n', 0, 0, None),
         ])
+
+    def test_basic_var_decl(self):
+        declared_vars = []
+
+        def declare(dispatcher, node):
+            declared_vars.append(node.value)
+
+        unparser = Unparser(deferred_handlers={
+            Declare: declare,
+        })
+        ast = parse('var x = 0;')
+        # just run through the ast
+        list(unparser(ast))
+        self.assertEqual(['x'], declared_vars)
 
     def test_basic_var_space_drop(self):
         unparser = Unparser(layout_handlers={

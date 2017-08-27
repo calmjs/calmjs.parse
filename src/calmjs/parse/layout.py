@@ -111,6 +111,9 @@ def rule_handler_noop(*a, **kw):
     return iter(())
 
 
+# TODO need a token_handler that will also plug into the name
+# registration/mangler that will be created.
+
 def token_handler_str_default(token, dispatcher, node, subnode):
     # TODO the mangler could provide an implementation of this that will
     # fill out the last element of the yielded tuple.

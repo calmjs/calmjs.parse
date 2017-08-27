@@ -24,6 +24,9 @@ from calmjs.parse.ruletypes import (
     ElisionJoinAttr,
 )
 from calmjs.parse.ruletypes import (
+    Declare,
+)
+from calmjs.parse.ruletypes import (
     children_newline,
     children_comma,
 )
@@ -53,7 +56,7 @@ definitions = {
         Text(value='var'), Space, children_comma, Text(value=';'),
     ),
     'VarDecl': (
-        Attr('identifier'), Optional('initializer', (
+        Attr(Declare('identifier')), Optional('initializer', (
             Space, Operator(value='='), Space, Attr('initializer'),),),
     ),
     'VarDeclNoIn': (
