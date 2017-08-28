@@ -29,7 +29,7 @@ import ply.yacc
 from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.lexers.es5 import Lexer
 from calmjs.parse.factory import AstTypesFactory
-from calmjs.parse.visitors.es5 import pretty_print
+from calmjs.parse.unparsers.es5 import pretty_print
 from calmjs.parse.visitors.generic import ReprVisitor
 from calmjs.parse.utils import generate_tab_names
 from calmjs.parse.utils import format_lex_token
@@ -39,8 +39,6 @@ asttypes = AstTypesFactory(pretty_print, ReprVisitor())
 # The default values for the `Parser` constructor, passed on to ply; they must
 # be strings
 lextab, yacctab = generate_tab_names(__name__)
-
-_sourcemap_compat = False
 
 
 class Parser(object):
@@ -82,7 +80,6 @@ class Parser(object):
             debug=yacc_debug, tabmodule=yacctab, start='program')
 
         self.asttypes = asttypes
-        self._sourcemap_compat = _sourcemap_compat
 
         # https://github.com/rspivak/slimit/issues/29
         # lexer.auto_semi can cause a loop in a parser
@@ -331,18 +328,12 @@ class Parser(object):
 
     def p_primary_expr_no_brace_4(self, p):
         """primary_expr_no_brace : LPAREN expr RPAREN"""
-        # Define a new type for this???
-        # Call it a GroupingOperator???
-        if self._sourcemap_compat:
-            # don't bother nesting grouping operators
-            if isinstance(p[2], self.asttypes.GroupingOp):
-                p[0] = p[2]
-            else:
-                p[0] = self.asttypes.GroupingOp(expr=p[2])
-                p[0].setpos(p)
-        else:
-            p[2]._parens = True
+        if isinstance(p[2], self.asttypes.GroupingOp):
+            # this reduces the grouping operator to one.
             p[0] = p[2]
+        else:
+            p[0] = self.asttypes.GroupingOp(expr=p[2])
+            p[0].setpos(p)
 
     def p_array_literal_1(self, p):
         """array_literal : LBRACKET elision_opt RBRACKET"""
@@ -382,26 +373,17 @@ class Parser(object):
         """elision : COMMA
                    | elision COMMA
         """
-        if self._sourcemap_compat:
-            if len(p) == 2:
-                p[0] = [self.asttypes.Elision(1)]
-                p[0][0].setpos(p)
-            else:
-                # increment the Elision value.
-                p[1][-1].value += 1
-                p[0] = p[1]
-            # TODO figure out a cleaner way to provide this lookup
-            p[0][0]._token_map = {(',' * p[0][0].value): [
-                p[0][0].findpos(p, 0)]}
-            return
-        # leave legacy remain the same type.
         if len(p) == 2:
-            p[0] = [self.asttypes.Elision(p[1])]
+            p[0] = [self.asttypes.Elision(1)]
             p[0][0].setpos(p)
         else:
-            p[1].append(self.asttypes.Elision(p[2]))
-            p[1][-1].setpos(p, 2)
+            # increment the Elision value.
+            p[1][-1].value += 1
             p[0] = p[1]
+        # TODO figure out a cleaner way to provide this lookup
+        p[0][0]._token_map = {(',' * p[0][0].value): [
+            p[0][0].findpos(p, 0)]}
+        return
 
     def p_object_literal(self, p):
         """object_literal : LBRACE RBRACE
@@ -453,10 +435,7 @@ class Parser(object):
     def p_property_set_parameter_list(self, p):
         """property_set_parameter_list : identifier
         """
-        if self._sourcemap_compat:
-            p[0] = p[1]
-        else:
-            p[0] = [p[1]]
+        p[0] = p[1]
 
     # 11.2 Left-Hand-Side Expressions
     def p_member_expr(self, p):
@@ -557,16 +536,11 @@ class Parser(object):
         """arguments : LPAREN RPAREN
                      | LPAREN argument_list RPAREN
         """
-        if self._sourcemap_compat:
-            if len(p) == 4:
-                p[0] = self.asttypes.Arguments(p[2])
-            else:
-                p[0] = self.asttypes.Arguments([])
-            p[0].setpos(p)
+        if len(p) == 4:
+            p[0] = self.asttypes.Arguments(p[2])
         else:
-            # the deprecated legacy method
-            if len(p) == 4:
-                p[0] = p[2]
+            p[0] = self.asttypes.Arguments([])
+        p[0].setpos(p)
 
     def p_argument_list(self, p):
         """argument_list : assignment_expr
@@ -599,10 +573,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            if self._sourcemap_compat:
-                p[0] = self.asttypes.PostfixExpr(op=p[2], value=p[1])
-            else:
-                p[0] = self.asttypes.UnaryOp(op=p[2], value=p[1], postfix=True)
+            p[0] = self.asttypes.PostfixExpr(op=p[2], value=p[1])
             p[0].setpos(p, 2)
 
     def p_postfix_expr_nobf(self, p):
@@ -613,10 +584,7 @@ class Parser(object):
         if len(p) == 2:
             p[0] = p[1]
         else:
-            if self._sourcemap_compat:
-                p[0] = self.asttypes.PostfixExpr(op=p[2], value=p[1])
-            else:
-                p[0] = self.asttypes.UnaryOp(op=p[2], value=p[1], postfix=True)
+            p[0] = self.asttypes.PostfixExpr(op=p[2], value=p[1])
             p[0].setpos(p, 2)
 
     # 11.4 Unary Operators
@@ -1205,8 +1173,6 @@ class Parser(object):
                   expr_opt RPAREN statement
         """
         def wrap(node, key):
-            if not self._sourcemap_compat:
-                return node
             if node is None:
                 # work around bug with yacc tracking of empty elements
                 # by using the previous token, and increment the
@@ -1244,10 +1210,7 @@ class Parser(object):
         iteration_statement : \
             FOR LPAREN VAR identifier IN expr RPAREN statement
         """
-        if self._sourcemap_compat:
-            vardecl = self.asttypes.VarDeclNoIn(identifier=p[4])
-        else:
-            vardecl = self.asttypes.VarDecl(p[4])
+        vardecl = self.asttypes.VarDeclNoIn(identifier=p[4])
         vardecl.setpos(p, 3)
         p[0] = self.asttypes.ForIn(item=vardecl, iterable=p[6], statement=p[8])
         p[0].setpos(p)
@@ -1257,11 +1220,8 @@ class Parser(object):
         iteration_statement \
           : FOR LPAREN VAR identifier initializer_noin IN expr RPAREN statement
         """
-        if self._sourcemap_compat:
-            vardecl = self.asttypes.VarDeclNoIn(
-                identifier=p[4], initializer=p[5])
-        else:
-            vardecl = self.asttypes.VarDecl(identifier=p[4], initializer=p[5])
+        vardecl = self.asttypes.VarDeclNoIn(
+            identifier=p[4], initializer=p[5])
         vardecl.setpos(p, 3)
         p[0] = self.asttypes.ForIn(item=vardecl, iterable=p[7], statement=p[9])
         p[0].setpos(p)
@@ -1332,30 +1292,12 @@ class Parser(object):
     # 12.11 The switch Statement
     def p_switch_statement(self, p):
         """switch_statement : SWITCH LPAREN expr RPAREN case_block"""
-        if self._sourcemap_compat:
-            # this uses a completely different type that corrects a
-            # subtly wrong interpretation of this construct.
-            # see: https://github.com/rspivak/slimit/issues/94
-            p[0] = self.asttypes.SwitchStatement(expr=p[3], case_block=p[5])
-            p[0].setpos(p)
-            return
-
-        # previously wrongly implemented still just remain as is for
-        # the 0.9.x release...
-        # TODO remove this along with every not _sourcemap_compat blocks
-        cases = []
-        default = None
-        # iterate over return values from case_block
-        for item in p[5]:
-            if isinstance(item, self.asttypes.Default):
-                default = item
-                # if default is not item[-1], should warn that wrong
-                # code will be generated.
-            elif isinstance(item, list):
-                cases.extend(item)
-
-        p[0] = self.asttypes.Switch(expr=p[3], cases=cases, default=default)
+        # this uses a completely different type that corrects a
+        # subtly wrong interpretation of this construct.
+        # see: https://github.com/rspivak/slimit/issues/94
+        p[0] = self.asttypes.SwitchStatement(expr=p[3], case_block=p[5])
         p[0].setpos(p)
+        return
 
     def p_case_block(self, p):
         """
@@ -1363,18 +1305,15 @@ class Parser(object):
             : LBRACE case_clauses_opt RBRACE
             | LBRACE case_clauses_opt default_clause case_clauses_opt RBRACE
         """
-        if self._sourcemap_compat:
-            statements = []
-            for s in p[2:-1]:
-                if isinstance(s, list):
-                    for i in s:
-                        statements.append(i)
-                elif isinstance(s, self.asttypes.Default):
-                    statements.append(s)
-            p[0] = self.asttypes.CaseBlock(statements)
-            p[0].setpos(p)
-        else:
-            p[0] = p[2:-1]
+        statements = []
+        for s in p[2:-1]:
+            if isinstance(s, list):
+                for i in s:
+                    statements.append(i)
+            elif isinstance(s, self.asttypes.Default):
+                statements.append(s)
+        p[0] = self.asttypes.CaseBlock(statements)
+        p[0].setpos(p)
 
     def p_case_clauses_opt(self, p):
         """case_clauses_opt : empty
@@ -1517,6 +1456,4 @@ def parse(source):
     """
 
     parser = Parser()
-    # TODO remove compat flag when no longer implemented.
-    parser._sourcemap_compat = True
     return parser.parse(source)

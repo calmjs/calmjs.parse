@@ -90,6 +90,10 @@ class Node(object):
             if child is not None:
                 yield child
 
+    # TODO generalize this so subclasses don't need to have their own
+    # implementations.  Example: declare a list of attributes to return
+    # as children.
+
     def children(self):
         return getattr(self, '_children_list', [])
 
@@ -183,13 +187,7 @@ class FunctionCall(Node):
         self.args = [] if args is None else args
 
     def children(self):
-        if isinstance(self.args, list):
-            # XXX legacy version
-            # TODO deprecate remove this
-            return [self.identifier] + self.args
-        else:
-            # source map supported version
-            return [self.identifier, self.args]
+        return [self.identifier, self.args]
 
 
 class BracketAccessor(Node):
@@ -239,9 +237,7 @@ class SetPropAssign(Node):
 
     def children(self):
         # XXX sourcemap compat has changed parameters to singular.
-        p = self.parameters if isinstance(self.parameters, list) else [
-            self.parameters]
-        return [self.prop_name] + p + self.elements
+        return [self.prop_name, self.parameters] + self.elements
 
 
 class VarStatement(Node):
@@ -390,16 +386,6 @@ class With(Node):
 
     def children(self):
         return [self.expr, self.statement]
-
-
-class Switch(Node):
-    def __init__(self, expr, cases, default=None):
-        self.expr = expr
-        self.cases = cases
-        self.default = default
-
-    def children(self):
-        return [self.expr] + self.cases + [self.default]
 
 
 class SwitchStatement(Node):
