@@ -94,7 +94,7 @@ class ConditionalVisitor(object):
     >>> from calmjs.parse.asttypes import FunctionCall
     >>> from calmjs.parse.parsers.es5 import Parser
     >>> from calmjs.parse.visitors.generic import ConditionalVisitor
-    >>> from calmjs.parse.visitors.es5 import PrettyPrinter as ECMAVisitor
+    >>> from calmjs.parse.unparsers.es5 import pretty_print
     >>>
     >>> text = '''
     ... var globals = {};
@@ -118,9 +118,9 @@ class ConditionalVisitor(object):
     2
     >>> len(list(visitor.generate(tree, function_call)))
     0
-    >>> print(ECMAVisitor().visit(visitor.extract(tree, assignment)))
+    >>> print(pretty_print(visitor.extract(tree, assignment)))
     globals[k] = v
-    >>> print(ECMAVisitor().visit(visitor.extract(tree, assignment, skip=1)))
+    >>> print(pretty_print(visitor.extract(tree, assignment, skip=1)))
     globals[k] = 'yyy'
     >>> visitor.extract(tree, function_call)
     Traceback (most recent call last):
