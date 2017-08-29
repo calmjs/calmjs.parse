@@ -159,7 +159,7 @@ definitions = {
     'Label': (
         Attr('identifier'), Text(value=':'), Space, Attr('statement'),
     ),
-    'SwitchStatement': (
+    'Switch': (
         Text(value='switch'), Space,
         Text(value='('), Attr('expr'), Text(value=')'), Space,
         Attr('case_block'),

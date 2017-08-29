@@ -388,7 +388,7 @@ class With(Node):
         return [self.expr, self.statement]
 
 
-class SwitchStatement(Node):
+class Switch(Node):
 
     def __init__(self, expr, case_block):
         self.expr = expr
