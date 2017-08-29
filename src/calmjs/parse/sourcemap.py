@@ -6,6 +6,8 @@ Source map helpers
 from __future__ import unicode_literals
 import logging
 
+from calmjs.parse.vlq import encode_mappings
+
 logger = logging.getLogger(__name__)
 
 
@@ -234,14 +236,14 @@ def write(source, stream, names=None, book=None, normalize=True):
         book = default_book()
 
     # declare state variables and local helpers
-    mapping = []
+    mappings = []
 
     def push_line():
         # should normalize the current line if possible.
-        mapping.append([])
+        mappings.append([])
         book._sink_column = 0
 
-    # finalize initial states; the most recent list (mapping[-1]) is
+    # finalize initial states; the most recent list (mappings[-1]) is
     # the current line
     push_line()
     # if support for multiple files are to be provided by this function,
@@ -270,7 +272,7 @@ def write(source, stream, names=None, book=None, normalize=True):
             # unmapped indentation
 
             if lineno is None or colno is None:
-                mapping[-1].append((book.sink_column,))
+                mappings[-1].append((book.sink_column,))
             else:
                 # only track lineno if specified
                 if lineno:
@@ -286,13 +288,13 @@ def write(source, stream, names=None, book=None, normalize=True):
                     book.source_column = book._source_column + p_line_len
 
                 if original_name is not None:
-                    mapping[-1].append((
+                    mappings[-1].append((
                         book.sink_column, filename,
                         book.source_line, book.source_column,
                         name_id
                     ))
                 else:
-                    mapping[-1].append((
+                    mappings[-1].append((
                         book.sink_column, filename,
                         book.source_line, book.source_column
                     ))
@@ -317,7 +319,7 @@ def write(source, stream, names=None, book=None, normalize=True):
                     logger.warning(
                         'text in the generated document at line %d may be '
                         'mapped incorrectly due to trailing newline character '
-                        'in provided text fragment.', len(mapping)
+                        'in provided text fragment.', len(mappings)
                     )
                     logger.info(
                         'text in source fragments should not have trailing '
@@ -332,8 +334,18 @@ def write(source, stream, names=None, book=None, normalize=True):
     if normalize:
         column = 0
         result = []
-        for ml in mapping:
+        for ml in mappings:
             new_ml, column = normalize_mapping_line(ml, column)
             result.append(new_ml)
-        mapping = result
-    return list(names), mapping
+        mappings = result
+    return list(names), mappings
+
+
+def encode_sourcemap(filename, mappings, sources, names=[]):
+    return {
+        "version": 3,
+        "sources": sources,
+        "names": names,
+        "mappings": encode_mappings(mappings),
+        "file": filename,
+    }

@@ -667,3 +667,18 @@ class SourceMapTestCase(unittest.TestCase):
         self.assertEqual([[], [
             (2, 0, 0, 0), (7,), (1, 0, 0, 8), (3,), (1, 0, 0, 4), (13,),
         ], []], mapping)
+
+    def test_encode_sourcemap(self):
+        sm = sourcemap.encode_sourcemap(
+            'hello.min.js', [
+                [(0, 0, 0, 0,), (6, 0, 0, 6,), (6, 0, 0, 6,)],
+                []
+            ], ['hello.js'], [],
+        )
+        self.assertEqual(sm, {
+            "version": 3,
+            "sources": ["hello.js"],
+            "names": [],
+            "mappings": "AAAA,MAAM,MAAM;",
+            "file": "hello.min.js"
+        })

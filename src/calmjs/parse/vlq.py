@@ -120,13 +120,3 @@ def decode_mappings(mappings_str):
     def decode_line(line):
         return list(decode_vlqs(frags) for frags in line.split(',') if frags)
     return list(decode_line(line) for line in mappings_str.split(';'))
-
-
-def create_sourcemap(filename, mappings, sources, names=[]):
-    return {
-        "version": 3,
-        "sources": sources,
-        "names": names,
-        "mappings": encode_mappings(mappings),
-        "file": filename,
-    }
