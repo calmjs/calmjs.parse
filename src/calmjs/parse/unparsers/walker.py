@@ -160,12 +160,25 @@ class Dispatcher(object):
         return self.__newline_str
 
 
-def walk(dispatcher, node, definition):
+def walk(dispatcher, node, definition=None):
     """
     The default, standalone walk function following the standard
-    argument format, where the first argument is a Dispatcher, second
-    being the node, third being the definition tuple to follow from for
-    generating a rendering of the node.
+    argument ordering for the unparsing walkers.
+
+    Arguments:
+
+    dispatcher
+        a Dispatcher instance, defined earlier in this module.  This
+        instance will dispatch out the correct callable for the various
+        object types encountered throughout this recursive function.
+
+    node
+        the starting Node from asttypes.
+
+    definition
+        a standalone definition tuple to start working on the node with;
+        if none is provided, an initial definition will be looked up
+        using the dispatcher with the node for the generation of output.
 
     While the dispatcher object is able to provide the lookup directly,
     this extra definition argument allow more flexibility in having
@@ -173,6 +186,9 @@ def walk(dispatcher, node, definition):
     may be required, such as the generation of optional rendering
     output.
     """
+
+    if definition is None:
+        definition = dispatcher[node]
 
     def _walk(dispatcher, node, definition):
         for rule in definition:
