@@ -5,6 +5,8 @@ regenerating for a given type of AST back into a string.
 """
 
 from collections import namedtuple
+from functools import partial
+
 from calmjs.parse.asttypes import Node
 from calmjs.parse.asttypes import Elision
 from calmjs.parse.asttypes import Identifier
@@ -320,22 +322,32 @@ class Declare(Deferred):
     def __init__(self, attr):
         self.attr = attr
 
+    def _handle(self, handler, parent, child, idx=None):
+        if not isinstance(child, Identifier):
+            raise TypeError(
+                "in %r, the resolved attribute '%s%s' is not an Identifier" %
+                (parent, self.attr, '' if idx is None else '[%d]' % idx)
+            )
+        # invoke it with the specific method signature for Deferred
+        # handlers.
+        handler(child)
+
     def __call__(self, dispatcher, node):
         target = getattr(node, self.attr)
 
-        # This check is probably needed...
-        if not isinstance(target, Identifier):
-            raise TypeError(
-                "the resolved attribute '%s' in %r is not an Identifier" %
-                (self.attr, node)
-            )
+        if is_empty(target):
+            # can't record nothing.
+            return target
 
         # look up the layout handler for this deferred type
         handler = dispatcher(self)
         if handler is not NotImplemented:
-            # invoke it with the specific method signature for Deferred
-            # handlers.
-            handler(dispatcher, target)
+            handler = partial(handler, dispatcher)
+            if isinstance(target, list):
+                for idx, item in enumerate(target):
+                    self._handle(handler, node, item, idx)
+            else:
+                self._handle(handler, node, target)
 
         # finally, return the actual attribute
         return target
