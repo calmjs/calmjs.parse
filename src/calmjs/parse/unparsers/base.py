@@ -14,7 +14,7 @@ from calmjs.parse.ruletypes import (
     Dedent,
 )
 from calmjs.parse.unparsers.walker import (
-    State,
+    Dispatcher,
     visitor,
 )
 from calmjs.parse.layout import (
@@ -60,29 +60,29 @@ class BaseUnparser(object):
             layouts=(default_layout_handlers,),
             layout_handlers=None,
             visitor=visitor,
-            state_cls=State):
+            dispatcher_cls=Dispatcher):
         """
         Optional arguements
 
         definition
             The definition for unparsing.
         token_handler
-            passed onto the state object; this is the handler that will
-            process
+            passed onto the dispatcher object; this is the handler that
+            will process
         layouts
             An tuple of callables that will provide the setup of
             indentation.  The callables must return a layout_handlers
             mapping, which is a dict with the key being the layout class
             and the value being the callable that accept a
-            State instance, a Node, before and after chunk.
+            Dispatcher instance, a Node, before and after chunk.
         layout_handlers
             Additional layout handlers, given in the mapping that was
             described above.
         visitor
             The visitor function - defaults to the version from the
             prettyprint module
-        state_cls
-            The State class - defaults to the version from the
+        dispatcher_cls
+            The Dispatcher class - defaults to the version from the
             prettyprint module
         """
 
@@ -95,10 +95,10 @@ class BaseUnparser(object):
         self.definitions = {}
         self.definitions.update(definitions)
         self.visitor = visitor
-        self.state_cls = state_cls
+        self.dispatcher_cls = dispatcher_cls
 
     def __call__(self, node):
-        state = self.state_cls(
+        dispatcher = self.dispatcher_cls(
             self.definitions, self.token_handler, self.layout_handlers)
-        for chunk in self.visitor(state, node, state[node]):
+        for chunk in self.visitor(dispatcher, node, dispatcher[node]):
             yield chunk

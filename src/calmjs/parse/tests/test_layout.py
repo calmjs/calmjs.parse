@@ -13,7 +13,7 @@ from calmjs.parse.layout import (
     layout_handler_newline_optional_pretty,
     indentation,
 )
-from calmjs.parse.unparsers.walker import State
+from calmjs.parse.unparsers.walker import Dispatcher
 
 empty = []
 space = [(' ', 0, 0, None)]
@@ -25,13 +25,13 @@ class LayoutHandlerTestCase(unittest.TestCase):
     """
 
     def test_space_optional_pretty(self):
-        # initialise a barebone state.
-        state = State({}, None, {})
+        # initialise a barebone dispatcher.
+        dispatcher = Dispatcher({}, None, {})
 
         def run(a, b):
             return list(layout_handler_space_optional_pretty(
                 # node and prev are not used.
-                state, None, a, b, None))
+                dispatcher, None, a, b, None))
 
         # also test out the cases where OptionalSpace was defined.
         self.assertEqual(run(None, None), empty)
@@ -75,13 +75,13 @@ class LayoutHandlerTestCase(unittest.TestCase):
         self.assertEqual(run('+', '+'), space)
 
     def test_space_minimum(self):
-        # initialise a barebone state.
-        state = State({}, None, {})
+        # initialise a barebone dispatcher.
+        dispatcher = Dispatcher({}, None, {})
 
         def run(a, b):
             return list(layout_handler_space_minimum(
                 # node and prev are not used.
-                state, None, a, b, None))
+                dispatcher, None, a, b, None))
 
         self.assertEqual(run(None, None), empty)
 
@@ -106,13 +106,13 @@ class LayoutHandlerTestCase(unittest.TestCase):
     def test_layout_handler_newline_optional_pretty(self):
         # yes using the lteral <CR><LF> is pretty hilarious, but just to
         # show that this is implemented to support whatever.
-        state = State({}, None, {}, newline_str='<CR><LF>')
+        dispatcher = Dispatcher({}, None, {}, newline_str='<CR><LF>')
         newline = [('<CR><LF>', 0, 0, None)]
 
         def run(before, after, prev):
             return list(layout_handler_newline_optional_pretty(
                 # node is not used.
-                state, None, before, after, prev))
+                dispatcher, None, before, after, prev))
 
         # brand new empty program
         self.assertEqual(run(None, None, None), empty)
@@ -132,15 +132,15 @@ class LayoutHandlerTestCase(unittest.TestCase):
         self.assertEqual(run(';', 'function', None), newline)
 
     def test_indentation(self):
-        # initialise a barebone state.
-        state = State({}, None, {}, indent_str='<TAB>')
+        # initialise a barebone dispatcher.
+        dispatcher = Dispatcher({}, None, {}, indent_str='<TAB>')
         layout = indentation()()
         newline = ('\n', 0, 0, None)
         indent1 = ('<TAB>', None, None, None)
         indent2 = ('<TAB><TAB>', None, None, None)
 
         def run(rule, before=None):
-            return layout[rule](state, None, before, None, None)
+            return layout[rule](dispatcher, None, before, None, None)
 
         self.assertEqual(list(run(Newline)), [newline])
         self.assertIsNone(run(Indent))

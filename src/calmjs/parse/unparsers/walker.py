@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Base pretty printing state and visitor function.
+Base pretty printing dispatcher and visitor function.
 """
 
 from itertools import chain
@@ -11,13 +11,14 @@ from calmjs.parse.ruletypes import LayoutRuleChunk
 from calmjs.parse.layout import rule_handler_noop
 
 
-class State(object):
+class Dispatcher(object):
     """
     Provide storage and lookup for the stored definitions and the
     handlers, which is documented by the constructor below.
 
-    Instances of this class also provides two forms of lookup, via
-    calling this with a Rule, or lookup using a Node type.
+    The instances of this class will be a callable that accept a single
+    argument; when called with an object, the handling function, if any,
+    will be returned to achieve the generation of output chunks.
 
     Calling on an instance of this object with a Rule (typically either
     a Token instance, or a Layout type/class object) will return the
@@ -30,17 +31,19 @@ class State(object):
     of layout customization, which are the indent character and the
     newline character.  As certain users and/or platforms expect certain
     character sequences for these outputs, they can be specified in the
-    constructor for this class.
+    constructor for this class, or be completely ignored by the specific
+    layout handlers.
 
     While this class can be used (it was originally conceived) as a
     generic object that allow arbitrary assignments of arguments for
     consumption by layout functions, it's better to have a dedicated
     class that provide instance methods that plug into this.  See the
     ``.visitors.layout`` module for the Indentation class and its
-    factory function for an example on how this could be set up.
+    factory function for an example on how this could be set up.  To
+    better maintain object purity, users of this class should not
+    assign additional attributes to instances of this class.
     """
 
-    # TODO move definitions to first argument, provide newline/indent
     def __init__(
             self, definitions, token_handler, layout_handlers,
             indent_str='  ', newline_str='\n'):
@@ -60,7 +63,7 @@ class State(object):
 
             token
                 the token instance that will do the invocation
-            state
+            dispatcher
                 an instance of this class
             node
                 a Node instance (from asttypes)
@@ -72,7 +75,7 @@ class State(object):
             A map (dictionary) from Layout types to the handlers, which
             are callables that accepts these four arguments
 
-            state
+            dispatcher
                 an instance of this class
             node
                 a Node instance (from asttypes)
@@ -120,26 +123,27 @@ class State(object):
         return self.__newline_str
 
 
-def visitor(state, node, definition):
+def visitor(dispatcher, node, definition):
     """
     The default, standalone visitor function following the standard
-    argument format, where the first argument is a State, second being
-    the node, third being the definition tuple to follow from for
+    argument format, where the first argument is a Dispatcher, second
+    being the node, third being the definition tuple to follow from for
     generating a rendering of the node.
 
-    While the state object is able to provide the lookup directly, this
-    extra definition argument allow more flexibility in having Token
-    subtypes being able to provide specific definitions also that may
-    be required, such as the generation of optional rendering output.
+    While the dispatcher object is able to provide the lookup directly,
+    this extra definition argument allow more flexibility in having
+    Token subtypes being able to provide specific definitions also that
+    may be required, such as the generation of optional rendering
+    output.
     """
 
-    def _visitor(state, node, definition):
+    def _visitor(dispatcher, node, definition):
         for rule in definition:
             if isinstance(rule, Token):
                 # tokens are callables that will generate the chunks
                 # that will ultimately form the output, so simply invoke
-                # that with this function, the state and the node.
-                for chunk in rule(_visitor, state, node):
+                # that with this function, the dispatcher and the node.
+                for chunk in rule(_visitor, dispatcher, node):
                     yield chunk
             else:
                 # Otherwise, it's simply a layout class (inert and does
@@ -147,7 +151,7 @@ def visitor(state, node, definition):
                 # LayoutRuleChunk as a marker, and resolve any rules
                 # that haven't had a handler registered with the noop
                 # rule handler.
-                handler = state(rule)
+                handler = dispatcher(rule)
                 if handler is NotImplemented:
                     yield LayoutRuleChunk(rule, rule_handler_noop, node)
                 else:
@@ -162,7 +166,7 @@ def visitor(state, node, definition):
         # While Layout rules in a typical definition are typically
         # interspersed with Tokens, certain assumptions with how the
         # Layouts are specified within there will fail when Tokens fail
-        # to generate anything for any reason.  However, the state
+        # to generate anything for any reason.  However, the dispatcher
         # instance will be able to accept and resolve a tuple of Layouts
         # to some handler function, so that a form of normalization can
         # be done.  For instance, an (Indent, Newline, Dedent) can
@@ -180,7 +184,7 @@ def visitor(state, node, definition):
         # first pass: generate both the normalized/finalized lrcs.
         for lrc in layout_rule_chunks:
             rule_stack.append(lrc.rule)
-            handler = state(tuple(rule_stack))
+            handler = dispatcher(tuple(rule_stack))
             if handler is NotImplemented:
                 # not implemented so we keep going; also add the chunk
                 # to the stack.
@@ -196,7 +200,7 @@ def visitor(state, node, definition):
         # second pass: now the processing can be done.
         for lr_chunk in chain(normalized_lrcs, lrcs_stack):
             gen = lr_chunk.handler(
-                state, lr_chunk.node, before_text, after_text, prev_text)
+                dispatcher, lr_chunk.node, before_text, after_text, prev_text)
             if not gen:
                 continue
             for chunk_from_layout in gen:
@@ -206,7 +210,7 @@ def visitor(state, node, definition):
     last_chunk = None
     layout_rule_chunks = []
 
-    for chunk in _visitor(state, node, definition):
+    for chunk in _visitor(dispatcher, node, definition):
         if isinstance(chunk, LayoutRuleChunk):
             layout_rule_chunks.append(chunk)
         else:
