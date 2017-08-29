@@ -88,18 +88,3 @@ class VLQTestCase(unittest.TestCase):
             [],
             [],
         ], vlq.decode_mappings(';;AAAA,MAAM,MAAM;QAAA;;QAEA;QACA;QACA;;'))
-
-    def test_create_sourcemap(self):
-        sourcemap = vlq.create_sourcemap(
-            'hello.min.js', [
-                [(0, 0, 0, 0,), (6, 0, 0, 6,), (6, 0, 0, 6,)],
-                []
-            ], ['hello.js'], [],
-        )
-        self.assertEqual(sourcemap, {
-            "version": 3,
-            "sources": ["hello.js"],
-            "names": [],
-            "mappings": "AAAA,MAAM,MAAM;",
-            "file": "hello.min.js"
-        })

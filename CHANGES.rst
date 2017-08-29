@@ -1,6 +1,19 @@
 Changelog
 =========
 
+1.0.0 - Unreleased
+------------------
+
+- Various changes to names for the 1.0.0 release.  Please consult the
+  README and docstrings for the detailed updates.
+- Broke up the visitors class as they weren't really visitors as
+  described.  The new implementations (calmjs.parse-0.9.0) were really
+  walkers, so move them to that name and leave it at that.  Methods
+  were also renamed to better reflect their implementation and purpose.
+- Legacy visitor module and classes removed.
+- Renamed and moved the source map generation function from vlqsm to
+  sourcemap.
+
 0.10.1 - 2017-08-26
 -------------------
 

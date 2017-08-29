@@ -31,8 +31,9 @@ from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.exceptions import ECMARegexSyntaxError
 from calmjs.parse.parsers.es5 import Parser
 from calmjs.parse.parsers.es5 import parse
-from calmjs.parse.visitors import generic
 from calmjs.parse.unparsers.es5 import pretty_print
+from calmjs.parse.walkers import ReprWalker
+from calmjs.parse.walkers import walk
 
 from calmjs.parse.testing.util import build_equality_testcase
 from calmjs.parse.testing.util import build_exception_testcase
@@ -74,7 +75,7 @@ class ParserTestCase(unittest.TestCase):
         """
         parser = Parser()
         tree = parser.parse(text)
-        for node in generic.visit(tree):
+        for node in walk(tree):
             if isinstance(node, asttypes.Identifier) and node.value == 'i':
                 node.value = 'hello'
         self.assertMultiLineEqual(
@@ -154,11 +155,11 @@ class ParserTestCase(unittest.TestCase):
         self.assertTrue(bool(Parser().parse(text).children()))
 
 
-repr_visitor = generic.ReprVisitor()
+repr_walker = ReprWalker()
 
 
 def parse_to_repr(value):
-    return repr_visitor.visit(es5(value), pos=True)
+    return repr_walker.walk(es5(value), pos=True)
 
 
 def singleline(s):

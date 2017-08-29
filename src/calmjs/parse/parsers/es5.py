@@ -30,11 +30,11 @@ from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.lexers.es5 import Lexer
 from calmjs.parse.factory import AstTypesFactory
 from calmjs.parse.unparsers.es5 import pretty_print
-from calmjs.parse.visitors.generic import ReprVisitor
+from calmjs.parse.walkers import ReprWalker
 from calmjs.parse.utils import generate_tab_names
 from calmjs.parse.utils import format_lex_token
 
-asttypes = AstTypesFactory(pretty_print, ReprVisitor())
+asttypes = AstTypesFactory(pretty_print, ReprWalker())
 
 # The default values for the `Parser` constructor, passed on to ply; they must
 # be strings

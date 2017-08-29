@@ -5,7 +5,7 @@ from os.path import dirname
 
 def make_suite():  # pragma: no cover
     from calmjs.parse.lexers import es5 as es5lexer
-    from calmjs.parse.visitors import generic
+    from calmjs.parse import walkers
 
     test_loader = unittest.TestLoader()
     test_suite = test_loader.discover(
@@ -15,7 +15,7 @@ def make_suite():  # pragma: no cover
     test_suite.addTest(doctest.DocTestSuite(
         es5lexer, optionflags=doctest.NORMALIZE_WHITESPACE | doctest.ELLIPSIS))
     test_suite.addTest(doctest.DocTestSuite(
-        generic,
+        walkers,
         optionflags=doctest.NORMALIZE_WHITESPACE | doctest.ELLIPSIS))
 
     return test_suite

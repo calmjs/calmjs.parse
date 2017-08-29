@@ -3,18 +3,20 @@
 import textwrap
 import unittest
 
-from calmjs.parse.visitors import generic
+from calmjs.parse import walkers
 from calmjs.parse import es5
 
-repr_visitor = generic.ReprVisitor()
-conditional = generic.ConditionalVisitor()
+repr_walker = walkers.ReprWalker()
+walker = walkers.Walker()
 
 
-class ConditionalVisitorTestCase(unittest.TestCase):
+class WalkerTestCase(unittest.TestCase):
 
     def test_not_node(self):
         with self.assertRaises(TypeError):
-            list(conditional.generate('not_a_node', lambda x: True))
+            list(walker.filter('not_a_node', lambda x: True))
+        with self.assertRaises(TypeError):
+            list(walker.walk('not_a_node'))
 
 
 class ReprTestCase(unittest.TestCase):
@@ -22,7 +24,7 @@ class ReprTestCase(unittest.TestCase):
     maxDiff = None
 
     def test_basic(self):
-        result = repr_visitor.visit(es5(textwrap.dedent("""
+        result = repr_walker.walk(es5(textwrap.dedent("""
         var o = {
           a: 1,
           b: 2
@@ -38,7 +40,7 @@ class ReprTestCase(unittest.TestCase):
         )
 
     def test_indented_omitted(self):
-        result = repr_visitor.visit(es5(textwrap.dedent("""
+        result = repr_walker.walk(es5(textwrap.dedent("""
         var o = {
           a: 1,
           b: 2
@@ -57,7 +59,7 @@ class ReprTestCase(unittest.TestCase):
         """).strip(), result)
 
     def test_various_nested(self):
-        result = repr_visitor.visit(es5(textwrap.dedent("""
+        result = repr_walker.walk(es5(textwrap.dedent("""
         var j = function(x) {
           return {
             a: 1,
@@ -89,7 +91,7 @@ class ReprTestCase(unittest.TestCase):
         """).strip(), result)
 
     def test_depth_0(self):
-        result = repr_visitor.visit(es5(textwrap.dedent("""
+        result = repr_walker.walk(es5(textwrap.dedent("""
         var j = function(x) {
           return {
             a: 1,
@@ -105,7 +107,7 @@ class ReprTestCase(unittest.TestCase):
         """).strip(), result)
 
     def test_depth_2(self):
-        result = repr_visitor.visit(es5(textwrap.dedent("""
+        result = repr_walker.walk(es5(textwrap.dedent("""
         var j = function(x) {
           return {
             a: 1,
@@ -126,7 +128,7 @@ class ReprTestCase(unittest.TestCase):
         """).strip(), result)
 
     def test_depth_3(self):
-        result = repr_visitor.visit(es5(textwrap.dedent("""
+        result = repr_walker.walk(es5(textwrap.dedent("""
         var j = function(x) {
           return {
             a: 1,
@@ -162,7 +164,7 @@ class ReprTestCase(unittest.TestCase):
         var k = 'hello world';
         var f = 'foobar';
         """).strip()
-        result = repr_visitor(es5(src))
+        result = repr_walker(es5(src))
         self.assertEqual(repr(es5(src)), result)
 
     def test_repr(self):

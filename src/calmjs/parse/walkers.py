@@ -1,89 +1,19 @@
-###############################################################################
-#
-# Copyright (c) 2011 Ruslan Spivak
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-#
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE.
-#
-###############################################################################
-
-__author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
+# -*- coding: utf-8 -*-
+"""
+Generic walkers.
+"""
 
 from calmjs.parse.asttypes import Node
 
 
-class ASTVisitor(object):
-    """Base class for custom AST node visitors.
-
-    Example:
-
-    >>> from calmjs.parse.parsers.es5 import Parser
-    >>> from calmjs.parse.visitors.generic import ASTVisitor
-    >>>
-    >>> text = '''
-    ... var x = {
-    ...     "key1": "value1",
-    ...     "key2": "value2"
-    ... };
-    ... '''
-    >>>
-    >>> class MyVisitor(ASTVisitor):
-    ...     def visit_Object(self, node):
-    ...         '''Visit object literal.'''
-    ...         for prop in node:
-    ...             left, right = prop.left, prop.right
-    ...             print('Property value: %s' % right.value)
-    ...             # visit all children in turn
-    ...             self.visit(prop)
-    ...
-    >>>
-    >>> parser = Parser()
-    >>> tree = parser.parse(text)
-    >>> visitor = MyVisitor()
-    >>> visitor.visit(tree)
-    Property value: "value1"
-    Property value: "value2"
-
+class Walker(object):
     """
+    The generic walker that will walk through the asttypes tree.
 
-    def visit(self, node):
-        method = 'visit_%s' % node.__class__.__name__
-        return getattr(self, method, self.generic_visit)(node)
+    It also provide a couple helper methods that serves as filters, i.e.
+    it will only return specific nodes that match the conditions that
+    were provided.
 
-    def generic_visit(self, node):
-        for child in node:
-            self.visit(child)
-
-
-class NodeVisitor(object):
-    """Simple node visitor."""
-
-    def visit(self, node):
-        """Returns a generator that walks all children recursively."""
-        for child in node:
-            yield child
-            for subchild in self.visit(child):
-                yield subchild
-
-
-class ConditionalVisitor(object):
-    """
-    A visitor that return only specific nodes that matches a condition.
     The condition is specified as a function that accept a single Node
     as the argument, which the function may use to evaluate and return
     True if the node is to be yielded.
@@ -93,8 +23,8 @@ class ConditionalVisitor(object):
     >>> from calmjs.parse.asttypes import Assign
     >>> from calmjs.parse.asttypes import FunctionCall
     >>> from calmjs.parse.parsers.es5 import Parser
-    >>> from calmjs.parse.visitors.generic import ConditionalVisitor
     >>> from calmjs.parse.unparsers.es5 import pretty_print
+    >>> from calmjs.parse.walkers import Walker
     >>>
     >>> text = '''
     ... var globals = {};
@@ -113,22 +43,36 @@ class ConditionalVisitor(object):
     ...     return isinstance(node, FunctionCall)
     ...
     >>> tree = Parser().parse(text)
-    >>> visitor = ConditionalVisitor()
-    >>> len(list(visitor.generate(tree, assignment)))
+    >>> walker = Walker()
+    >>> len(list(walker.filter(tree, assignment)))
     2
-    >>> len(list(visitor.generate(tree, function_call)))
+    >>> len(list(walker.filter(tree, function_call)))
     0
-    >>> print(pretty_print(visitor.extract(tree, assignment)))
+    >>> print(pretty_print(walker.extract(tree, assignment)))
     globals[k] = v
-    >>> print(pretty_print(visitor.extract(tree, assignment, skip=1)))
+    >>> print(pretty_print(walker.extract(tree, assignment, skip=1)))
     globals[k] = 'yyy'
-    >>> visitor.extract(tree, function_call)
+    >>> walker.extract(tree, function_call)
     Traceback (most recent call last):
     ...
     TypeError: no match found
     """
 
-    def generate(self, node, condition):
+    def walk(self, node, condition=None):
+        """
+        Simply walk through the entire node; condition argument is
+        ignored.
+        """
+
+        if not isinstance(node, Node):
+            raise TypeError('not a node')
+
+        for child in node:
+            yield child
+            for subchild in self.walk(child, condition):
+                yield subchild
+
+    def filter(self, node, condition):
         """
         This method accepts a node and the condition function; a
         generator will be returned to yield the nodes that got matched
@@ -141,7 +85,7 @@ class ConditionalVisitor(object):
         for child in node:
             if condition(child):
                 yield child
-            for subchild in self.generate(child, condition):
+            for subchild in self.filter(child, condition):
                 yield subchild
 
     def extract(self, node, condition, skip=0):
@@ -152,42 +96,42 @@ class ConditionalVisitor(object):
         over.
         """
 
-        for child in self.generate(node, condition):
+        for child in self.filter(node, condition):
             if not skip:
                 return child
             skip -= 1
         raise TypeError('no match found')
 
 
-class ReprVisitor(object):
+class ReprWalker(object):
     """
-    Visitor for the generation of an expanded repr-like form
-    recursively down all children.  Useful for showing the exact values
-    stored within the parsed AST along under the relevant attribute.
+    Walker for the generation of an expanded repr-like form recursively
+    down all children of an asttypes Node.  Useful for showing the exact
+    values stored within the tree along under the relevant attribute.
     Any uncollected children (i.e. unbounded to any attribute of a given
     Node) will be listed under the `?children` output attribute.
 
     Example usage:
 
     >>> from calmjs.parse.parsers.es5 import Parser
-    >>> from calmjs.parse.visitors.generic import ReprVisitor
+    >>> from calmjs.parse.walkers import ReprWalker
     >>> parser = Parser()
-    >>> visitor = ReprVisitor()
+    >>> repr_walker = ReprWalker()
     >>> tree = parser.parse('var x = function(x, y) { return x + y; };')
-    >>> print(visitor.visit(tree))
+    >>> print(repr_walker.walk(tree))
     <ES5Program ?children=[<VarStatement ?children=[...]>]>
 
     Standard call is the repr mode - if stable output is desired across
-    major semantic versions, always use the visit method.
+    major semantic versions, always use the walk method.
 
-    >>> print(visitor(tree))
+    >>> print(repr_walker(tree))
     <ES5Program @1:1 ?children=[
       <VarStatement @1:1 ?children=[...]>
     ]>
 
     """
 
-    def visit(
+    def walk(
             self, node, omit=(
                 'lexpos', 'lineno', 'colno', 'rowno'),
             indent=0, depth=-1,
@@ -218,14 +162,14 @@ class ReprVisitor(object):
                 ids.remove(id(v))
 
             if isinstance(v, Node):
-                attrs.append((k, self.visit(
+                attrs.append((k, self.walk(
                     v, omit, indent, depth - 1, pos, _level)))
             elif isinstance(v, list):
                 items = []
                 for i in v:
                     if id(i) in ids:
                         ids.remove(id(i))
-                    items.append(self.visit(
+                    items.append(self.walk(
                         i, omit, indent, depth - 1, pos, _level + 1))
                 attrs.append(
                     (k, '[' + header + joiner.join(items) + tailer + ']'))
@@ -235,7 +179,7 @@ class ReprVisitor(object):
         if ids:
             # for unnamed child nodes.
             attrs.append(('?children', '[' + header + joiner.join(
-                self.visit(child, omit, indent, depth - 1, pos, _level + 1)
+                self.walk(child, omit, indent, depth - 1, pos, _level + 1)
                 for child in children
                 if id(child) in ids) + tailer + ']'))
 
@@ -248,10 +192,13 @@ class ReprVisitor(object):
         ))
 
     def __call__(self, node, indent=2, depth=3, pos=True):
-        return self.visit(node, indent=indent, depth=depth, pos=pos)
+        return self.walk(node, indent=indent, depth=depth, pos=pos)
 
 
-def visit(node):
-    visitor = NodeVisitor()
-    for child in visitor.visit(node):
-        yield child
+def walk(node):
+    """
+    Walk through every node and yield the result
+    """
+
+    for n in Walker().walk(node):
+        yield n
