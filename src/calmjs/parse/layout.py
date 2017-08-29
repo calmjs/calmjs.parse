@@ -5,10 +5,7 @@ Various helpers for plugging into the pprint walker.
 Combining the following layout handlers with the ruletypes definition
 and pprint framework can be done in myriad of ways such that new output
 formats can be constructed very trivially by simply changing how or what
-of the following layouts to use to plug into the pprint walk setup.
-This finally removes the annoyance of having to write an entire new
-visitor class for every kind of desired output.  Good riddance to the
-visit_* methods and to the visitor pattern.
+of the following layouts to use to plug into the unparser walker setup.
 """
 
 import re

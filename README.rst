@@ -170,9 +170,8 @@ immediate access to the parsing feature.  It may be used like so:
       <VarStatement @3:1 ?children=[
         <VarDecl @3:5 identifier=<Identifier ...>, initializer=<FuncExpr ...>>
       ]>,
-      <ExprStatement @7:1 expr=<FunctionCall @7:1 args=[
-        <FunctionCall ...>
-      ], identifier=<DotAccessor ...>>>
+      <ExprStatement @7:1 expr=<FunctionCall @7:1 args=<Arguments ...>,
+        identifier=<DotAccessor ...>>>
     ]>
     >>> print(program)  # automatic reconstruction of ast into source
     var main = function(greet) {
@@ -181,33 +180,119 @@ immediate access to the parsing feature.  It may be used like so:
     };
     console.log(main('world'));
 
+    >>>
+
+Please note the change in indentation and the lack of comments, as the
+default printer has its own indentation scheme and the parser currently
+skips over comments.
+
 The parser classes are organized under the ``calmjs.parse.parsers``
 module, with each language being under their own module.  A
 corresponding lexer class with the same name is also provided under the
 ``calmjs.parse.lexers`` module.  For the moment, only ES5 support is
 implemented.
 
-AST (Abstract Syntax Tree) visitor classes are defined under the
-appropriate named modules under ``calmjs.parse.visitors``; please refer
-to their docstrings for documentation on their usage.  A quick example
-to show how the es5 visitor may be used to regenerate the source tree
-back into text for the above example (in fact, the ``__str__`` call
-shown in the first example generates the output like so).
+Tree walking
+~~~~~~~~~~~~
+
+AST (Abstract Syntax Tree) generic walker classes are defined under the
+appropriate named modules ``calmjs.parse.walkers``.  Two default walker
+classes are supplied, one of which is used for the repr-like output as
+shown previously (the ``ReprWalker`` class).  The other is a collection
+of methods implemented under the ``Walker`` class.  An example usage on
+how one might extract all Object assignments from a given script file.
 
 .. code:: python
 
-    >>> from calmjs.parse.visitors.es5 import PrettyPrinter
-    >>> visitor = PrettyPrinter(indent=4)
-    >>> print(visitor.visit(program))
+    >>> from calmjs.parse import es5
+    >>> from calmjs.parse.asttypes import Object, VarDecl
+    >>> from calmjs.parse.walkers import Walker
+    >>> walker = Walker()
+    >>> declarations = es5('''
+    ... var i = 1;
+    ... var s = {
+    ...     a: "test",
+    ...     o: {
+    ...         v: "value"
+    ...     }
+    ... };
+    ... function bar() {
+    ...     var t = {
+    ...         foo: "bar",
+    ...     }
+    ... }
+    ... ''')
+    >>> for node in walker.filter(declarations, lambda node: (
+    ...         isinstance(node, VarDecl) and
+    ...         isinstance(node.initializer, Object))):
+    ...     print(node.initializer)
+    ...
+    {
+      a: "test",
+      o: {
+        v: "value"
+      }
+    }
+    {
+      foo: "bar"
+    }
+
+Further details and example usage can be consulted from the documetation
+in the module docstrings.
+
+Pretty printing
+~~~~~~~~~~~~~~~
+
+There is also a set of pretty printing helpers, which are generated
+through the ``calmjs.parse.unparsers`` modules and classes (note that
+the ``__str__`` call implicitly invoked through ``print`` shown
+previously is implemented through this).  There is a default short-hand
+helper which can be manually invoked with other parameters, such as what
+characters to use for indentation:
+
+.. code:: python
+
+    >>> from calmjs.parse.unparsers.es5 import pretty_print
+    >>> print(pretty_print(program, indent_str='    '))
     var main = function(greet) {
         var hello = "hello " + greet;
         return hello;
     };
     console.log(main('world'));
 
-Note the change in indentation and the lack of comments, as this visitor
-implementation has their own indentation scheme and the parser currently
-skips over comments.
+    >>>
+
+Source map generation
+~~~~~~~~~~~~~~~~~~~~~
+
+For the generation of source maps, a lower level unparser instance can
+be constructed through the pretty_printer factory, and then instead of
+going through each yielded value returned, a series of helper functions
+from the ``calmjs.parse.sourcemap`` module can be used like so:
+
+.. code:: python
+
+    >>> import json
+    >>> from io import StringIO
+    >>> from calmjs.parse.unparsers.es5 import pretty_printer
+    >>> from calmjs.parse.sourcemap import encode_sourcemap, write
+    >>> stream = StringIO()
+    >>> printer = pretty_printer()
+    >>> names, rawmap = write(printer(program), stream)
+    >>> sourcemap = encode_sourcemap('demo.min.js', rawmap, ['demo.js'], names)
+    >>> print(json.dumps(sourcemap, indent=2))
+    {
+      "version": 3,
+      "sources": [
+        "demo.js"
+      ],
+      "names": [],
+      "mappings": "AAEA,GAEG;IACC,GACG;IACH,MACM;AACV;AACA;",
+      "file": "demo.min.js"
+    }
+    >>> print(stream.getvalue())
+    var main = function(greet) {
+    ...
 
 
 Troubleshooting
@@ -259,7 +344,7 @@ Institute, University of Auckland.  The |calmjs.parse| package is
 licensed under the MIT license (specifically, the Expat License), which
 is also the same license that the package |slimit| was released under.
 
-The lexer, parser, visitor and the other types definitions portions were
+The lexer, parser and the other types definitions portions were
 originally imported from the |slimit| package; |slimit| is copyright (c)
 Ruslan Spivak.
 
