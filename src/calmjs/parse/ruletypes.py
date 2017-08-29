@@ -27,7 +27,7 @@ class Rule(object):
 class Layout(Rule):
     """
     Layout rules are simply for building markers that either return some
-    extraneous fragments or set some flags on the state object for
+    extraneous fragments or set some flags on the Dispatcher object for
     further usage, so that the pretty printing will look pretty.
 
     The subclasses will be used as types for the handler lookup (i.e.
@@ -41,7 +41,7 @@ class Token(Rule):
     """
     Token rules are callable rules that will directly take part in
     ochestrating the rendering of the given input node, along with the
-    visitor function and the state object that tracks the currently
+    walk function and the Dispatcher object that tracks the currently
     executing prettyprint iteration.
 
     Like the Layout type, Token types must also be instantiated before
@@ -73,20 +73,20 @@ class Token(Rule):
         self.value = value
         self.pos = pos
 
-    def resolve(self, visitor, state, node, value):
+    def resolve(self, walk, dispatcher, node, value):
         if isinstance(value, Node):
-            return visitor(state, value, state[value])
+            return walk(dispatcher, value, dispatcher[value])
         else:
-            return state(self)(self, state, node, value)
+            return dispatcher(self)(self, dispatcher, node, value)
 
-    def __call__(self, visitor, state, node):
+    def __call__(self, walk, dispatcher, node):
         """
         Arguments
 
-        visitor
-            the visitor function
-        state
-            a prettyprint.State instance.
+        walk
+            the walk function
+        dispatcher
+            a prettyprint.Dispatcher instance.
         node
             a Node instance.
         """
@@ -135,29 +135,29 @@ class Attr(Token):
     Return the value as specified in the attribute
     """
 
-    def _getattr(self, state, node):
+    def _getattr(self, dispatcher, node):
         if callable(self.attr):
             return self.attr(node)
         else:
             return getattr(node, self.attr)
 
-    def __call__(self, visitor, state, node):
-        value = self._getattr(state, node)
+    def __call__(self, walk, dispatcher, node):
+        value = self._getattr(dispatcher, node)
         if is_empty(value):
             return
         for chunk in self.resolve(
-                visitor, state, node, value):
+                walk, dispatcher, node, value):
             yield chunk
 
 
 class Text(Token):
     """
-    Simply leverage the state object for generating the rendering of
-    the value required.
+    Simply leverage the dispatcher object for generating the rendering
+    of the value required.
     """
 
-    def __call__(self, visitor, state, node):
-        for chunk in self.resolve(visitor, state, node, self.value):
+    def __call__(self, walk, dispatcher, node):
+        for chunk in self.resolve(walk, dispatcher, node, self.value):
             yield chunk
 
 
@@ -166,23 +166,23 @@ class JoinAttr(Attr):
     Join the attr with value.
     """
 
-    def __call__(self, visitor, state, node):
-        nodes = iter(self._getattr(state, node))
+    def __call__(self, walk, dispatcher, node):
+        nodes = iter(self._getattr(dispatcher, node))
 
         try:
             target_node = next(nodes)
         except StopIteration:
             return
 
-        for chunk in self.resolve(visitor, state, node, target_node):
+        for chunk in self.resolve(walk, dispatcher, node, target_node):
             yield chunk
 
         for target_node in nodes:
             # note that self.value is to be defined in the definition
             # format also.
-            for value_node in visitor(state, node, self.value):
+            for value_node in walk(dispatcher, node, self.value):
                 yield value_node
-            for chunk in self.resolve(visitor, state, node, target_node):
+            for chunk in self.resolve(walk, dispatcher, node, target_node):
                 yield chunk
 
 
@@ -199,9 +199,10 @@ class ElisionToken(Attr, Text):
     handled similar to the Text interpretation of value.
     """
 
-    def __call__(self, visitor, state, node):
-        value = self._getattr(state, node)
-        for chunk in self.resolve(visitor, state, node, self.value * value):
+    def __call__(self, walk, dispatcher, node):
+        value = self._getattr(dispatcher, node)
+        for chunk in self.resolve(
+                walk, dispatcher, node, self.value * value):
             yield chunk
 
 
@@ -213,15 +214,15 @@ class ElisionJoinAttr(ElisionToken):
     Note that the ',' token will always be automatically yielded.
     """
 
-    def __call__(self, visitor, state, node):
-        nodes = iter(self._getattr(state, node))
+    def __call__(self, walk, dispatcher, node):
+        nodes = iter(self._getattr(dispatcher, node))
 
         try:
             previous_node = next(nodes)
         except StopIteration:
             return
 
-        for chunk in self.resolve(visitor, state, node, previous_node):
+        for chunk in self.resolve(walk, dispatcher, node, previous_node):
             yield chunk
 
         for next_node in nodes:
@@ -231,12 +232,12 @@ class ElisionJoinAttr(ElisionToken):
                 # TODO find a better way to deal with this magic string
                 # using next_node to avoid using the Array which may
                 # provide a misleading position
-                yield next(visitor(state, next_node, (Text(value=','),)))
+                yield next(walk(dispatcher, next_node, (Text(value=','),)))
 
             if not isinstance(next_node, Elision):
-                for value_node in visitor(state, node, self.value):
+                for value_node in walk(dispatcher, node, self.value):
                     yield value_node
-            for chunk in self.resolve(visitor, state, node, next_node):
+            for chunk in self.resolve(walk, dispatcher, node, next_node):
                 yield chunk
             previous_node = next_node
 
@@ -251,13 +252,13 @@ class Optional(Token):
         the token definition segment to be executed
     """
 
-    def __call__(self, visitor, state, node):
+    def __call__(self, walk, dispatcher, node):
         if is_empty(getattr(node, self.attr)):
             return
 
         # note that self.value is to be defined in the definition
         # format also.
-        for chunk in visitor(state, node, self.value):
+        for chunk in walk(dispatcher, node, self.value):
             yield chunk
 
 
@@ -267,11 +268,11 @@ class Operator(Attr):
     """
 
     # TODO figure out how to yield it in a way that tags this as an
-    # operator, so that it can be properly normalized by the state base
+    # operator, so that it can be properly normalized by the dispatcher base
     # tracker class. (i.e. no space before ':' but after, no space
     # between + iff not followed by unary +/++)
 
-    def _getattr(self, state, node):
+    def _getattr(self, dispatcher, node):
         if self.attr:
             return getattr(node, self.attr)
         else:

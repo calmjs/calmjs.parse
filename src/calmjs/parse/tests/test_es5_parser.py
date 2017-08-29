@@ -702,7 +702,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
         """
         <ES5Program @1:1 ?children=[
-          <SwitchStatement @1:1 case_block=<CaseBlock @1:22 ?children=[
+          <Switch @1:1 case_block=<CaseBlock @1:22 ?children=[
             <Case @2:3 elements=[], expr=<Number @2:8 value='6'>>,
             <Case @3:3 elements=[
               <ExprStatement @4:5 expr=<Assign @4:7 left=<
@@ -741,7 +741,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
         """
         <ES5Program @1:1 ?children=[
-          <SwitchStatement @1:1 case_block=<CaseBlock @1:17 ?children=[
+          <Switch @1:1 case_block=<CaseBlock @1:17 ?children=[
             <Case @2:3 elements=[
                 <ExprStatement @3:5 expr=<FunctionCall @3:5 args=
                   <Arguments @3:12 items=[]>,

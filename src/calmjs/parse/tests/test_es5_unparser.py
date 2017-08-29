@@ -24,24 +24,24 @@ class BaseVisitorTestCase(unittest.TestCase):
     # map feature.
 
     def test_empty_program(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
         ])
 
     def test_basic_integer(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('0;')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('0', 1, 1, None),
             (';', 1, 2, None),
             ('\n', 0, 0, None),
         ])
 
     def test_basic_var_space_standard(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('var x = 0;')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('var', 1, 1, None), (' ', 0, 0, None), ('x', 1, 5, None),
             (' ', 0, 0, None), ('=', 1, 7, None), (' ', 0, 0, None),
             ('0', 1, 9, None), (';', 1, 10, None),
@@ -49,11 +49,11 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_basic_var_space_drop(self):
-        visitor = Unparser(layout_handlers={
+        unparser = Unparser(layout_handlers={
             Space: layout.layout_handler_space_drop,
         })
         ast = parse('var x = 0;\nvar y = 0;')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('var', 1, 1, None), (' ', None, None, None), ('x', 1, 5, None),
             (' ', None, None, None), ('=', 1, 7, None),
             (' ', None, None, None), ('0', 1, 9, None), (';', 1, 10, None),
@@ -65,21 +65,21 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_force_handler_drop(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('var x = 0;')
-        visitor.layout_handlers.clear()
+        unparser.layout_handlers.clear()
         # if there are no layout handlers, the layout nodes will just
         # simply be skipped - not very useful as note that there is now
         # no separation between `var` and `x`.
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('var', 1, 1, None), ('x', 1, 5, None), ('=', 1, 7, None),
             ('0', 1, 9, None), (';', 1, 10, None),
         ])
 
     def test_simple_identifier(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('this;')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('this', 1, 1, None), (';', 1, 5, None), ('\n', 0, 0, None),
         ])
 
@@ -88,25 +88,25 @@ class BaseVisitorTestCase(unittest.TestCase):
         new_definitions = {}
         new_definitions.update(definitions)
         new_definitions['This'] = (Text(value='this', pos=None),)
-        visitor = Unparser(definitions=new_definitions)
+        unparser = Unparser(definitions=new_definitions)
         ast = parse('this;')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('this', None, None, None), (';', 1, 5, None), ('\n', 0, 0, None),
         ])
 
     def test_empty_object(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('thing = {};')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('thing', 1, 1, None), (' ', 0, 0, None), ('=', 1, 7, None),
             (' ', 0, 0, None), ('{', 1, 9, None), ('}', 1, 10, None),
             (';', 1, 11, None), ('\n', 0, 0, None),
         ])
 
     def test_simple_function_declare(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('function(){};')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('function', 1, 1, None),
             ('(', 1, 9, None), (')', 1, 10, None), (' ', 0, 0, None),
             ('{', 1, 11, None), ('\n', 0, 0, None), ('}', 1, 12, None),
@@ -114,17 +114,17 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_simple_function_invoke(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('foo();')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('foo', 1, 1, None), ('(', 1, 4, None), (')', 1, 5, None),
             (';', 1, 6, None), ('\n', 0, 0, None),
         ])
 
     def test_new_new(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('new new T();')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('new', 1, 1, None), (' ', 0, 0, None),
             ('new', 1, 5, None), (' ', 0, 0, None),
             ('T', 1, 9, None), ('(', 1, 10, None), (')', 1, 11, None),
@@ -132,9 +132,9 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_getter(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('x = {get p() {}};')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('x', 1, 1, None), (' ', 0, 0, None), ('=', 1, 3, None),
             (' ', 0, 0, None), ('{', 1, 5, None), ('\n', 0, 0, None),
             ('get', 1, 6, None), (' ', 0, 0, None), ('p', 1, 10, None),
@@ -145,9 +145,9 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_setter(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('x = {set p(a) {}};')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('x', 1, 1, None), (' ', 0, 0, None), ('=', 1, 3, None),
             (' ', 0, 0, None), ('{', 1, 5, None), ('\n', 0, 0, None),
             ('set', 1, 6, None), (' ', 0, 0, None), ('p', 1, 10, None),
@@ -158,9 +158,9 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_switch_case_default_case(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('switch (v) { case true: break; default: case false: }')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('switch', 1, 1, None), (' ', 0, 0, None), ('(', 1, 8, None),
             ('v', 1, 9, None), (')', 1, 10, None), (' ', 0, 0, None),
             ('{', 1, 12, None),
@@ -181,50 +181,50 @@ class BaseVisitorTestCase(unittest.TestCase):
 
     def test_elision_0(self):
         # basically empty list
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('[];')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('[', 1, 1, None), (']', 1, 2, None),
             (';', 1, 3, None), ('\n', 0, 0, None),
         ])
 
     def test_elision_1(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('[,];')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('[', 1, 1, None), (',', 1, 2, None), (']', 1, 3, None),
             (';', 1, 4, None), ('\n', 0, 0, None),
         ])
 
     def test_elision_2(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('[,,];')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('[', 1, 1, None), (',,', 1, 2, None), (']', 1, 4, None),
             (';', 1, 5, None), ('\n', 0, 0, None),
         ])
 
     def test_elision_4(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('[,,,,];')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('[', 1, 1, None), (',,,,', 1, 2, None), (']', 1, 6, None),
             (';', 1, 7, None), ('\n', 0, 0, None),
         ])
 
     def test_elision_v3(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('[1,,,,];')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('[', 1, 1, None), ('1', 1, 2, None), (',', 0, 0, None),
             (',,,', 1, 4, None), (']', 1, 7, None),
             (';', 1, 8, None), ('\n', 0, 0, None),
         ])
 
     def test_elision_vv3(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('[1, 2,,,,];')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('[', 1, 1, None),
             ('1', 1, 2, None), (',', 0, 0, None), (' ', 0, 0, None),
             ('2', 1, 5, None), (',', 0, 0, None),  # ditto for this
@@ -233,9 +233,9 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_elision_v3v(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('[1,,,, 1];')
-        self.assertEqual(list(visitor(ast)), [
+        self.assertEqual(list(unparser(ast)), [
             ('[', 1, 1, None), ('1', 1, 2, None), (',', 0, 0, None),
             (',,,', 1, 4, None),
             (' ', 0, 0, None),
@@ -244,9 +244,9 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_if_else_block(self):
-        visitor = Unparser()
+        unparser = Unparser()
         ast = parse('if (true) {} else {}')
-        self.assertEqual([tuple(t) for t in (visitor(ast))], [
+        self.assertEqual([tuple(t) for t in (unparser(ast))], [
             ('if', 1, 1, None),
             (' ', 0, 0, None),
             ('(', 1, 4, None),
@@ -281,8 +281,8 @@ class OtherUsageTestCase(unittest.TestCase):
                 args=asttypes.Arguments([asttypes.Identifier('x')]),
             )),
         ])
-        visitor = Unparser()
-        self.assertEqual([tuple(t) for t in (visitor(ast))], [
+        unparser = Unparser()
+        self.assertEqual([tuple(t) for t in (unparser(ast))], [
             ('foo', None, None, None), ('(', None, None, None),
             ('x', None, None, None), (')', None, None, None),
             (';', None, None, None), ('\n', 0, 0, None),
@@ -308,8 +308,8 @@ class OtherUsageTestCase(unittest.TestCase):
                     identifier=fc.identifier))
 
         # Now try to render.
-        visitor = Unparser()
-        self.assertEqual([tuple(t) for t in (visitor(ast))], [
+        unparser = Unparser()
+        self.assertEqual([tuple(t) for t in (unparser(ast))], [
             ('(', 1, 1, None),
             ('function', 1, 2, None),
             ('(', 1, 10, None),
