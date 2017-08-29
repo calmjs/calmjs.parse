@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-ES5 base visitors
+Base unparser implementation
+
+Brings together the different bits from the different helpers.
 """
 
 from calmjs.parse.ruletypes import (
@@ -11,7 +13,7 @@ from calmjs.parse.ruletypes import (
     Indent,
     Dedent,
 )
-from calmjs.parse.unparsers.prettyprint import (
+from calmjs.parse.unparsers.walker import (
     State,
     visitor,
 )

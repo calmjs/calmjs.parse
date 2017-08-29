@@ -5,8 +5,8 @@ from collections import namedtuple
 from calmjs.parse import es5
 from calmjs.parse.asttypes import VarStatement
 from calmjs.parse.asttypes import VarDecl
-from calmjs.parse.unparsers.prettyprint import State
-from calmjs.parse.unparsers.prettyprint import visitor
+from calmjs.parse.unparsers.walker import State
+from calmjs.parse.unparsers.walker import visitor
 from calmjs.parse.ruletypes import (
     Attr,
     JoinAttr,

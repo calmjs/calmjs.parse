@@ -13,7 +13,7 @@ from calmjs.parse.layout import (
     layout_handler_newline_optional_pretty,
     indentation,
 )
-from calmjs.parse.unparsers.prettyprint import State
+from calmjs.parse.unparsers.walker import State
 
 empty = []
 space = [(' ', 0, 0, None)]
