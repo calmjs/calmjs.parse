@@ -58,7 +58,7 @@ def setup_handlers(testcase):
     )
 
 
-class PPVisitorTestCase(unittest.TestCase):
+class DispatcherWalkTestCase(unittest.TestCase):
 
     def setUp(self):
         # provide just enough of the everything that is required.
@@ -121,3 +121,15 @@ class PPVisitorTestCase(unittest.TestCase):
         recreated = ''.join(c.text for c in walk(
             self.dispatcher, tree, self.dispatcher[tree]))
         self.assertEqual('var w = jq(window).width();', recreated)
+
+
+class DispatcherTestcase(unittest.TestCase):
+
+    def test_empty(self):
+        dispatcher = Dispatcher({}, {}, {}, {})
+        self.assertEqual(dict(dispatcher), {})
+
+    def test_clone_definitions(self):
+        marker = object()
+        dispatcher = Dispatcher({'Node': marker}, {}, {}, {})
+        self.assertEqual(dict(dispatcher), {'Node': marker})

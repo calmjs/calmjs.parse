@@ -119,6 +119,10 @@ class Dispatcher(object):
         self.__indent_str = indent_str
         self.__newline_str = newline_str
 
+    def __iter__(self):
+        for item in self.__definitions.items():
+            yield item
+
     def __getitem__(self, key):
         """
         This is for getting at the definition for a particular asttype.
