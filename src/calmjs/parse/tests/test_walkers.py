@@ -14,7 +14,7 @@ class WalkerTestCase(unittest.TestCase):
 
     def test_not_node(self):
         with self.assertRaises(TypeError):
-            list(walker.generate('not_a_node', lambda x: True))
+            list(walker.filter('not_a_node', lambda x: True))
         with self.assertRaises(TypeError):
             list(walker.walk('not_a_node'))
 

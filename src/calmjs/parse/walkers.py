@@ -44,9 +44,9 @@ class Walker(object):
     ...
     >>> tree = Parser().parse(text)
     >>> walker = Walker()
-    >>> len(list(walker.generate(tree, assignment)))
+    >>> len(list(walker.filter(tree, assignment)))
     2
-    >>> len(list(walker.generate(tree, function_call)))
+    >>> len(list(walker.filter(tree, function_call)))
     0
     >>> print(pretty_print(walker.extract(tree, assignment)))
     globals[k] = v
@@ -72,7 +72,7 @@ class Walker(object):
             for subchild in self.walk(child, condition):
                 yield subchild
 
-    def generate(self, node, condition):
+    def filter(self, node, condition):
         """
         This method accepts a node and the condition function; a
         generator will be returned to yield the nodes that got matched
@@ -85,7 +85,7 @@ class Walker(object):
         for child in node:
             if condition(child):
                 yield child
-            for subchild in self.generate(child, condition):
+            for subchild in self.filter(child, condition):
                 yield subchild
 
     def extract(self, node, condition, skip=0):
@@ -96,7 +96,7 @@ class Walker(object):
         over.
         """
 
-        for child in self.generate(node, condition):
+        for child in self.filter(node, condition):
             if not skip:
                 return child
             skip -= 1
