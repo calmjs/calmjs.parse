@@ -13,6 +13,8 @@ from calmjs.parse.ruletypes import (
     OptionalNewline,
     Indent,
     Dedent,
+    PushScope,
+    PopScope,
 )
 from calmjs.parse.ruletypes import (
     Attr,
@@ -61,7 +63,8 @@ definitions = {
             Space, Operator(value='='), Space, Attr('initializer'),),),
     ),
     'VarDeclNoIn': (
-        Text(value='var '), Attr('identifier'), Optional('initializer', (
+        Text(value='var '), Attr(Declare('identifier')),
+        Optional('initializer', (
             Space, Operator(value='='), Space, Attr('initializer'),),),
     ),
     'GroupingOp': (
@@ -73,21 +76,25 @@ definitions = {
     ),
     'GetPropAssign': (
         Text(value='get'), Space, Attr('prop_name'),
+        PushScope,
         Text(value='('), Text(value=')'), Space,
         Text(value='{'),
         Indent, Newline,
         JoinAttr(attr='elements', value=(Newline,)),
         Dedent, OptionalNewline,
         Text(value='}'),
+        PopScope,
     ),
     'SetPropAssign': (
         Text(value='set'), Space, Attr('prop_name'), Text(value='('),
-        Attr('parameters'), Text(value=')'), Space,
+        PushScope,
+        Attr(Declare('parameters')), Text(value=')'), Space,
         Text(value='{'),
         Indent, Newline,
         JoinAttr(attr='elements', value=(Newline,)),
         Dedent, OptionalNewline,
         Text(value='}'),
+        PopScope,
     ),
     'Number': value,
     'Comma': (
@@ -200,33 +207,40 @@ definitions = {
     ),
     'Catch': (
         Text(value='catch'), Space,
-        Text(value='('), Attr('identifier'), Text(value=')'), Space,
+        # PushCatchScope,
+        # Declare may need to be DeclareCatch for the special rule.
+        Text(value='('), Attr(Declare('identifier')), Text(value=')'), Space,
         Attr('elements'),
+        # PopCatchScope,
     ),
     'Finally': (
         Text(value='finally'), Space, Attr('elements'),
     ),
     'FuncDecl': (
         Text(value='function'), Optional('identifier', (Space,)),
-        Attr('identifier'), Text(value='('),
-        JoinAttr('parameters', value=(Text(value=','), Space)),
+        Attr(Declare('identifier')), Text(value='('),
+        PushScope,
+        JoinAttr(Declare('parameters'), value=(Text(value=','), Space)),
         Text(value=')'), Space,
         Text(value='{'),
         Indent, Newline,
         JoinAttr('elements', value=(Newline,)),
         Dedent, OptionalNewline,
         Text(value='}'),
+        PopScope,
     ),
     'FuncExpr': (
         Text(value='function'), Optional('identifier', (Space,)),
-        Attr('identifier'), Text(value='('),
-        JoinAttr('parameters', value=(Text(value=','), Space,)),
+        Attr(Declare('identifier')), Text(value='('),
+        PushScope,
+        JoinAttr(Declare('parameters'), value=(Text(value=','), Space,)),
         Text(value=')'), Space,
         Text(value='{'),
         Indent, Newline,
         JoinAttr('elements', value=(Newline,)),
         Dedent, OptionalNewline,
         Text(value='}'),
+        PopScope,
     ),
     'Conditional': (
         Attr('predicate'), Space, Text(value='?'), Space,
