@@ -156,6 +156,18 @@ class Dedent(Layout):
     """
 
 
+class PushScope(Layout):
+    """
+    Push in a new scope
+    """
+
+
+class PopScope(Layout):
+    """
+    Pops out a scope.
+    """
+
+
 class Attr(Token):
     """
     Return the value as specified in the attribute
