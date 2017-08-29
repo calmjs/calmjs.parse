@@ -7,7 +7,7 @@ from calmjs.parse.ruletypes import Space
 from calmjs.parse.ruletypes import Text
 from calmjs.parse import layout
 from calmjs.parse.parsers.es5 import parse
-from calmjs.parse.visitors.generic import ConditionalVisitor
+from calmjs.parse.walkers import Walker
 
 from calmjs.parse.unparsers.base import default_layout_handlers
 from calmjs.parse.unparsers.base import minimum_layout_handlers
@@ -290,7 +290,7 @@ class OtherUsageTestCase(unittest.TestCase):
 
     def test_remap_function_call(self):
         # a form of possible manual replacement call.
-        cv = ConditionalVisitor()
+        walker = Walker()
         src = textwrap.dedent("""
         (function(foo, bar, arg1, arg2) {
             foo(arg1);
@@ -298,7 +298,7 @@ class OtherUsageTestCase(unittest.TestCase):
         })(foo, bar, arg1, arg2);
         """).strip()
         ast = parse(src)
-        block = cv.extract(ast, lambda n: isinstance(n, asttypes.FuncExpr))
+        block = walker.extract(ast, lambda n: isinstance(n, asttypes.FuncExpr))
 
         for stmt in block.elements:
             fc = stmt.expr
