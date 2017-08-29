@@ -6,7 +6,7 @@ from calmjs.parse import es5
 from calmjs.parse.asttypes import VarStatement
 from calmjs.parse.asttypes import VarDecl
 from calmjs.parse.unparsers.walker import Dispatcher
-from calmjs.parse.unparsers.walker import visitor
+from calmjs.parse.unparsers.walker import walk
 from calmjs.parse.ruletypes import (
     Attr,
     JoinAttr,
@@ -65,10 +65,10 @@ class PPVisitorTestCase(unittest.TestCase):
     def test_layouts_buffering(self):
         # The buffered layout rule handler should be invoked with the
         # Node that originally queued the LayoutRuleChunk (rather, the
-        # visitor should have done that for the Node).
+        # walk should have done that for the Node).
         original = 'var a = 1;'
         tree = es5(original)
-        recreated = ''.join(c.text for c in visitor(
+        recreated = ''.join(c.text for c in walk(
             self.dispatcher, tree, self.dispatcher[tree]))
         # see that this at least works as expected
         self.assertEqual(original, recreated)

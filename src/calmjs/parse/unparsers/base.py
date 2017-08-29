@@ -15,7 +15,7 @@ from calmjs.parse.ruletypes import (
 )
 from calmjs.parse.unparsers.walker import (
     Dispatcher,
-    visitor,
+    walk,
 )
 from calmjs.parse.layout import (
     rule_handler_noop,
@@ -49,8 +49,8 @@ def minimum_layout_handlers():
 
 class BaseUnparser(object):
     """
-    A simple base visitor class built upon the prettyprint and layout
-    helper classes.
+    A simple base class for gluing together the default Dispatcher and
+    walk function together to achieve unparsing.
     """
 
     def __init__(
@@ -59,7 +59,7 @@ class BaseUnparser(object):
             token_handler=token_handler_str_default,
             layouts=(default_layout_handlers,),
             layout_handlers=None,
-            visitor=visitor,
+            walk=walk,
             dispatcher_cls=Dispatcher):
         """
         Optional arguements
@@ -78,9 +78,9 @@ class BaseUnparser(object):
         layout_handlers
             Additional layout handlers, given in the mapping that was
             described above.
-        visitor
-            The visitor function - defaults to the version from the
-            prettyprint module
+        walk
+            The walk function - defaults to the version from the walker
+            module
         dispatcher_cls
             The Dispatcher class - defaults to the version from the
             prettyprint module
@@ -94,11 +94,11 @@ class BaseUnparser(object):
             self.layout_handlers.update(layout_handlers)
         self.definitions = {}
         self.definitions.update(definitions)
-        self.visitor = visitor
+        self.walk = walk
         self.dispatcher_cls = dispatcher_cls
 
     def __call__(self, node):
         dispatcher = self.dispatcher_cls(
             self.definitions, self.token_handler, self.layout_handlers)
-        for chunk in self.visitor(dispatcher, node, dispatcher[node]):
+        for chunk in self.walk(dispatcher, node, dispatcher[node]):
             yield chunk

@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-Base pretty printing dispatcher and visitor function.
+Base class and function for making a walk through a given asttypes tree
+possible.
 """
 
 from itertools import chain
@@ -38,7 +39,7 @@ class Dispatcher(object):
     generic object that allow arbitrary assignments of arguments for
     consumption by layout functions, it's better to have a dedicated
     class that provide instance methods that plug into this.  See the
-    ``.visitors.layout`` module for the Indentation class and its
+    ``calmjs.parse.layout`` module for the Indentation class and its
     factory function for an example on how this could be set up.  To
     better maintain object purity, users of this class should not
     assign additional attributes to instances of this class.
@@ -123,9 +124,9 @@ class Dispatcher(object):
         return self.__newline_str
 
 
-def visitor(dispatcher, node, definition):
+def walk(dispatcher, node, definition):
     """
-    The default, standalone visitor function following the standard
+    The default, standalone walk function following the standard
     argument format, where the first argument is a Dispatcher, second
     being the node, third being the definition tuple to follow from for
     generating a rendering of the node.
@@ -137,13 +138,13 @@ def visitor(dispatcher, node, definition):
     output.
     """
 
-    def _visitor(dispatcher, node, definition):
+    def _walk(dispatcher, node, definition):
         for rule in definition:
             if isinstance(rule, Token):
                 # tokens are callables that will generate the chunks
                 # that will ultimately form the output, so simply invoke
                 # that with this function, the dispatcher and the node.
-                for chunk in rule(_visitor, dispatcher, node):
+                for chunk in rule(_walk, dispatcher, node):
                     yield chunk
             else:
                 # Otherwise, it's simply a layout class (inert and does
@@ -210,7 +211,7 @@ def visitor(dispatcher, node, definition):
     last_chunk = None
     layout_rule_chunks = []
 
-    for chunk in _visitor(dispatcher, node, definition):
+    for chunk in _walk(dispatcher, node, definition):
         if isinstance(chunk, LayoutRuleChunk):
             layout_rule_chunks.append(chunk)
         else:
