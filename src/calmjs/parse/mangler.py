@@ -128,7 +128,7 @@ class Shortener(object):
         # should be fine.
         return self.current_scope.resolve(node.value)
 
-    def create_scope_lookup_tables(self, dispatcher, node):
+    def build_substitutions(self, dispatcher, node):
         """
         This is for the Unparser to use as a prewalk hook.
         """
@@ -148,7 +148,7 @@ class Shortener(object):
                 Resolve: self.register,
             },
         )
-        list(walk(local_dispatcher, node))
+        return list(walk(local_dispatcher, node))
 
 
 def mangle(shorten_global=False):
@@ -162,7 +162,7 @@ def mangle(shorten_global=False):
                 Resolve: inst.resolve,
             },
             'prewalk_hooks': [
-                inst.create_scope_lookup_tables,
+                inst.build_substitutions,
             ],
         }
     return shortener_rules
