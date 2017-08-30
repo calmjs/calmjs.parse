@@ -22,17 +22,10 @@ class Scope(object):
     For tracking the symbols.
     """
 
-    def __init__(self, node, parent):
+    def __init__(self, node, parent=None):
         self.node = node
         self.parent = parent
-
-        # This is for tracking _every_ variable name that has been used
-        # ever within all the scopes within this graph (well, tree).  To
-        # achieve that, just simply reuse the reference of the parent.
-        if parent:
-            self.consumed_symbols = parent.consumed_symbols
-        else:
-            self.consumed_symbols = set()
+        self.children = []
 
         # Local names is for this scope only, the variable name will be
         # the key, with a value of how many times it has been referenced
@@ -41,11 +34,22 @@ class Scope(object):
 
         # This is a set of names that have been declared (i.e. via var
         # or function)
-        self.local_symbols = set()
+        self.declared_symbols = set()
+
+    @property
+    def global_symbols(self):
+        """
+        These are symbols that have been referenced, but not declared
+        within this scope.
+        """
+
+        return set(
+            s for s in self.referenced_symbols
+            if s not in self.declared_symbols
+        )
 
     def declare(self, symbol):
-        self.consumed_symbols.add(symbol)
-        self.local_symbols.add(symbol)
+        self.declared_symbols.add(symbol)
         # simply create the reference.
         self.referenced_symbols[symbol] = self.referenced_symbols.get(
             symbol, 0)
@@ -53,6 +57,16 @@ class Scope(object):
     def resolve(self, symbol):
         self.referenced_symbols[symbol] = self.referenced_symbols.get(
             symbol, 0) + 1
+
+    def nest(self, node):
+        """
+        Create a new nested scope that is within this instance, binding
+        the provided node to it.
+        """
+
+        nested_scope = type(self)(node, self)
+        self.children.append(nested_scope)
+        return nested_scope
 
 
 class Shortener(object):
@@ -74,7 +88,10 @@ class Shortener(object):
 
         self.scopes = {}
         self.stack = []
-        self.stack.append(Scope(None, None))
+        # global scope is in the ether somewhere so it isn't exactly
+        # bounded to anything.
+        self.global_scope = Scope(None)
+        self.stack.append(self.global_scope)
 
     @property
     def current_scope(self):
@@ -94,7 +111,7 @@ class Shortener(object):
     # first pass will do the push/pop, along with resolve for counting
     # second pass will only have resolve to actual token
     def push_scope(self, dispatcher, node, *a, **kw):
-        scope = Scope(node, self.current_scope)
+        scope = self.current_scope.nest(node)
         self.scopes[node] = scope
         self.stack.append(scope)
 
