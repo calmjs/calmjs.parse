@@ -7,6 +7,7 @@ possible.
 from itertools import chain
 from calmjs.parse.ruletypes import Token
 from calmjs.parse.ruletypes import Deferred
+from calmjs.parse.ruletypes import Structure
 from calmjs.parse.ruletypes import LayoutRuleChunk
 
 # the default noop.
@@ -144,6 +145,10 @@ class Dispatcher(object):
         This is to find a callable for the particular rule encountered.
         """
 
+        # this is really starting to look like a multi-dispatcher,
+        # especially if it can accept multiple arguments to invoke the
+        # located callable in one go with the arguments supplied here.
+
         if isinstance(rule, Token):
             return self.__token_handler
         if isinstance(rule, Deferred):
@@ -198,9 +203,18 @@ def walk(dispatcher, node, definition=None):
                 # that with this function, the dispatcher and the node.
                 for chunk in rule(_walk, dispatcher, node):
                     yield chunk
+            elif issubclass(rule, Structure):
+                # A stucture layout marker; these will be actioned
+                # immediately as it relates to the handling of the
+                # structural description of the asttype at the current
+                # point.
+                handler = dispatcher(rule)
+                if handler is not NotImplemented:
+                    handler(dispatcher, node)
             else:
-                # Otherwise, it's simply a layout class (inert and does
-                # nothing aside from serving as a marker); yield a
+                # Otherwise, it's assumed to be a format layout marker.
+                # in the definition.  Since there will be further
+                # processing required later, defer by yielding a
                 # LayoutRuleChunk as a marker, and resolve any rules
                 # that haven't had a handler registered with the noop
                 # rule handler.

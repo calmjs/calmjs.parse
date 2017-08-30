@@ -40,6 +40,30 @@ class Layout(Rule):
     """
 
 
+class Structure(Layout):
+    """
+    These are for structural related, i.e. does not relate to production
+    of output chunks.  They will be acted upon immediately.
+
+    The resolved function for these layout tokens should have the
+    following signature:
+
+    (dispatcher, node)
+    """
+
+
+class Format(Layout):
+    """
+    These are format related layouts.  The walk function generally will
+    buffer these for the final generation.
+
+    The resolved function for these layout tokens should have the
+    following signature:
+
+    (dispatcher, node, before_text, after_text, prev_text)
+    """
+
+
 class Token(Rule):
     """
     Token rules are callable rules that will directly take part in
@@ -99,12 +123,24 @@ class Token(Rule):
 
 class Deferred(Rule):
     """
-    These are special in the sense that they are deferred to generate
-    a combination of the above, potentially based on some specific
-    conditions as per the type.  These are generally used for the attr
-    attribute of the Token, for its _getattr
+    These are rules that can be considered as a restricted subset of
+    Token types in the sense that they cannot independently have the
+    ability to walk through the node (as the callable signature does not
+    have provision for one), however the Dispatcher has a provision to
+    acquire a specific handler for this Rule type (hence deferred, i.e.
+    the production of output can be deferred to the Dispatcher).
 
-    The constructor is specific to the definition.
+    An initial implementation was for the _getattr private method of the
+    Attr Token type, where originally it was just a simple callable so
+    that iter can be used to generate an iterator, however that is now
+    formalized to be of this type.
+
+    Another use case, as mentioned, is to have the Dispatcher have the
+    capability to modify the outcome, if the Deferred rule provide the
+    capability to do so, which it can do by calling it with itself as
+    the argument.
+
+    The constructor is implementation specific.
     """
 
     def __call__(self, dispatcher, node):
@@ -120,49 +156,49 @@ class Deferred(Rule):
         raise NotImplementedError
 
 
-class Space(Layout):
+class Space(Format):
     """
     Represents a space.
     """
 
 
-class OptionalSpace(Layout):
+class OptionalSpace(Format):
     """
     Represents optional space character.
     """
 
 
-class Newline(Layout):
+class Newline(Format):
     """
     Represents a newline character.
     """
 
 
-class OptionalNewline(Layout):
+class OptionalNewline(Format):
     """
     Represents an optional newline character.
     """
 
 
-class Indent(Layout):
+class Indent(Format):
     """
     Represents an increment to the indentation level.
     """
 
 
-class Dedent(Layout):
+class Dedent(Format):
     """
     Represents an decrement to the indentation level.
     """
 
 
-class PushScope(Layout):
+class PushScope(Structure):
     """
     Push in a new scope
     """
 
 
-class PopScope(Layout):
+class PopScope(Structure):
     """
     Pops out a scope.
     """
