@@ -4,6 +4,8 @@ Classes for achieving the name mangling effect.
 """
 
 import logging
+from itertools import count
+from itertools import product
 
 from calmjs.parse.ruletypes import PushScope
 from calmjs.parse.ruletypes import PopScope
@@ -16,6 +18,39 @@ from calmjs.parse.unparsers.walker import walk
 
 logger = logging.getLogger(__name__)
 logger.level = logging.WARNING
+
+ID_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
+
+
+class NameGenerator(object):
+    """
+    A name generator.  It can accept one argument for values that should
+    be skipped.
+
+    It is also a constructor so that further names can be skipped.
+    """
+
+    def __init__(self, skip=None, charset=ID_CHARS):
+        self.skip = set(skip or [])
+        self.charset = charset
+        self.__iterself = iter(self)
+
+    def __call__(self, skip):
+        return type(self)(set(skip) | set(self.skip), self.charset)
+
+    def __iter__(self):
+        for n in count(1):
+            for chars in product(self.charset, repeat=n):
+                symbol = ''.join(chars)
+                if symbol in self.skip:
+                    continue
+                yield symbol
+
+    def __next__(self):
+        return next(self.__iterself)
+
+    # python2.7 compatibility.
+    next = __next__
 
 
 # TODO provide an option to memoize all properties to reduce computation

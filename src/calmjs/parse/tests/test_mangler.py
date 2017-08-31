@@ -14,9 +14,38 @@ from calmjs.parse.unparsers.walker import walk
 from calmjs.parse.unparsers.es5 import Unparser
 from calmjs.parse.mangler import Scope
 from calmjs.parse.mangler import Shortener
+from calmjs.parse.mangler import NameGenerator
 from calmjs.parse.mangler import mangle
 
 empty_set = set({})
+
+
+class NameGeneratorTestCase(unittest.TestCase):
+
+    def test_basic(self):
+        ng = NameGenerator()
+        self.assertEqual('a', next(ng))
+        self.assertEqual('b', next(ng))
+
+    def test_skip(self):
+        ng = NameGenerator(['if'], 'if')
+        self.assertEqual('i', next(ng))
+        self.assertEqual('f', next(ng))
+        self.assertEqual('ii', next(ng))
+        # if is skipped
+        self.assertEqual('fi', next(ng))
+        self.assertEqual('ff', next(ng))
+        self.assertEqual('iii', next(ng))
+
+    def test_additional_skip(self):
+        ng1 = NameGenerator(['if'], 'if')
+        ng2 = ng1(['ii'])
+        v = iter(ng2)
+        self.assertEqual('i', next(v))
+        self.assertEqual('f', next(v))
+        # ii is skipped
+        # if is skipped
+        self.assertEqual('fi', next(v))
 
 
 class ScopeTestCase(unittest.TestCase):
