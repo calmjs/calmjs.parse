@@ -10,6 +10,7 @@ from calmjs.parse.layout import rule_handler_noop
 from calmjs.parse.layout import token_handler_str_default
 from calmjs.parse.layout import layout_handler_space_minimum
 from calmjs.parse.unparsers.base import Dispatcher
+from calmjs.parse.unparsers.base import minimum_layout_handlers
 from calmjs.parse.unparsers.walker import walk
 from calmjs.parse.unparsers.es5 import Unparser
 from calmjs.parse.mangler import Scope
@@ -196,21 +197,111 @@ class ScopeTestCase(unittest.TestCase):
             'window': 3,
         }, grandchild3_2.referenced_symbols)
 
+    def test_build_remap_symbols_parent_handling(self):
+        # only after the final close is called.
+        root = Scope(None)
+        child1 = root.nest(None)
+        child2 = root.nest(None)
+        child3 = root.nest(None)
+        grandchild2_1 = child2.nest(None)
+        grandchild2_2 = child2.nest(None)
+        grandchild2_3 = child2.nest(None)
+        grandchild3_2 = child3.nest(None)
+        greatgrandchild3_2_1 = grandchild3_2.nest(None)
+
+        child3.declare('foo')
+        child3.reference('foo')
+        child2.declare('bar')
+        child2.reference('bar')
+        child2.reference('bar')  # to ensure this has priority
+        child2.declare('foo')
+        child2.reference('foo')
+        # child1 does not declare fun
+        child1.reference('fun')
+
+        # first grandchild has declared and use foo, touches no
+        # parents
+        grandchild2_1.declare('foo')
+        grandchild2_1.reference('foo')
+
+        # the other grandchild declares new shadow, but also reference
+        # a parent
+        grandchild2_1.declare('bar')
+        grandchild2_2.reference('bar')
+        grandchild2_2.declare('custom')
+        grandchild2_2.reference('custom')
+
+        grandchild2_3.reference('foo')
+
+        greatgrandchild3_2_1.declare('baz')
+        greatgrandchild3_2_1.reference('window')
+        root.declare('window')
+
+        root.close_all()
+        ng = NameGenerator()
+
+        root.build_remap_symbols(ng)
+        # root was ignored.
+        self.assertEqual('window', root.resolve('window'))
+        # these are independent.
+        self.assertEqual('a', child3.resolve('foo'))
+        self.assertEqual('a', child2.resolve('bar'))
+        self.assertEqual('b', child2.resolve('foo'))
+
+        # it never referenced no other variable
+        self.assertEqual('a', grandchild2_1.resolve('foo'))
+        # it has referenced bar, which was declared in parent ('a')
+        self.assertEqual(child2.resolve('bar'), grandchild2_2.resolve('bar'))
+        # naturally, its first declared variable is now 'b', shadows
+        # over the remapped 'foo' which it doesn't use.
+        self.assertEqual('b', grandchild2_2.resolve('custom'))
+
+        # it will just get the foo fromchild2
+        self.assertEqual('b', grandchild2_3.resolve('foo'))
+
+        # this one was not remapped
+        self.assertEqual('window', greatgrandchild3_2_1.resolve('window'))
+        # remap the root node
+        root.build_remap_symbols(ng, children_only=False)
+        # this one was not remapped
+        self.assertEqual('a', greatgrandchild3_2_1.resolve('window'))
+
+    def test_build_remap_symbols_children_handling(self):
+        ng = NameGenerator()
+        root = Scope(None)
+        child = root.nest(None)
+        grandchild = child.nest(None)
+        greatgrandchild = grandchild.nest(None)
+
+        root.declare('bar')
+        root.reference('bar')
+        greatgrandchild.reference('a')
+
+        root.build_remap_symbols(ng, children_only=False)
+        # a was taken by greatgrandchild referencing that as an implicit
+        # global.
+        self.assertEqual('b', root.resolve('bar'))
+
 
 class ManglerTestCase(unittest.TestCase):
 
     def test_simple_manual(self):
         tree = es5(dedent("""
-        (function(){
+        (function() {
           var foo = 1;
           var bar = 2;
+          bar = 3;
         })(this);
         """).strip())
         mangle_unparser = Unparser(rules=(
             mangle(),
+            minimum_layout_handlers,
         ))
 
-        list(mangle_unparser(tree))
+        self.assertEqual(
+            '(function(){var b=1;var a=2;a=3;})(this);',
+            ''.join(c.text for c in mangle_unparser(tree)),
+        )
 
     def test_no_resolve(self):
         # a simple test to show that a shortener without the initial
@@ -219,7 +310,7 @@ class ManglerTestCase(unittest.TestCase):
         # simply not have any effect.
 
         tree = es5(dedent("""
-        (function(){
+        (function() {
           var foo = 1;
           var bar = 2;
         })(this);
@@ -255,7 +346,8 @@ class ManglerTestCase(unittest.TestCase):
         # the definitions from.
         sub_dispatcher = Dispatcher(
             unparser.definitions, rule_handler_noop, {}, {})
-        result = shortener.build_substitutions(sub_dispatcher, tree)
+        # only do the intial walk.
+        result = shortener.walk(sub_dispatcher, tree)
         # should be empty list as the run should produce nothing, due to
         # the null token producer.
         self.assertEqual(result, [])

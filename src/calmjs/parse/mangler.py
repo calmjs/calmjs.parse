@@ -4,6 +4,7 @@ Classes for achieving the name mangling effect.
 """
 
 import logging
+from operator import itemgetter
 from itertools import count
 from itertools import product
 
@@ -73,7 +74,7 @@ class Scope(object):
 
         # This is a set of names that have been declared (i.e. via var
         # or function)
-        self.local_symbols = set()
+        self.local_declared_symbols = set()
 
         # All symbols remapped to be remapped to a different name will
         # be stored here, for the resolved method to make use of.
@@ -85,7 +86,7 @@ class Scope(object):
         Return all local symbols here, and also of the parents
         """
 
-        return self.local_symbols | (
+        return self.local_declared_symbols | (
             self.parent.declared_symbols if self.parent else set())
 
     @property
@@ -117,7 +118,7 @@ class Scope(object):
         return result
 
     def declare(self, symbol):
-        self.local_symbols.add(symbol)
+        self.local_declared_symbols.add(symbol)
         # simply create the reference, if not already there.
         self.referenced_symbols[symbol] = self.referenced_symbols.get(
             symbol, 0)
@@ -141,7 +142,7 @@ class Scope(object):
 
         for child in self.children:
             for k, v in child.referenced_symbols.items():
-                if k in child.local_symbols:
+                if k in child.local_declared_symbols:
                     continue
                 self.referenced_symbols[k] = self.referenced_symbols.get(
                     k, 0) + v
@@ -156,6 +157,38 @@ class Scope(object):
         for child in self.children:
             child.close_all()
         self.close()
+
+    def build_remap_symbols(self, name_generator, children_only=True):
+        """
+        This builds the replacement table for all the defined symbols
+        for all the children, and this scope, if the children_only
+        argument is False.
+        """
+
+        if not children_only:
+            parent_remapped_symbols = (
+                self.parent.remapped_symbols if self.parent else {})
+
+            replacement = name_generator(skip=(
+                # block implicit children globals.
+                self.global_symbols_in_children | set(
+                    # resolve the remapped symbols
+                    v for k, v in parent_remapped_symbols.items()
+                    # only skip over referenced symbols and not
+                    # already redefined locally
+                    if (k in self.referenced_symbols and
+                        k not in self.local_declared_symbols)
+                )
+            ))
+
+            for symbol, c in reversed(sorted(
+                    self.referenced_symbols.items(), key=itemgetter(1))):
+                if symbol not in self.local_declared_symbols:
+                    continue
+                self.remapped_symbols[symbol] = next(replacement)
+
+        for child in self.children:
+            child.build_remap_symbols(name_generator, False)
 
     def resolve(self, symbol):
         result = None
@@ -212,7 +245,8 @@ class Shortener(object):
         self.stack.append(scope)
 
     def pop_scope(self, dispatcher, node, *a, **kw):
-        self.stack.pop()
+        scope = self.stack.pop()
+        scope.close()
         # TODO figure out whether/how to check that the scope that just
         # got popped is indeed of this node.
 
@@ -245,9 +279,10 @@ class Shortener(object):
             return node.value
         return scope.resolve(node.value)
 
-    def build_substitutions(self, dispatcher, node):
+    def walk(self, dispatcher, node):
         """
-        This is for the Unparser to use as a prewalk hook.
+        Walk through the node with a custom dispatcher for extraction of
+        details that are required.
         """
 
         local_dispatcher = Dispatcher(
@@ -264,7 +299,31 @@ class Shortener(object):
         )
         return list(walk(local_dispatcher, node))
 
+    def finalize(self):
+        """
+        Finalize the run - build the name generator and use it to build
+        the remap symbol tables.
+        """
 
+        self.global_scope.close()
+        # may need this?
+        # children_only=(not use_global_scope)
+        # TODO apply the keywords to skip.
+        name_generator = NameGenerator(skip=())
+        self.global_scope.build_remap_symbols(name_generator)
+
+    def prewalk_hook(self, dispatcher, node):
+        """
+        This is for the Unparser to use as a prewalk hook.
+        """
+
+        result = self.walk(dispatcher, node)
+        self.finalize()
+
+        return result
+
+
+# TODO provide the arguments to specify keywords to skip
 def mangle(shorten_global=False):
     def shortener_rules():
         inst = Shortener(shorten_global)
@@ -276,7 +335,7 @@ def mangle(shorten_global=False):
                 Resolve: inst.resolve,
             },
             'prewalk_hooks': [
-                inst.build_substitutions,
+                inst.prewalk_hook,
             ],
         }
     return shortener_rules
