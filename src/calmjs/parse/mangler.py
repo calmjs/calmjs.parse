@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 logger.level = logging.WARNING
 
 
+# TODO provide an option to memoize all properties to reduce computation
+
 class Scope(object):
     """
     For tracking the symbols.
@@ -35,17 +37,26 @@ class Scope(object):
 
         # This is a set of names that have been declared (i.e. via var
         # or function)
-        self.declared_symbols = set()
+        self.local_symbols = set()
 
         # All symbols remapped to be remapped to a different name will
         # be stored here, for the resolved method to make use of.
         self.remapped_symbols = {}
 
     @property
+    def declared_symbols(self):
+        """
+        Return all local symbols here, and also of the parents
+        """
+
+        return self.local_symbols | (
+            self.parent.declared_symbols if self.parent else set())
+
+    @property
     def global_symbols(self):
         """
         These are symbols that have been referenced, but not declared
-        within this scope.
+        within this scope or any parent scopes.
         """
 
         return set(
@@ -53,8 +64,25 @@ class Scope(object):
             if s not in self.declared_symbols
         )
 
+    @property
+    def global_symbols_in_children(self):
+        """
+        This is based on all children referenced symbols that have not
+        been declared.
+
+        The intended use case is to ban the symbols from being used as
+        remapped symbol values.
+        """
+
+        result = set()
+        for child in self.children:
+            result |= (
+                child.global_symbols |
+                child.global_symbols_in_children)
+        return result
+
     def declare(self, symbol):
-        self.declared_symbols.add(symbol)
+        self.local_symbols.add(symbol)
         # simply create the reference, if not already there.
         self.referenced_symbols[symbol] = self.referenced_symbols.get(
             symbol, 0)

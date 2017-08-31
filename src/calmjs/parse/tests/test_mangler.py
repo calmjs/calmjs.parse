@@ -16,6 +16,8 @@ from calmjs.parse.mangler import Scope
 from calmjs.parse.mangler import Shortener
 from calmjs.parse.mangler import mangle
 
+empty_set = set({})
+
 
 class ScopeTestCase(unittest.TestCase):
 
@@ -32,6 +34,7 @@ class ScopeTestCase(unittest.TestCase):
         scope.reference('foo')
         scope.reference('bar')
         self.assertEqual({'bar'}, scope.global_symbols)
+        self.assertEqual(empty_set, scope.global_symbols_in_children)
 
     def test_resolve(self):
         scope = Scope(None)
@@ -58,6 +61,41 @@ class ScopeTestCase(unittest.TestCase):
 
         self.assertEqual('r', grandchild.resolve('root'))
         self.assertEqual('grandchild', grandchild.resolve('name'))
+
+    def test_children_references(self):
+        root = Scope(None)
+        child1 = root.nest(None)
+        grandchild1_1 = child1.nest(None)
+        root.nest(None)  # child2
+        child3 = root.nest(None)
+        child3.nest(None)  # grandchild3_1
+        grandchild3_2 = child3.nest(None)
+        greatgrandchild3_2_1 = grandchild3_2.nest(None)
+
+        self.assertEqual(empty_set, root.global_symbols_in_children)
+
+        # one of the greatgrandchild make use of 'foo' without declaring
+        # it.
+        greatgrandchild3_2_1.reference('foo')
+        self.assertEqual({'foo'}, root.global_symbols_in_children)
+        self.assertEqual({'foo'}, child3.global_symbols_in_children)
+        self.assertEqual(empty_set, child1.global_symbols_in_children)
+
+        # some other grandchild does a few values, too
+        grandchild1_1.reference('foo')
+        self.assertEqual({'foo'}, child1.global_symbols_in_children)
+        self.assertEqual({'foo'}, root.global_symbols_in_children)
+        grandchild1_1.reference('a')
+        self.assertEqual({'foo', 'a'}, child1.global_symbols_in_children)
+        self.assertEqual({'foo', 'a'}, root.global_symbols_in_children)
+        self.assertEqual({'foo'}, child3.global_symbols_in_children)
+
+        # however, enough is enough, grandchild3_2 declares 'foo'
+        grandchild3_2.declare('foo')
+        # resulting in child3 no longer seeing that as referenced.
+        self.assertEqual(empty_set, child3.global_symbols_in_children)
+        # root still not immune as some other child still reference it.
+        self.assertEqual({'foo', 'a'}, root.global_symbols_in_children)
 
 
 class ManglerTestCase(unittest.TestCase):
