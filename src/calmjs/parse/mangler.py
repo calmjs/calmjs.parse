@@ -9,6 +9,7 @@ from calmjs.parse.ruletypes import PushScope
 from calmjs.parse.ruletypes import PopScope
 from calmjs.parse.ruletypes import Declare
 from calmjs.parse.ruletypes import Resolve
+from calmjs.parse.layout import rule_handler_noop
 
 from calmjs.parse.unparsers.walker import Dispatcher
 from calmjs.parse.unparsers.walker import walk
@@ -36,6 +37,10 @@ class Scope(object):
         # or function)
         self.declared_symbols = set()
 
+        # All symbols remapped to be remapped to a different name will
+        # be stored here, for the resolved method to make use of.
+        self.remapped_symbols = {}
+
     @property
     def global_symbols(self):
         """
@@ -50,13 +55,17 @@ class Scope(object):
 
     def declare(self, symbol):
         self.declared_symbols.add(symbol)
-        # simply create the reference.
+        # simply create the reference, if not already there.
         self.referenced_symbols[symbol] = self.referenced_symbols.get(
             symbol, 0)
 
-    def resolve(self, symbol):
+    def reference(self, symbol):
+        # increment reference counter, declare one if not already did.
         self.referenced_symbols[symbol] = self.referenced_symbols.get(
             symbol, 0) + 1
+
+    def resolve(self, symbol):
+        return self.remapped_symbols.get(symbol, symbol)
 
     def nest(self, node):
         """
@@ -86,6 +95,8 @@ class Shortener(object):
             Defaults to False for the reason above.
         """
 
+        # this is a mapping of Identifier nodes to the scope
+        self.identifiers = {}
         self.scopes = {}
         self.stack = []
         # global scope is in the ether somewhere so it isn't exactly
@@ -97,19 +108,6 @@ class Shortener(object):
     def current_scope(self):
         return self.stack[-1]
 
-    def register(self, dispatcher, node):
-        """
-        Register this identifier to the current scope.
-        """
-
-        if self.current_scope:
-            pass
-
-    # XXX the first pass will push the scope
-    # the variable adding will have a node looking up its scope
-    # the resolution step will just do that.
-    # first pass will do the push/pop, along with resolve for counting
-    # second pass will only have resolve to actual token
     def push_scope(self, dispatcher, node, *a, **kw):
         scope = self.current_scope.nest(node)
         self.scopes[node] = scope
@@ -121,31 +119,49 @@ class Shortener(object):
         # got popped is indeed of this node.
 
     def declare(self, dispatcher, node):
+        """
+        Declare the value of the Identifier of the node that was passed
+        in as used in the current scope.
+        """
+
         self.current_scope.declare(node.value)
 
+    def reference(self, dispatcher, node):
+        """
+        Register this identifier to the current scope.
+        """
+
+        # the identifier node itself will be mapped to the current scope
+        # for the resolve to work
+        self.identifiers[node] = self.current_scope
+        self.current_scope.reference(node.value)
+
     def resolve(self, dispatcher, node):
-        # this is for the first run - it will produce no data and that
-        # should be fine.
-        return self.current_scope.resolve(node.value)
+        """
+        For the given node, resolve it into the scope it was declared
+        at, and if one was found, return its value.
+        """
+
+        scope = self.identifiers.get(node)
+        if not scope:
+            return node.value
+        return scope.resolve(node.value)
 
     def build_substitutions(self, dispatcher, node):
         """
         This is for the Unparser to use as a prewalk hook.
         """
 
-        def null_token_handler(token, dispatcher, node, subnode):
-            return iter([])
-
         local_dispatcher = Dispatcher(
             definitions=dict(dispatcher),
-            token_handler=null_token_handler,
+            token_handler=rule_handler_noop,
             layout_handlers={
                 PushScope: self.push_scope,
                 PopScope: self.pop_scope,
             },
             deferrable_handlers={
                 Declare: self.declare,
-                Resolve: self.register,
+                Resolve: self.reference,
             },
         )
         return list(walk(local_dispatcher, node))
