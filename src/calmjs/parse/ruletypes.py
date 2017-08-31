@@ -121,26 +121,35 @@ class Token(Rule):
         raise NotImplementedError
 
 
-class Deferred(Rule):
+class Deferrable(Rule):
     """
     These are rules that can be considered as a restricted subset of
     Token types in the sense that they cannot independently have the
     ability to walk through the node (as the callable signature does not
     have provision for one), however the Dispatcher has a provision to
-    acquire a specific handler for this Rule type (hence deferred, i.e.
-    the production of output can be deferred to the Dispatcher).
+    acquire a specific handler for this Rule type (hence deferrable,
+    i.e. the production of output can be deferred to the Dispatcher).
 
     An initial implementation was for the _getattr private method of the
     Attr Token type, where originally it was just a simple callable so
     that iter can be used to generate an iterator, however that is now
     formalized to be of this type.
 
-    Another use case, as mentioned, is to have the Dispatcher have the
-    capability to modify the outcome, if the Deferred rule provide the
-    capability to do so, which it can do by calling it with itself as
-    the argument.
+    Another use case, as mentioned, is the ability for these rules to
+    defer to the Dispatcher for the generation of output, which this
+    instance can make use of to achieve that by acquiring a possible
+    handler like so in the __call__ implementation:
 
-    The constructor is implementation specific.
+        handler = dispatcher(self)
+
+    If a callable was returned, it should be invoked with the same
+    arguments that were passed into that context, which should be
+    (dispatcher, node).
+
+    Note that this particular Rule type is to be defined within the
+    context of a Token, as these are designed to operate within one.
+
+    The constructors for subclasses are implementation specific.
     """
 
     def __call__(self, dispatcher, node):
@@ -210,7 +219,7 @@ class Attr(Token):
     """
 
     def _getattr(self, dispatcher, node):
-        if isinstance(self.attr, Deferred):
+        if isinstance(self.attr, Deferrable):
             return self.attr(dispatcher, node)
         else:
             return getattr(node, self.attr)
@@ -353,7 +362,7 @@ class Operator(Attr):
             return self.value
 
 
-class Iter(Deferred):
+class Iter(Deferrable):
     """
     Produces an iterator for the Attr.
     """
@@ -362,7 +371,7 @@ class Iter(Deferred):
         return iter(node)
 
 
-class Declare(Deferred):
+class Declare(Deferrable):
     """
     Record the declaration of the specific identifier.
     """
@@ -376,7 +385,7 @@ class Declare(Deferred):
                 "in %r, the resolved attribute '%s%s' is not an Identifier" %
                 (parent, self.attr, '' if idx is None else '[%d]' % idx)
             )
-        # invoke it with the specific method signature for Deferred
+        # invoke it with the specific method signature for Deferrable
         # handlers.
         handler(child)
 
@@ -387,7 +396,7 @@ class Declare(Deferred):
             # can't record nothing.
             return target
 
-        # look up the layout handler for this deferred type
+        # look up the layout handler for this deferrable type
         handler = dispatcher(self)
         if handler is not NotImplemented:
             handler = partial(handler, dispatcher)
@@ -401,7 +410,7 @@ class Declare(Deferred):
         return target
 
 
-class Resolve(Deferred):
+class Resolve(Deferrable):
     """
     Resolve an identifier.  Naturally, this is used by the Identifier
     asttype to look up previously declared names.
@@ -409,7 +418,8 @@ class Resolve(Deferred):
 
     def __call__(self, dispatcher, node):
         if not isinstance(node, Identifier):
-            raise TypeError("the Resolve deferred only works with Identifier")
+            raise TypeError(
+                "the Resolve Deferrable type only works with Identifier")
 
         handler = dispatcher(self)
         if handler is not NotImplemented:

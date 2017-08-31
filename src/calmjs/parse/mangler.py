@@ -143,7 +143,7 @@ class Shortener(object):
                 PushScope: self.push_scope,
                 PopScope: self.pop_scope,
             },
-            deferred_handlers={
+            deferrable_handlers={
                 Declare: self.declare,
                 Resolve: self.register,
             },
@@ -158,7 +158,7 @@ def mangle(shorten_global=False):
         # for the first pass
         # second pass will only have a simple resolve.
         return {
-            'deferred_handlers': {
+            'deferrable_handlers': {
                 Resolve: inst.resolve,
             },
             'prewalk_hooks': [

@@ -297,7 +297,7 @@ class Unparser(BaseUnparser):
             token_handler=token_handler_str_default,
             rules=(default_layout_handlers,),
             layout_handlers=None,
-            deferred_handlers=None,
+            deferrable_handlers=None,
             prewalk_hooks=()):
 
         super(Unparser, self).__init__(
@@ -305,7 +305,7 @@ class Unparser(BaseUnparser):
             token_handler=token_handler,
             rules=rules,
             layout_handlers=layout_handlers,
-            deferred_handlers=deferred_handlers,
+            deferrable_handlers=deferrable_handlers,
             prewalk_hooks=(),
         )
 

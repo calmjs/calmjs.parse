@@ -59,7 +59,7 @@ class BaseUnparser(object):
             token_handler=token_handler_str_default,
             rules=(default_layout_handlers,),
             layout_handlers=None,
-            deferred_handlers=None,
+            deferrable_handlers=None,
             prewalk_hooks=(),
             walk=walk,
             dispatcher_cls=Dispatcher):
@@ -74,11 +74,11 @@ class BaseUnparser(object):
         rules
             A tuple of callables that will set up the various rules that
             will be passed to the dispatcher instance.  It should return
-            the mappings for layout_handlers and deferred_handlers.
+            the mappings for layout_handlers and deferrable_handlers.
         layout_handlers
             Additional layout handlers for the Dispatcher instance.
-        deferred_handlers
-            Additional deferred handlers for the Dispatcher instance.
+        deferrable_handlers
+            Additional deferrable handlers for the Dispatcher instance.
         walk
             The walk function - defaults to the version from the walker
             module
@@ -89,20 +89,20 @@ class BaseUnparser(object):
 
         self.token_handler = token_handler
         self.layout_handlers = {}
-        self.deferred_handlers = {}
+        self.deferrable_handlers = {}
         self.prewalk_hooks = []
 
         for rule in rules:
             r = rule()
             self.layout_handlers.update(r.get('layout_handlers', {}))
-            self.deferred_handlers.update(r.get('deferred_handlers', {}))
+            self.deferrable_handlers.update(r.get('deferrable_handlers', {}))
             self.prewalk_hooks.extend(r.get('prewalk_hooks', []))
 
         if layout_handlers:
             self.layout_handlers.update(layout_handlers)
 
-        if deferred_handlers:
-            self.deferred_handlers.update(deferred_handlers)
+        if deferrable_handlers:
+            self.deferrable_handlers.update(deferrable_handlers)
 
         if prewalk_hooks:
             self.prewalk_hooks.extend(prewalk_hooks)
@@ -117,7 +117,7 @@ class BaseUnparser(object):
             self.definitions,
             self.token_handler,
             self.layout_handlers,
-            self.deferred_handlers,
+            self.deferrable_handlers,
         )
 
         for prewalk_hook in self.prewalk_hooks:

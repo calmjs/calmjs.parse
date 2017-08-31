@@ -16,7 +16,7 @@ class Node(object):
     """
 
 
-class DeferredTestCase(unittest.TestCase):
+class DeferrableTestCase(unittest.TestCase):
 
     def test_declare_simple(self):
         handled = []

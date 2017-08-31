@@ -62,7 +62,7 @@ class DispatcherWalkTestCase(unittest.TestCase):
 
     def setUp(self):
         # provide just enough of the everything that is required.
-        token_handler, layout_handlers, deferred_handlers, declared_vars = (
+        token_handler, layout_handlers, deferrable_handlers, declared_vars = (
             setup_handlers(self))
         self.dispatcher = Dispatcher(
             definitions={
@@ -92,7 +92,7 @@ class DispatcherWalkTestCase(unittest.TestCase):
             },
             token_handler=token_handler,
             layout_handlers=layout_handlers,
-            deferred_handlers=deferred_handlers,
+            deferrable_handlers=deferrable_handlers,
         )
         self.declared_vars = declared_vars
 
@@ -115,7 +115,7 @@ class DispatcherWalkTestCase(unittest.TestCase):
         self.assertTrue(isinstance(self.layouts_handled[2][1], VarDecl))
         self.assertEqual(['a'], self.declared_vars)
 
-    def test_deferred_resolve(self):
+    def test_deferrable_resolve(self):
         # define the replacement in the map that was set up.
         self.replacement['$'] = 'jq'
         tree = es5('var w = $(window).width();')

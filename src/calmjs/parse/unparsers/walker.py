@@ -6,7 +6,7 @@ possible.
 
 from itertools import chain
 from calmjs.parse.ruletypes import Token
-from calmjs.parse.ruletypes import Deferred
+from calmjs.parse.ruletypes import Deferrable
 from calmjs.parse.ruletypes import Structure
 from calmjs.parse.ruletypes import LayoutRuleChunk
 
@@ -49,7 +49,7 @@ class Dispatcher(object):
 
     def __init__(
             self, definitions, token_handler,
-            layout_handlers, deferred_handlers,
+            layout_handlers, deferrable_handlers,
             indent_str='  ', newline_str='\n'):
         """
         The constructor takes three arguments.
@@ -90,9 +90,9 @@ class Dispatcher(object):
             prev
                 the previously yielded layout token
 
-        deferred_handlers
-            A map (dictionary) from Deferred types to the handlers, which
-            are callables that accepts these two arguments
+        deferrable_handlers
+            A map (dictionary) from Deferrable types to the handlers,
+            which are callables that accepts these two arguments
 
             dispatcher
                 an instance of this class
@@ -113,8 +113,8 @@ class Dispatcher(object):
         self.__token_handler = token_handler
         self.__layout_handlers = {}
         self.__layout_handlers.update(layout_handlers)
-        self.__deferred_handlers = {}
-        self.__deferred_handlers.update(deferred_handlers)
+        self.__deferrable_handlers = {}
+        self.__deferrable_handlers.update(deferrable_handlers)
         self.__definitions = {}
         self.__definitions.update(definitions)
         self.__indent_str = indent_str
@@ -151,8 +151,8 @@ class Dispatcher(object):
 
         if isinstance(rule, Token):
             return self.__token_handler
-        if isinstance(rule, Deferred):
-            return self.__deferred_handlers.get(type(rule), NotImplemented)
+        if isinstance(rule, Deferrable):
+            return self.__deferrable_handlers.get(type(rule), NotImplemented)
         else:
             return self.__layout_handlers.get(rule, NotImplemented)
 

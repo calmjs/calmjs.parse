@@ -55,7 +55,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         def declare(dispatcher, node):
             declared_vars.append(node.value)
 
-        unparser = Unparser(deferred_handlers={
+        unparser = Unparser(deferrable_handlers={
             Declare: declare,
         })
         ast = parse('var x = 0;')
