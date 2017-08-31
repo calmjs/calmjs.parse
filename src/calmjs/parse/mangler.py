@@ -26,6 +26,7 @@ class Scope(object):
     """
 
     def __init__(self, node, parent=None):
+        self._closed = False
         self.node = node
         self.parent = parent
         self.children = []
@@ -59,10 +60,9 @@ class Scope(object):
         within this scope or any parent scopes.
         """
 
+        declared_symbols = self.declared_symbols
         return set(
-            s for s in self.referenced_symbols
-            if s not in self.declared_symbols
-        )
+            s for s in self.referenced_symbols if s not in declared_symbols)
 
     @property
     def global_symbols_in_children(self):
@@ -91,6 +91,36 @@ class Scope(object):
         # increment reference counter, declare one if not already did.
         self.referenced_symbols[symbol] = self.referenced_symbols.get(
             symbol, 0) + 1
+
+    def close(self):
+        """
+        Mark the scope as closed, i.e. all symbols have been declared,
+        and no changes should be done.
+        """
+
+        if self._closed:
+            raise ValueError('scope is already marked as closed')
+
+        # the key thing that needs to be done is to claim all references
+        # to symbols done by all children that they have not declared.
+
+        for child in self.children:
+            for k, v in child.referenced_symbols.items():
+                if k in child.local_symbols:
+                    continue
+                self.referenced_symbols[k] = self.referenced_symbols.get(
+                    k, 0) + v
+
+        self._closed = True
+
+    def close_all(self):
+        """
+        Recursively close everything.
+        """
+
+        for child in self.children:
+            child.close_all()
+        self.close()
 
     def resolve(self, symbol):
         result = None

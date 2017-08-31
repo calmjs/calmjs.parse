@@ -97,6 +97,76 @@ class ScopeTestCase(unittest.TestCase):
         # root still not immune as some other child still reference it.
         self.assertEqual({'foo', 'a'}, root.global_symbols_in_children)
 
+    def test_close(self):
+        root = Scope(None)
+        root.reference('window')
+        child = root.nest(None)
+        child.reference('window')
+        child.close()
+        root.close()
+
+        self.assertEqual({'window': 2}, root.referenced_symbols)
+        self.assertEqual({'window': 1}, child.referenced_symbols)
+
+        with self.assertRaises(ValueError):
+            root.close()
+
+        self.assertEqual({'window': 2}, root.referenced_symbols)
+
+    def test_close_all_check_references(self):
+        # for ease of counting everything
+        root = Scope(None)
+        child1 = root.nest(None)
+        grandchild1_1 = child1.nest(None)
+        child2 = root.nest(None)
+        child3 = root.nest(None)
+        child3.nest(None)  # grandchild3_1
+        grandchild3_2 = child3.nest(None)
+        greatgrandchild3_2_1 = grandchild3_2.nest(None)
+        grandchild3_2.nest(None)  # greatgrandchild3_2_2
+        child4 = root.nest(None)
+        child5 = root.nest(None)
+
+        greatgrandchild3_2_1.reference('window')
+        greatgrandchild3_2_1.reference('window')
+        grandchild3_2.reference('window')
+        child3.declare('window')
+        child3.reference('window')  # reference follows declare
+
+        greatgrandchild3_2_1.reference('document')
+        grandchild3_2.reference('document')
+
+        child1.reference('window')
+        grandchild1_1.reference('window')
+
+        child2.reference('window')
+        child2.reference('document')
+        child2.declare('document')
+        child2.reference('document')
+
+        child4.reference('console')
+
+        self.assertEqual({}, root.referenced_symbols)
+        self.assertEqual({}, child5.referenced_symbols)
+        root.close_all()
+        self.assertEqual({
+            'window': 3,
+            'document': 2,
+            'console': 1,
+        }, root.referenced_symbols)
+        self.assertEqual({
+            'document': 2,
+            'window': 1,
+        }, child2.referenced_symbols)
+        self.assertEqual({
+            'document': 1,
+            'window': 2,
+        }, greatgrandchild3_2_1.referenced_symbols)
+        self.assertEqual({
+            'document': 2,
+            'window': 3,
+        }, grandchild3_2.referenced_symbols)
+
 
 class ManglerTestCase(unittest.TestCase):
 
