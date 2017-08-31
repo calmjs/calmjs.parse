@@ -33,6 +33,32 @@ class ScopeTestCase(unittest.TestCase):
         scope.reference('bar')
         self.assertEqual({'bar'}, scope.global_symbols)
 
+    def test_resolve(self):
+        scope = Scope(None)
+        scope.remapped_symbols['foo'] = 'f'
+        self.assertEqual('f', scope.resolve('foo'))
+        self.assertEqual('bar', scope.resolve('bar'))
+
+    def test_resolve_with_parent(self):
+        root = Scope(None)
+        root.remapped_symbols['root'] = 'r'
+        root.remapped_symbols['name'] = 'root'
+        child = root.nest(None)
+        child.remapped_symbols['child'] = 'c'
+        child.remapped_symbols['name'] = 'child'
+        grandchild = child.nest(None)
+        grandchild.remapped_symbols['grandchild'] = 'c'
+        grandchild.remapped_symbols['name'] = 'grandchild'
+
+        self.assertEqual('r', root.resolve('root'))
+        self.assertEqual('root', root.resolve('name'))
+
+        self.assertEqual('r', child.resolve('root'))
+        self.assertEqual('child', child.resolve('name'))
+
+        self.assertEqual('r', grandchild.resolve('root'))
+        self.assertEqual('grandchild', grandchild.resolve('name'))
+
 
 class ManglerTestCase(unittest.TestCase):
 

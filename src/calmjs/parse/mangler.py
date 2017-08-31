@@ -65,7 +65,12 @@ class Scope(object):
             symbol, 0) + 1
 
     def resolve(self, symbol):
-        return self.remapped_symbols.get(symbol, symbol)
+        result = None
+        scope = self
+        while result is None and scope:
+            result = scope.remapped_symbols.get(symbol)
+            scope = scope.parent
+        return result or symbol
 
     def nest(self, node):
         """
