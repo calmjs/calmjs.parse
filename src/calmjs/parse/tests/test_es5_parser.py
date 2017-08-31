@@ -1156,13 +1156,13 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """
         <ES5Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<DotAccessor @1:6 identifier=<
-              Identifier @1:7 value='foo'>,
+              PropIdentifier @1:7 value='foo'>,
             node=<FunctionCall @1:1 args=<Arguments @1:4 items=[]>,
             identifier=<Identifier @1:1 value='foo'>>>>,
             <VarStatement @2:1 ?children=[
               <VarDecl @2:5 identifier=<Identifier @2:5 value='bar'>,
                 initializer=<DotAccessor @2:16 identifier=<
-                  Identifier @2:17 value='foo'>,
+                  PropIdentifier @2:17 value='foo'>,
                 node=<FunctionCall @2:11 args=<Arguments @2:14 items=[]>,
                   identifier=<Identifier @2:11 value='foo'>>>>
             ]>
@@ -1189,7 +1189,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
           <VarDecl @1:5 identifier=<Identifier @1:5 value='bar'>,
             initializer=<NewExpr @1:11 args=<Arguments @1:22 items=[]>,
               identifier=<DotAccessor @1:18 identifier=<
-                Identifier @1:19 value='Bar'>,
+                PropIdentifier @1:19 value='Bar'>,
               node=<Identifier @1:15 value='Foo'>>>>
         ]>]>
         """,
@@ -1203,7 +1203,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
             initializer=<BracketAccessor @1:24 expr=<Number @1:25 value='7'>,
               node=<NewExpr @1:11 args=<Arguments @1:22 items=[]>, identifier=<
                 DotAccessor @1:18 identifier=<
-                  Identifier @1:19 value='Bar'>,
+                  PropIdentifier @1:19 value='Bar'>,
                 node=<Identifier @1:15 value='Foo'>>>>>
         ]>]>
         """,
@@ -1221,10 +1221,10 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
           <VarDecl @1:5 identifier=<Identifier @1:5 value='obj'>, initializer=<
             Object @1:11 properties=[
-              <Assign @2:6 left=<Identifier @2:3 value='foo'>, op=':', right=<
-                Number @2:8 value='10'>>,
-              <Assign @3:6 left=<Identifier @3:3 value='bar'>, op=':', right=<
-                Number @3:8 value='20'>>
+              <Assign @2:6 left=<PropIdentifier @2:3 value='foo'>, op=':',
+                right=<Number @2:8 value='10'>>,
+              <Assign @3:6 left=<PropIdentifier @3:3 value='bar'>, op=':',
+                right=<Number @3:8 value='20'>>
             ]
           >>
         ]>]>
@@ -1261,7 +1261,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
             Arguments @1:6 items=[]>, identifier=<
             Identifier @1:5 value='T'>>>,
           <ExprStatement @2:1 expr=<DotAccessor @2:8 identifier=<
-            Identifier @2:9 value='derp'>, node=<
+            PropIdentifier @2:9 value='derp'>, node=<
               NewExpr @2:1 args=<Arguments @2:6 items=[]>,
               identifier=<Identifier @2:5 value='T'>>>>
         ]>
@@ -1332,12 +1332,13 @@ ParsedNodeTypeTestCase = build_equality_testcase(
           <VarStatement @1:1 ?children=[
             <VarDecl @1:5 identifier=<Identifier @1:5 value='obj'>,
               initializer=<Object @1:11 properties=[
-                <Assign @1:15 left=<Identifier @1:12 value='foo'>, op=':',
+                <Assign @1:15 left=<PropIdentifier @1:12 value='foo'>, op=':',
                   right=<Number @1:17 value='1'>>
                 ]>>
           ]>,
           <ExprStatement @2:1 expr=<UnaryOp @2:1 op='delete', postfix=False,
-            value=<DotAccessor @2:11 identifier=<Identifier @2:12 value='foo'>,
+            value=<DotAccessor @2:11 identifier=<
+              PropIdentifier @2:12 value='foo'>,
               node=<Identifier @2:8 value='obj'>>>>
         ]>
         """,
@@ -1485,13 +1486,13 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         r"""
         <ES5Program @1:1 ?children=[<ExprStatement @1:1 expr=<
           BinOp @1:25 left=<DotAccessor @1:17 identifier=<
-            Identifier @1:18 value='source'>,
+            PropIdentifier @1:18 value='source'>,
             node=<BracketAccessor @1:11 expr=<Identifier @1:12 value='type'>,
               node=<DotAccessor @1:5 identifier=<
-                Identifier @1:6 value='match'>, node=<
+                PropIdentifier @1:6 value='match'>, node=<
                   Identifier @1:1 value='Expr'>>>>,
           op='+', right=<GroupingOp @1:27 expr=<
-            DotAccessor @1:54 identifier=<Identifier @1:55 value='source'>,
+            DotAccessor @1:54 identifier=<PropIdentifier @1:55 value='source'>,
               node=<Regex @1:28 value='/(?![^\\[]*\\])(?![^\\(]*\\))/'>>>>>
         ]>
         """,
@@ -1515,11 +1516,12 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         r"""
         <ES5Program @1:1 ?children=[<Return @1:1 expr=<FunctionCall @1:8 args=<
           Arguments @1:21 items=[
-            <DotAccessor @1:26 identifier=<Identifier @1:27 value='nodeName'>,
+            <DotAccessor @1:26 identifier=<
+              PropIdentifier @1:27 value='nodeName'>,
               node=<Identifier @1:22 value='elem'>>
           ]>,
           identifier=<
-            DotAccessor @1:16 identifier=<Identifier @1:17 value='test'>,
+            DotAccessor @1:16 identifier=<PropIdentifier @1:17 value='test'>,
             node=<GroupingOp @1:8 expr=<Regex @1:9 value='/h\\d/i'>>>>>]>
 
         """,
@@ -1539,7 +1541,8 @@ ParsedNodeTypeTestCase = build_equality_testcase(
               <BracketAccessor @1:66 expr=<Number @1:67 value='1'>,
                 node=<Identifier @1:65 value='j'>>
             ]>, identifier=<DotAccessor @1:62 identifier=<
-              Identifier @1:63 value='f'>, node=<Identifier @1:61 value='k'>>>
+              PropIdentifier @1:63 value='f'>,
+              node=<Identifier @1:61 value='k'>>>
           ]>>,
           consequent=<GroupingOp @1:10 expr=<Comma @1:26 left=<
                 Assign @1:13 left=<Identifier @1:11 value='a'>, op='=',
@@ -1548,7 +1551,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
                   <BracketAccessor @1:21 expr=<Number @1:22 value='1'>,
                     node=<Identifier @1:20 value='j'>>
                 ]>, identifier=<DotAccessor @1:17 identifier=<
-                  Identifier @1:18 value='f'>,
+                  PropIdentifier @1:18 value='f'>,
                   node=<Identifier @1:16 value='c'>>>
               ]>>,
             right=<FunctionCall @1:28 args=<Arguments @1:42 items=[
@@ -1558,16 +1561,16 @@ ParsedNodeTypeTestCase = build_equality_testcase(
                   Number @1:50 value='0'>>
               ]>,
               identifier=<DotAccessor @1:37 identifier=<
-                Identifier @1:38 value='call'>, node=<
+                PropIdentifier @1:38 value='call'>, node=<
                   DotAccessor @1:32 identifier=<
-                      Identifier @1:33 value='attr'>,
+                      PropIdentifier @1:33 value='attr'>,
                     node=<DotAccessor @1:29 identifier=<
-                      Identifier @1:30 value='fn'>,
+                      PropIdentifier @1:30 value='fn'>,
                         node=<Identifier @1:28 value='e'>>>>>>>,
           predicate=<FunctionCall @1:1 args=<Arguments @1:4 items=[
             <Identifier @1:5 value='d'>
           ]>, identifier=<DotAccessor @1:2 identifier=<
-            Identifier @1:3 value='b'>, node=<Identifier @1:1 value='e'>>>>>
+            PropIdentifier @1:3 value='b'>, node=<Identifier @1:1 value='e'>>>>>
         ]>
         """,
     ), (
@@ -1602,7 +1605,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
               <String @1:46 value='"classid"'>
             ]>,
             identifier=<DotAccessor @1:32 identifier=<
-              Identifier @1:33 value='getAttribute'>, node=<
+              PropIdentifier @1:33 value='getAttribute'>, node=<
                 Identifier @1:28 value='elem'>>>, op='!==', right=<
                   Identifier @1:61 value='match'>>>>>>
         ]>
@@ -1615,11 +1618,11 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
           <VarDecl @1:5 identifier=<Identifier @1:5 value='el'>,
             initializer=<DotAccessor @1:49 identifier=<
-              Identifier @1:50 value='documentElement'>,
+              PropIdentifier @1:50 value='documentElement'>,
               node=<GroupingOp @1:10 expr=<Conditional @1:16 alternative=<
                 Number @1:47 value='0'>,
                 consequent=<BinOp @1:37 left=<DotAccessor @1:22 identifier=<
-                  Identifier @1:23 value='ownerDocument'>,
+                  PropIdentifier @1:23 value='ownerDocument'>,
                   node=<Identifier @1:18 value='elem'>
                 >, op='||', right=<Identifier @1:40 value='elem'>>,
             predicate=<Identifier @1:11 value='elem'>>>>
@@ -1634,7 +1637,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         <ES5Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<BinOp @1:22 left=<UnaryOp @1:1 op='typeof',
             postfix=False, value=<DotAccessor @1:14 identifier=
-              <Identifier @1:15 value='length'>, node=<
+              <PropIdentifier @1:15 value='length'>, node=<
                 Identifier @1:8 value='second'>>>,
             op='===', right=<String @1:26 value='"number"'
           >>>
@@ -1801,18 +1804,19 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         <ES5Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<Assign @1:16 left=<
               DotAccessor @1:5 identifier=<
-                Identifier @1:6 value='prototype'>,
+                PropIdentifier @1:6 value='prototype'>,
                 node=<Identifier @1:1 value='Name'>>,
               op='=', right=<Object @1:18 properties=[
                 <GetPropAssign @2:3 elements=[
                   <Return @3:5 expr=<BinOp @3:29 left=<BinOp @3:23 left=<
                       DotAccessor @3:16 identifier=<
-                        Identifier @3:17 value='first'>, node=<This @3:12 >>,
+                        PropIdentifier @3:17 value='first'>,
+                        node=<This @3:12 >>,
                       op='+', right=<String @3:25 value='" "'>>,
                     op='+', right=<DotAccessor @3:35 identifier=<
-                      Identifier @3:36 value='last'>, node=<This @3:31 >>>>
+                      PropIdentifier @3:36 value='last'>, node=<This @3:31 >>>>
                 ],
-                prop_name=<Identifier @2:7 value='fullName'>>,
+                prop_name=<PropIdentifier @2:7 value='fullName'>>,
                 <SetPropAssign @5:3 elements=[
                   <VarStatement @6:5 ?children=[
                     <VarDecl @6:9 identifier=<Identifier @6:9 value='names'>,
@@ -1821,24 +1825,24 @@ ParsedNodeTypeTestCase = build_equality_testcase(
                           <String @6:28 value='" "'>
                         ]>,
                         identifier=<DotAccessor @6:21 identifier=<
-                        Identifier @6:22 value='split'>, node=<
+                        PropIdentifier @6:22 value='split'>, node=<
                         Identifier @6:17 value='name'>>>>
                   ]>,
                   <ExprStatement @7:5 expr=<Assign @7:16 left=<
                     DotAccessor @7:9 identifier=<
-                      Identifier @7:10 value='first'>, node=<This @7:5 >>,
+                      PropIdentifier @7:10 value='first'>, node=<This @7:5 >>,
                     op='=', right=<BracketAccessor @7:23 expr=<
                       Number @7:24 value='0'>, node=<
                         Identifier @7:18 value='names'>>>>,
                   <ExprStatement @8:5 expr=<Assign @8:15 left=<
                     DotAccessor @8:9 identifier=<
-                      Identifier @8:10 value='last'>, node=<This @8:5 >>,
+                      PropIdentifier @8:10 value='last'>, node=<This @8:5 >>,
                       op='=', right=<BracketAccessor @8:22 expr=<
                         Number @8:23 value='1'>,
                           node=<Identifier @8:17 value='names'>>>>
                 ],
                 parameters=<Identifier @5:16 value='name'>,
-                prop_name=<Identifier @5:7 value='fullName'>>
+                prop_name=<PropIdentifier @5:7 value='fullName'>>
           ]>>>
         ]>
         """,
@@ -1852,7 +1856,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
           <ExprStatement @1:1 expr=<FunctionCall @1:1 args=<
               Arguments @1:13 items=[]>,
             identifier=<DotAccessor @1:4 identifier=<
-              Identifier @1:5 value='toString'>,
+              PropIdentifier @1:5 value='toString'>,
               node=<GroupingOp @1:1 expr=<Number @1:2 value='0'>>>>>
         ]>
         """,
@@ -1863,7 +1867,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
         """
         <ES5Program @1:1 ?children=[<ExprStatement @1:1 expr=<
-          DotAccessor @1:2 identifier=<Identifier @1:3 value='case'>,
+          DotAccessor @1:2 identifier=<PropIdentifier @1:3 value='case'>,
           node=<Identifier @1:1 value='e'>>>
         ]>
         """
@@ -1877,7 +1881,8 @@ ParsedNodeTypeTestCase = build_equality_testcase(
           <For @1:1 cond=<EmptyStatement @1:17 value=';'>,
             count=None, init=<ExprStatement @1:6 expr=<Assign @1:8 left=<
               Identifier @1:6 value='x'>, op='=', right=<
-                DotAccessor @1:11 identifier=<Identifier @1:12 value='case'>,
+                DotAccessor @1:11 identifier=<
+                  PropIdentifier @1:12 value='case'>,
                 node=<Identifier @1:10 value='e'>>>>,
             statement=<EmptyStatement @1:19 value=';'>>
         ]>
@@ -2013,7 +2018,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
           <ExprStatement @1:1 expr=<FunctionCall @1:1 args=<
             Arguments @1:23 items=[]>,
             identifier=<DotAccessor @1:14 identifier=<
-              Identifier @1:15 value='toString'>,
+              PropIdentifier @1:15 value='toString'>,
               node=<GroupingOp @1:4 expr=<Identifier @1:5 value='value'>>>>>
         ]>
         """

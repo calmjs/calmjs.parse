@@ -71,6 +71,7 @@ definitions = {
         Text(value='('), Attr('expr'), Text(value=')'),
     ),
     'Identifier': (Attr(Resolve()),),
+    'PropIdentifier': value,
     'Assign': (
         Attr('left'), OptionalSpace, Attr('op'), Space, Attr('right'),
     ),

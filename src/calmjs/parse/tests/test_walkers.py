@@ -34,8 +34,8 @@ class ReprTestCase(unittest.TestCase):
             result, "<ES5Program @2:1 ?children=[<VarStatement @2:1 "
             "?children=[<VarDecl @2:5 identifier=<Identifier @2:5 value='o'>, "
             "initializer=<Object @2:9 properties=[<Assign @3:4 left="
-            "<Identifier @3:3 value='a'>, op=':', right=<Number @3:6 "
-            "value='1'>>, <Assign @4:4 left=<Identifier @4:3 value='b'>, "
+            "<PropIdentifier @3:3 value='a'>, op=':', right=<Number @3:6 "
+            "value='1'>>, <Assign @4:4 left=<PropIdentifier @4:3 value='b'>, "
             "op=':', right=<Number @4:6 value='2'>>]>>]>]>"
         )
 
@@ -51,8 +51,8 @@ class ReprTestCase(unittest.TestCase):
         <ES5Program @1:1 ?children=[
           <VarStatement @1:1 ?children=[
             <VarDecl @1:5 initializer=<Object @1:9 properties=[
-              <Assign @2:4 left=<Identifier @2:3 value='a'>>,
-              <Assign @3:4 left=<Identifier @3:3 value='b'>>
+              <Assign @2:4 left=<PropIdentifier @2:3 value='a'>>,
+              <Assign @3:4 left=<PropIdentifier @3:3 value='b'>>
             ]>>
           ]>
         ]>

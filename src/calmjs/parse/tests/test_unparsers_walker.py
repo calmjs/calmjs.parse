@@ -76,6 +76,7 @@ class DispatcherWalkTestCase(unittest.TestCase):
                     Attr('initializer'),
                 ),
                 'Identifier': (Attr(Resolve()),),
+                'PropIdentifier': (Attr('value'),),
                 'Number': (Attr('value'),),
                 'DotAccessor': (
                     Attr('node'), Text(value='.'), Attr('identifier'),
