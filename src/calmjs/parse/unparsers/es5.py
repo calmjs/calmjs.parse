@@ -3,7 +3,6 @@
 Description for ES5 unparser.
 """
 
-from calmjs.parse.layout import token_handler_str_default
 from calmjs.parse.layout import indentation
 
 from calmjs.parse.ruletypes import (
@@ -294,7 +293,7 @@ class Unparser(BaseUnparser):
     def __init__(
             self,
             definitions=definitions,
-            token_handler=token_handler_str_default,
+            token_handler=None,
             rules=(default_layout_handlers,),
             layout_handlers=None,
             deferrable_handlers=None,

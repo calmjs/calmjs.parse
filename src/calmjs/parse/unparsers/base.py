@@ -5,6 +5,10 @@ Base unparser implementation
 Brings together the different bits from the different helpers.
 """
 
+from __future__ import unicode_literals
+
+import logging
+
 from calmjs.parse.ruletypes import (
     Space,
     OptionalSpace,
@@ -26,6 +30,8 @@ from calmjs.parse.layout import (
     layout_handler_space_optional_pretty,
     layout_handler_space_minimum,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def default_layout_handlers():
@@ -56,7 +62,7 @@ class BaseUnparser(object):
     def __init__(
             self,
             definitions,
-            token_handler=token_handler_str_default,
+            token_handler=None,
             rules=(default_layout_handlers,),
             layout_handlers=None,
             deferrable_handlers=None,
@@ -79,6 +85,10 @@ class BaseUnparser(object):
             Additional layout handlers for the Dispatcher instance.
         deferrable_handlers
             Additional deferrable handlers for the Dispatcher instance.
+        prewalk_hooks
+            A list of callables that will be called before the walk
+            function is called.  The dispatcher instance and the node
+            that was called on will be passed to these callables.
         walk
             The walk function - defaults to the version from the walker
             module
@@ -87,16 +97,52 @@ class BaseUnparser(object):
             walker module
         """
 
-        self.token_handler = token_handler
         self.layout_handlers = {}
         self.deferrable_handlers = {}
         self.prewalk_hooks = []
+        self.token_handler = None
 
         for rule in rules:
             r = rule()
+            if r.get('token_handler'):
+                if self.token_handler:
+                    logger.warning(
+                        "rule '%s' specified a new token_handler '%s', "
+                        "overriding previously assigned token_handler '%s'",
+                        rule.__name__, r['token_handler'].__name__,
+                        self.token_handler.__name__,
+                    )
+                else:
+                    logger.debug(
+                        "rule '%s' specified a token_handler '%s'",
+                        rule.__name__, r['token_handler'].__name__,
+                    )
+                self.token_handler = r['token_handler']
             self.layout_handlers.update(r.get('layout_handlers', {}))
             self.deferrable_handlers.update(r.get('deferrable_handlers', {}))
             self.prewalk_hooks.extend(r.get('prewalk_hooks', []))
+
+        if token_handler:
+            if self.token_handler and self.token_handler is not token_handler:
+                logger.info(
+                    "provided token_handler '%s' to the '%s' instance "
+                    "will override rule derived token_handler '%s'",
+                    token_handler.__name__, self.__class__.__name__,
+                    self.token_handler.__name__
+                )
+            else:
+                logger.debug(
+                    "'%s' using provided token_handler '%s'; ",
+                    self.__class__.__name__, token_handler.__name__
+                )
+            self.token_handler = token_handler
+        elif token_handler is None and self.token_handler is None:
+            self.token_handler = token_handler_str_default
+            logger.debug(
+                "'%s' instance has no token_handler specified; "
+                "default handler '%s' activated",
+                self.__class__.__name__, self.token_handler.__name__
+            )
 
         if layout_handlers:
             self.layout_handlers.update(layout_handlers)
