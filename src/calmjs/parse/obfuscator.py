@@ -317,10 +317,9 @@ class Obfuscator(object):
         This is for the Unparser to use as a prewalk hook.
         """
 
-        result = self.walk(dispatcher, node)
+        self.walk(dispatcher, node)
         self.finalize()
-
-        return result
+        return node
 
 
 # TODO provide the arguments to specify keywords to skip

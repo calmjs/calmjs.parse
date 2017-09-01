@@ -31,6 +31,7 @@ class BaseUnparserTestCase(unittest.TestCase):
 
         def prewalk_dummy(dispatcher, node):
             results.update({'dispatcher': dispatcher, 'node': node})
+            return node
 
         definitions = {'Node': ()}
         unparser = BaseUnparser(definitions, prewalk_hooks=[prewalk_dummy])
@@ -46,6 +47,7 @@ class BaseUnparserTestCase(unittest.TestCase):
 
         def prewalk_dummy(dispatcher, node):
             results.update({'dispatcher': dispatcher, 'node': node})
+            return node
 
         def rule():
             return {'prewalk_hooks': (prewalk_dummy,)}

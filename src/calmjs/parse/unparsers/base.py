@@ -167,7 +167,7 @@ class BaseUnparser(object):
         )
 
         for prewalk_hook in self.prewalk_hooks:
-            prewalk_hook(dispatcher, node)
+            node = prewalk_hook(dispatcher, node)
 
         for chunk in self.walk(dispatcher, node):
             yield chunk
