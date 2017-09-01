@@ -8,6 +8,8 @@ from operator import itemgetter
 from itertools import count
 from itertools import product
 
+from calmjs.parse.asttypes import Identifier
+from calmjs.parse.ruletypes import SourceChunk
 from calmjs.parse.ruletypes import PushScope
 from calmjs.parse.ruletypes import PopScope
 from calmjs.parse.ruletypes import Declare
@@ -21,6 +23,26 @@ logger = logging.getLogger(__name__)
 logger.level = logging.WARNING
 
 ID_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
+
+
+def token_handler_unobfuscate(token, dispatcher, node, subnode):
+    """
+    A token handler that will return the original identifier
+    value.
+    """
+
+    original = (
+        node.value
+        if isinstance(node, Identifier) and node.value != subnode else
+        None
+    )
+
+    if isinstance(token.pos, int):
+        _, lineno, colno = node.getpos(original or subnode, token.pos)
+    else:
+        lineno, colno = None, None
+
+    yield SourceChunk(subnode, lineno, colno, original)
 
 
 class NameGenerator(object):
@@ -327,6 +349,7 @@ def obfuscate(shorten_global=False):
     def name_obfuscation_rules():
         inst = Obfuscator(shorten_global)
         return {
+            'token_handler': token_handler_unobfuscate,
             'deferrable_handlers': {
                 Resolve: inst.resolve,
             },

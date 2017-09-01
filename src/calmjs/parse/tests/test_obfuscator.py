@@ -4,6 +4,8 @@ from textwrap import dedent
 
 from calmjs.parse import es5
 from calmjs.parse.asttypes import Node
+from calmjs.parse.asttypes import Identifier
+from calmjs.parse.ruletypes import Attr
 from calmjs.parse.ruletypes import Resolve
 from calmjs.parse.ruletypes import Space
 from calmjs.parse.layout import rule_handler_noop
@@ -17,6 +19,7 @@ from calmjs.parse.obfuscator import Scope
 from calmjs.parse.obfuscator import Obfuscator
 from calmjs.parse.obfuscator import NameGenerator
 from calmjs.parse.obfuscator import obfuscate
+from calmjs.parse.obfuscator import token_handler_unobfuscate
 
 empty_set = set({})
 
@@ -330,6 +333,17 @@ class ObfuscatorTestCase(unittest.TestCase):
             ''.join(c.text for c in walk(dispatcher, tree))
         )
 
+    def test_token_handler_unobfuscate(self):
+        # simple test to test the handler works
+        node = Identifier('dummy')
+        token = Attr('value', pos=None)
+        # when nothing got remapped.
+        self.assertEqual(('dummy', None, None, None), next(
+            token_handler_unobfuscate(token, None, node, 'dummy')))
+        # when the provided value differs
+        self.assertEqual(('d', None, None, 'dummy'), next(
+            token_handler_unobfuscate(token, None, node, 'd')))
+
     def test_build_substitutions(self):
         tree = es5(dedent("""
         (function(root) {
@@ -373,7 +387,7 @@ class ObfuscatorTestCase(unittest.TestCase):
 
         # do a trial run to show that the resolution works.
         main_dispatcher = Dispatcher(
-            unparser.definitions, token_handler_str_default, {
+            unparser.definitions, token_handler_unobfuscate, {
                 Space: layout_handler_space_minimum,
             }, {
                 Resolve: obfuscator.resolve,
@@ -385,6 +399,12 @@ class ObfuscatorTestCase(unittest.TestCase):
             "window.document.body.focus();})(this,factory);",
             ''.join(c.text for c in walk(main_dispatcher, tree))
         )
+        # since nothing was remapped.
+        self.assertEqual([
+        ], [
+            (c.text, c.original) for c in walk(main_dispatcher, tree)
+            if c.original
+        ])
 
         # now manually give the scope with a set of replacement names
         scope.remapped_symbols.update({
@@ -398,3 +418,12 @@ class ObfuscatorTestCase(unittest.TestCase):
             "window.document.body.focus();})(this,factory);",
             ''.join(c.text for c in walk(main_dispatcher, tree))
         )
+        # check that the source chunks yielded contain both the original
+        # text token and the original row/col location
+        self.assertEqual([
+            ('r', 1, 11, 'root'),
+            ('f', 2, 7, 'foo'),
+            ('b', 3, 7, 'bar'),
+            ('z', 4, 3, 'baz'),
+            ('f', 5, 3, 'foo'),
+        ], [c for c in walk(main_dispatcher, tree) if c.original])
