@@ -13,10 +13,10 @@ from calmjs.parse.unparsers.base import Dispatcher
 from calmjs.parse.unparsers.base import minimum_layout_handlers
 from calmjs.parse.unparsers.walker import walk
 from calmjs.parse.unparsers.es5 import Unparser
-from calmjs.parse.mangler import Scope
-from calmjs.parse.mangler import Shortener
-from calmjs.parse.mangler import NameGenerator
-from calmjs.parse.mangler import mangle
+from calmjs.parse.obfuscator import Scope
+from calmjs.parse.obfuscator import Obfuscator
+from calmjs.parse.obfuscator import NameGenerator
+from calmjs.parse.obfuscator import obfuscate
 
 empty_set = set({})
 
@@ -283,7 +283,7 @@ class ScopeTestCase(unittest.TestCase):
         self.assertEqual('b', root.resolve('bar'))
 
 
-class ManglerTestCase(unittest.TestCase):
+class ObfuscatorTestCase(unittest.TestCase):
 
     def test_simple_manual(self):
         tree = es5(dedent("""
@@ -293,18 +293,18 @@ class ManglerTestCase(unittest.TestCase):
           bar = 3;
         })(this);
         """).strip())
-        mangle_unparser = Unparser(rules=(
-            mangle(),
+        obfuscator_unparser = Unparser(rules=(
+            obfuscate(),
             minimum_layout_handlers,
         ))
 
         self.assertEqual(
             '(function(){var b=1;var a=2;a=3;})(this);',
-            ''.join(c.text for c in mangle_unparser(tree)),
+            ''.join(c.text for c in obfuscator_unparser(tree)),
         )
 
     def test_no_resolve(self):
-        # a simple test to show that a shortener without the initial
+        # a simple test to show that an obfuscator without the initial
         # loading run executed (i.e. the one with the required handlers)
         # with the resolve added to the dispatcher will not crash, but
         # simply not have any effect.
@@ -316,12 +316,12 @@ class ManglerTestCase(unittest.TestCase):
         })(this);
         """).strip())
         unparser = Unparser()
-        shortener = Shortener()
+        obfuscator = Obfuscator()
         dispatcher = Dispatcher(
             unparser.definitions, token_handler_str_default, {
                 Space: layout_handler_space_minimum,
             }, {
-                Resolve: shortener.resolve,
+                Resolve: obfuscator.resolve,
             }
         )
         # see that the manually constructed minimum output works.
@@ -341,26 +341,26 @@ class ManglerTestCase(unittest.TestCase):
         })(this, factory);
         """).strip())
         unparser = Unparser()
-        shortener = Shortener()
+        obfuscator = Obfuscator()
         # a bare dispatcher should work, as it is used for extracting
         # the definitions from.
         sub_dispatcher = Dispatcher(
             unparser.definitions, rule_handler_noop, {}, {})
         # only do the intial walk.
-        result = shortener.walk(sub_dispatcher, tree)
+        result = obfuscator.walk(sub_dispatcher, tree)
         # should be empty list as the run should produce nothing, due to
         # the null token producer.
         self.assertEqual(result, [])
 
         # only one scope was defined.
-        self.assertEqual(1, len(shortener.scopes))
-        self.assertEqual(1, len(shortener.global_scope.children))
+        self.assertEqual(1, len(obfuscator.scopes))
+        self.assertEqual(1, len(obfuscator.global_scope.children))
 
         # do some validation on the scope itself.
-        self.assertEqual(set(), shortener.global_scope.declared_symbols)
+        self.assertEqual(set(), obfuscator.global_scope.declared_symbols)
         self.assertEqual(
-            {'factory': 1}, shortener.global_scope.referenced_symbols)
-        scope = shortener.global_scope.children[0]
+            {'factory': 1}, obfuscator.global_scope.referenced_symbols)
+        scope = obfuscator.global_scope.children[0]
 
         self.assertEqual({'root', 'foo', 'bar'}, scope.declared_symbols)
         self.assertEqual({
@@ -376,7 +376,7 @@ class ManglerTestCase(unittest.TestCase):
             unparser.definitions, token_handler_str_default, {
                 Space: layout_handler_space_minimum,
             }, {
-                Resolve: shortener.resolve,
+                Resolve: obfuscator.resolve,
             }
         )
         # see that the manually constructed minimum output works.

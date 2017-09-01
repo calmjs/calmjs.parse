@@ -209,9 +209,9 @@ class Scope(object):
         return nested_scope
 
 
-class Shortener(object):
+class Obfuscator(object):
     """
-    The name shortener.
+    The name obfuscator.
     """
 
     def __init__(self, use_global_scope=False):
@@ -324,12 +324,9 @@ class Shortener(object):
 
 
 # TODO provide the arguments to specify keywords to skip
-def mangle(shorten_global=False):
-    def shortener_rules():
-        inst = Shortener(shorten_global)
-        # XXX don't actually return this, but use these internally
-        # for the first pass
-        # second pass will only have a simple resolve.
+def obfuscate(shorten_global=False):
+    def name_obfuscation_rules():
+        inst = Obfuscator(shorten_global)
         return {
             'deferrable_handlers': {
                 Resolve: inst.resolve,
@@ -338,4 +335,4 @@ def mangle(shorten_global=False):
                 inst.prewalk_hook,
             ],
         }
-    return shortener_rules
+    return name_obfuscation_rules
