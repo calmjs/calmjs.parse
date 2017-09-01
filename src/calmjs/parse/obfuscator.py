@@ -200,7 +200,7 @@ class Scope(object):
                     # already redefined locally
                     if (k in self.referenced_symbols and
                         k not in self.local_declared_symbols)
-                )
+                ) | self.global_symbols
             ))
 
             for symbol, c in reversed(sorted(

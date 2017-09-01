@@ -281,11 +281,16 @@ class ScopeTestCase(unittest.TestCase):
         root.declare('bar')
         root.reference('bar')
         greatgrandchild.reference('a')
+        greatgrandchild.declare('baz')
+        greatgrandchild.reference('baz')
 
         root.build_remap_symbols(ng, children_only=False)
-        # a was taken by greatgrandchild referencing that as an implicit
-        # global.
+        # 'a' was taken by greatgrandchild referencing that as an
+        # implicit global, so root scope must not redeclare 'a'.
         self.assertEqual('b', root.resolve('bar'))
+        # the greatgrandchild should also not turn 'baz' into 'a' for
+        # the same reason.
+        self.assertEqual('b', greatgrandchild.resolve('baz'))
 
 
 class ObfuscatorTestCase(unittest.TestCase):
