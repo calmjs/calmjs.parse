@@ -487,3 +487,43 @@ class ObfuscatorTestCase(unittest.TestCase):
             indentation(indent_str='    '),
             obfuscate(reserved_keywords=('a', 'b',)),
         ))(node)))
+
+    def test_no_shadow_children(self):
+        node = es5(dedent("""
+        var some_value = 1;
+        (function(param) {
+          a.is_not_declared_in_this_file(param);
+        })();
+        """).strip())
+
+        self.assertEqual(dedent("""
+        var b = 1;
+        (function(b) {
+            a.is_not_declared_in_this_file(b);
+        })();
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_layout_handlers,
+            indentation(indent_str='    '),
+            obfuscate(obfuscate_globals=True),
+        ))(node)))
+
+    def test_no_shadow_parent_remapped(self):
+        node = es5(dedent("""
+        var a = c;
+        (function(param) {
+          b.is_not_declared_in_this_file(a, param);
+        })(c);
+        """).strip())
+
+        # param can remap to c because the global 'c' not used in that
+        # scope.
+        self.assertEqual(dedent("""
+        var a = c;
+        (function(c) {
+            b.is_not_declared_in_this_file(a, c);
+        })(c);
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_layout_handlers,
+            indentation(indent_str='    '),
+            obfuscate(obfuscate_globals=True),
+        ))(node)))
