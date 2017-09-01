@@ -2,11 +2,11 @@
 import unittest
 
 from calmjs.parse import asttypes
-from calmjs.parse.factory import Factory
+from calmjs.parse.factory import SRFactory
 from calmjs.parse.factory import AstTypesFactory
 
 
-class FactoryTestCase(unittest.TestCase):
+class SRFactoryTestCase(unittest.TestCase):
 
     def test_basic(self):
         # a quick and dirty classes and a container
@@ -29,7 +29,7 @@ class FactoryTestCase(unittest.TestCase):
         o.A = A
         o.B = B
 
-        factory = Factory(o, dummy_str, dummy_repr)
+        factory = SRFactory(o, dummy_str, dummy_repr)
         a = A()
         wrapped_a = factory.A()
         self.assertNotEqual(str(a), '65')

@@ -7,11 +7,7 @@ from functools import partial
 from calmjs.parse import asttypes
 
 
-class _M(object):
-    pass
-
-
-class Factory(object):
+class SRFactory(object):
     """
     A factory that will generate a new subclass that has the specified
     __str__ and __repr__ implementations.  Given the number of potential
@@ -34,8 +30,10 @@ class Factory(object):
                 '__repr__': __repr__,
                 '__str__': __str__,
             }) for cls in (
-                # type(_M) replicates the removed types.ClassType
-                v for v in vars(module).values() if isinstance(v, type(_M))
+                # type(type(self)) creates the class "type", which works
+                # like the removed types.ClassType.
+                v for v in vars(module).values() if isinstance(
+                    v, type(type(self)))
             )
         )}
 
@@ -50,4 +48,4 @@ class Factory(object):
         return self.classes[attr]
 
 
-AstTypesFactory = partial(Factory, asttypes)
+AstTypesFactory = partial(SRFactory, asttypes)
