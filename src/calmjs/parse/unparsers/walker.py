@@ -192,10 +192,10 @@ def walk(dispatcher, node, definition=None):
     output.
     """
 
-    if definition is None:
-        definition = dispatcher[node]
+    def _walk(dispatcher, node, definition=None):
+        if definition is None:
+            definition = dispatcher[node]
 
-    def _walk(dispatcher, node, definition):
         for rule in definition:
             if isinstance(rule, Token):
                 # tokens are callables that will generate the chunks

@@ -102,7 +102,7 @@ class Token(Rule):
 
     def resolve(self, walk, dispatcher, node, value):
         if isinstance(value, Node):
-            return walk(dispatcher, value, dispatcher[value])
+            return walk(dispatcher, value)
         else:
             return dispatcher(self)(self, dispatcher, node, value)
 
