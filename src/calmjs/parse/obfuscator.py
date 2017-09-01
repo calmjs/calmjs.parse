@@ -236,24 +236,33 @@ class Obfuscator(object):
     The name obfuscator.
     """
 
-    def __init__(self, use_global_scope=False):
+    def __init__(self, obfuscate_globals=False, reserved_keywords=()):
         """
         Arguments
 
-        global_scope
-            Also have it affect global scope.  Do not enable this option
-            unless there is an explicit need to do so as this may result
-            in code that no longer function as expected.
+        obfuscate_globals
+            Also obfuscate variables declared on the global scope.  Do
+            not enable this option unless there is an explicit need to
+            do so as this will likely result in code that no longer
+            provide the global variable names at where they were
+            expected.
 
             Defaults to False for the reason above.
+
+        reserved_keywords
+            A list of reserved keywords for the input AST that should
+            not be used as an obfuscated identifier.  Defaults to an
+            empty tuple.
         """
 
         # this is a mapping of Identifier nodes to the scope
         self.identifiers = {}
         self.scopes = {}
         self.stack = []
+        self.obfuscate_globals = obfuscate_globals
+        self.reserved_keywords = reserved_keywords
         # global scope is in the ether somewhere so it isn't exactly
-        # bounded to anything.
+        # bounded to any specific node that gets passed in.
         self.global_scope = Scope(None)
         self.stack.append(self.global_scope)
 
@@ -328,11 +337,11 @@ class Obfuscator(object):
         """
 
         self.global_scope.close()
-        # may need this?
-        # children_only=(not use_global_scope)
-        # TODO apply the keywords to skip.
-        name_generator = NameGenerator(skip=())
-        self.global_scope.build_remap_symbols(name_generator)
+        name_generator = NameGenerator(skip=self.reserved_keywords)
+        self.global_scope.build_remap_symbols(
+            name_generator,
+            children_only=not self.obfuscate_globals,
+        )
 
     def prewalk_hook(self, dispatcher, node):
         """
@@ -344,10 +353,12 @@ class Obfuscator(object):
         return node
 
 
-# TODO provide the arguments to specify keywords to skip
-def obfuscate(shorten_global=False):
+def obfuscate(obfuscate_globals=False, reserved_keywords=()):
     def name_obfuscation_rules():
-        inst = Obfuscator(shorten_global)
+        inst = Obfuscator(
+            obfuscate_globals=obfuscate_globals,
+            reserved_keywords=reserved_keywords,
+        )
         return {
             'token_handler': token_handler_unobfuscate,
             'deferrable_handlers': {

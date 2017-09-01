@@ -8,11 +8,13 @@ from calmjs.parse.asttypes import Identifier
 from calmjs.parse.ruletypes import Attr
 from calmjs.parse.ruletypes import Resolve
 from calmjs.parse.ruletypes import Space
+from calmjs.parse.layout import indentation
 from calmjs.parse.layout import rule_handler_noop
 from calmjs.parse.layout import token_handler_str_default
 from calmjs.parse.layout import layout_handler_space_minimum
 from calmjs.parse.unparsers.base import Dispatcher
 from calmjs.parse.unparsers.base import minimum_layout_handlers
+from calmjs.parse.unparsers.base import default_layout_handlers
 from calmjs.parse.unparsers.walker import walk
 from calmjs.parse.unparsers.es5 import Unparser
 from calmjs.parse.obfuscator import Scope
@@ -427,3 +429,56 @@ class ObfuscatorTestCase(unittest.TestCase):
             ('z', 4, 3, 'baz'),
             ('f', 5, 3, 'foo'),
         ], [c for c in walk(main_dispatcher, tree) if c.original])
+
+    def test_obfuscate_globals(self):
+        node = es5(dedent("""
+        var a_global = 1;
+        (function(a_param) {
+          var a_local = 1;
+          a_local = a_param;
+          a_local = a_global;
+        })();
+        """).strip())
+
+        self.assertEqual(dedent("""
+        var a_global = 1;
+        (function(b) {
+            var a = 1;
+            a = b;
+            a = a_global;
+        })();
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_layout_handlers,
+            indentation(indent_str='    '),
+            obfuscate(obfuscate_globals=False),
+        ))(node)))
+
+        self.assertEqual(dedent("""
+        var a = 1;
+        (function(c) {
+            var b = 1;
+            b = c;
+            b = a;
+        })();
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_layout_handlers,
+            indentation(indent_str='    '),
+            obfuscate(obfuscate_globals=True),
+        ))(node)))
+
+    def test_obfuscate_skip(self):
+        node = es5(dedent("""
+        (function(a_param) {
+          var a_local = a_param;
+        })();
+        """).strip())
+
+        self.assertEqual(dedent("""
+        (function(c) {
+            var d = c;
+        })();
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_layout_handlers,
+            indentation(indent_str='    '),
+            obfuscate(reserved_keywords=('a', 'b',)),
+        ))(node)))
