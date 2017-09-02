@@ -1922,5 +1922,68 @@ MinfyPrintTestCase = build_equality_testcase(
         """,
         "(function(){var a;switch(day_of_week){case 6:case 7:a='Weekend';"
         "break;case 1:a='Monday';break;default:break;}return a;})();",
+    ), (
+        'function_with_arguments',
+        """
+        function foo(x, y) {
+          z = 10 + x;
+          return x + y + z;
+        }
+        """,
+        "function foo(a,b){z=10+a;return a+b+z;}",
+
+    ), (
+        'plus_plusplus_split',
+        """
+        var a = b+ ++c+d;
+        """,
+        "var a=b+ ++c+d;"
+    ), (
+        'minus_plusplus_join',
+        """
+        var a = b- ++c+d;
+        """,
+        "var a=b-++c+d;"
+    ), (
+        'object_props',
+        """
+        (function() {
+          Name.prototype = {
+            validated: function(key) {
+              return token.get(key + this.last);
+            },
+
+            get fullName() {
+              return this.first + ' ' + this.last;
+            },
+
+            set fullName(name) {
+              var names = name.split(' ');
+              this.first = names[0];
+              this.last = names[1];
+            }
+          };
+        })();
+        """,
+        "(function(){Name.prototype={validated:function(a){return token.get("
+        "a+this.last);},get fullName(){return this.first+' '+this.last;},"
+        "set fullName(b){var a=b.split(' ');this.first=a[0];this.last=a[1];}};"
+        "})();"
+    ), (
+        'try_catch_shadow',
+        """
+        (function() {
+          var value = 1;
+          try {
+            console.log(value);
+            throw Error('welp');
+          }
+          catch (value) {
+            console.log(value);
+          }
+        })();
+        """,
+        "(function(){var a=1;try{console.log(a);throw Error('welp');}catch(a){"
+        "console.log(a);}})();"
     )])
 )

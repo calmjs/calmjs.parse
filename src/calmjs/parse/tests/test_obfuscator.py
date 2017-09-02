@@ -527,3 +527,30 @@ class ObfuscatorTestCase(unittest.TestCase):
             indentation(indent_str='    '),
             obfuscate(obfuscate_globals=True),
         ))(node)))
+
+    def test_obfuscate_try_catch_shadowed(self):
+        node = es5(dedent("""
+        var value = 1;
+        try {
+          console.log(value);
+          throw Error("welp");
+        }
+        catch (value) {
+          console.log(value);
+        }
+        """).strip())
+
+        self.assertEqual(dedent("""
+        var a = 1;
+        try {
+            console.log(a);
+            throw Error("welp");
+        }
+        catch (a) {
+            console.log(a);
+        }
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_layout_handlers,
+            indentation(indent_str='    '),
+            obfuscate(obfuscate_globals=True),
+        ))(node)))
