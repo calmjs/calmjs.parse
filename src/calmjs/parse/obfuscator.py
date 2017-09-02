@@ -139,6 +139,13 @@ class Scope(object):
                 child.global_symbols_in_children)
         return result
 
+    @property
+    def leaked_referenced_symbols(self):
+        return {
+            k: v for k, v in self.referenced_symbols.items()
+            if k not in self.local_declared_symbols
+        }
+
     def declare(self, symbol):
         self.local_declared_symbols.add(symbol)
         # simply create the reference, if not already there.
@@ -163,9 +170,7 @@ class Scope(object):
         # to symbols done by all children that they have not declared.
 
         for child in self.children:
-            for k, v in child.referenced_symbols.items():
-                if k in child.local_declared_symbols:
-                    continue
+            for k, v in child.leaked_referenced_symbols.items():
                 self.referenced_symbols[k] = self.referenced_symbols.get(
                     k, 0) + v
 
