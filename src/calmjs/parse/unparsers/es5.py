@@ -3,6 +3,7 @@
 Description for ES5 unparser.
 """
 
+from calmjs.parse.lexers.es5 import Lexer
 from calmjs.parse.layout import indentation
 
 from calmjs.parse.ruletypes import (
@@ -35,7 +36,9 @@ from calmjs.parse.ruletypes import (
 from calmjs.parse.unparsers.base import (
     BaseUnparser,
     default_layout_handlers,
+    minimum_layout_handlers,
 )
+from calmjs.parse import obfuscator
 
 value = (
     Attr('value'),
@@ -334,3 +337,44 @@ def pretty_print(ast, indent_str='  '):
     """
 
     return ''.join(chunk.text for chunk in pretty_printer(indent_str)(ast))
+
+
+def minify_printer(obfuscate=False, obfuscate_globals=False):
+    """
+    Construct a minimum printer.
+    """
+
+    rules = [minimum_layout_handlers]
+    if obfuscate:
+        rules.append(obfuscator.obfuscate(
+            obfuscate_globals, reserved_keywords=(Lexer.keywords_dict.keys())))
+
+    return Unparser(rules=rules)
+
+
+def minify_print(ast, obfuscate=False, obfuscate_globals=False):
+    """
+    Simple minify print function; returns a string rendering of an input
+    AST of an ES5 program
+
+    Arguments
+
+    ast
+        The AST to minify print
+    obfuscate
+        If True, obfuscate identifiers nested in each scope with a
+        shortened identifier name to further reduce output size.
+
+        Defaults to False.
+    obfuscate_globals
+        Also do the same to identifiers nested on the global scope; do
+        not enable unless the renaming of global variables in a not
+        fully deterministic manner into something else is guaranteed to
+        not cause problems with the generated code and other code that
+        in the same environment that it will be executed in.
+
+        Defaults to False for the reason above.
+    """
+
+    return ''.join(chunk.text for chunk in minify_printer(
+        obfuscate, obfuscate_globals)(ast))
