@@ -77,6 +77,8 @@ class NameGenerator(object):
 
 
 # TODO provide an option to memoize all properties to reduce computation
+# TODO generic Scope class for the common code (for tracking execution
+# context also?)
 
 class Scope(object):
     """
@@ -251,15 +253,127 @@ class Scope(object):
             scope = scope.parent
         return result or symbol
 
-    def nest(self, node):
+    def nest(self, node, cls=None):
         """
         Create a new nested scope that is within this instance, binding
         the provided node to it.
         """
 
-        nested_scope = type(self)(node, self)
+        if cls is None:
+            cls = type(self)
+
+        nested_scope = cls(node, self)
         self.children.append(nested_scope)
         return nested_scope
+
+    def funcdecl(self, node):
+        return self.nest(node, Scope)
+
+    def catchctx(self, node):
+        return self.nest(node, CatchScope)
+
+
+class CatchScope(Scope):
+    """
+    Special scope for dealing with catch only.  It ends up proxying a
+    whole bunch of calls to the actual scope which is the parent.
+    """
+
+    def __init__(self, node, parent):
+        """
+        Parent is required, the symbol _is_ the symbol that the catch
+        statement was referenced.
+        """
+
+        if not isinstance(parent, Scope):
+            raise TypeError('CatchScopes must have a Scope as a parent')
+        self.node = node
+        self.parent = parent
+        self.children = []
+        self.catch_symbol = node.identifier.value
+        self.catch_symbol_usage = 0
+        self.remapped_symbols = {}
+        self._closed = False
+
+    @property
+    def referenced_symbols(self):
+        # generate a new table with the immediate parent scope, plus the
+        # count of the catch symbol used.
+        # TODO when close is called, return a frozen value (memoize).
+        result = {self.catch_symbol: self.catch_symbol_usage}
+        result.update(self.parent.referenced_symbols)
+        return result
+
+    @property
+    def local_declared_symbols(self):
+        # like above, only provide symbols used locally here.
+        return self.parent.local_declared_symbols | {self.catch_symbol}
+
+    @property
+    def declared_symbols(self):
+        """
+        Return all local symbols here, and also of the parents
+        """
+
+        return {self.catch_symbol} | self.parent.declared_symbols
+
+    @property
+    def non_local_symbols(self):
+        """
+        For the catch scope, in order for the reserved symbols check to
+        work for all cases, only remove the catch_symbol.
+        """
+
+        return set(self.referenced_symbols) - {self.catch_symbol}
+
+    def declare(self, symbol):
+        """
+        Nothing gets declared here - it's the parents problem, except
+        for the case where the symbol is the one we have here.
+        """
+
+        if symbol != self.catch_symbol:
+            self.parent.declare(symbol)
+
+    def reference(self, symbol, count=1):
+        """
+        However, if referenced, ensure that the counter is applied to
+        the catch symbol.
+        """
+
+        if symbol == self.catch_symbol:
+            self.catch_symbol_usage += count
+        else:
+            self.parent.reference(symbol, count)
+
+    def close(self):
+        """
+        Since all child close calls will reference this, which in turn
+        reference parent with the count, nothing needs to be done
+        otherwise the parent reference count will be doubled for no
+        reason.
+        """
+
+        if self._closed:
+            raise ValueError('scope is already marked as closed')
+
+        self._closed = True
+
+    def build_remap_symbols(self, name_generator, children_only=None):
+        """
+        The children_only flag is inapplicable, but this is included as
+        the Scope class is defined like so.
+
+        Here this simply just place the catch symbol with the next
+        replacement available.
+        """
+
+        replacement = name_generator(skip=(self._reserved_symbols))
+        self.remapped_symbols[self.catch_symbol] = next(replacement)
+
+        # also to continue down the children.
+        for child in self.children:
+            child.build_remap_symbols(name_generator, False)
 
 
 class Obfuscator(object):

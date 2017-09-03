@@ -5,6 +5,7 @@ from textwrap import dedent
 from calmjs.parse import es5
 from calmjs.parse.asttypes import Node
 from calmjs.parse.asttypes import Identifier
+from calmjs.parse.asttypes import Catch
 from calmjs.parse.ruletypes import Attr
 from calmjs.parse.ruletypes import Resolve
 from calmjs.parse.ruletypes import Space
@@ -18,6 +19,7 @@ from calmjs.parse.unparsers.base import default_layout_handlers
 from calmjs.parse.unparsers.walker import walk
 from calmjs.parse.unparsers.es5 import Unparser
 from calmjs.parse.obfuscator import Scope
+from calmjs.parse.obfuscator import CatchScope
 from calmjs.parse.obfuscator import Obfuscator
 from calmjs.parse.obfuscator import NameGenerator
 from calmjs.parse.obfuscator import obfuscate
@@ -322,6 +324,99 @@ class ScopeTestCase(unittest.TestCase):
         self.assertEqual('a', d2.resolve('d2'))
         self.assertEqual('a', d5.resolve('root'))
         self.assertEqual('b', d5.resolve('d5'))
+
+    def test_catch_scope_basic(self):
+        with self.assertRaises(TypeError) as e:
+            CatchScope(None, None)
+        self.assertEqual(
+            e.exception.args[0], 'CatchScopes must have a Scope as a parent')
+
+        parent = Scope(None)
+        with self.assertRaises(AttributeError):
+            # None isn't a node that can be resolved.
+            CatchScope(None, parent)
+
+        with self.assertRaises(AttributeError):
+            # doesn't work with generic node either
+            CatchScope(Node(), parent)
+
+        catcher = CatchScope(Catch(Identifier('e'), []), parent)
+        self.assertEqual(catcher.catch_symbol, 'e')
+        catcher.close()
+
+        with self.assertRaises(ValueError):
+            catcher.close()
+
+    def test_catch_scope_interactions(self):
+        parent = Scope(None)
+        parent.declare('local')
+        parent.reference('local')
+        catcher = parent.catchctx(Catch(Identifier('exc'), []))
+        self.assertEqual(catcher.catch_symbol, 'exc')
+        catcher.reference('exc')
+        self.assertEqual(catcher.catch_symbol_usage, 1)
+
+        catcher.declare('caught')
+        catcher.reference('caught')
+        catcher.reference('global')
+        catcher.reference('local')
+        self.assertEqual({'caught', 'local'}, parent.local_declared_symbols)
+        self.assertEqual(
+            {'caught': 1, 'global': 1, 'local': 2},
+            parent.referenced_symbols)
+        self.assertEqual(
+            {'caught': 1, 'global': 1, 'local': 2, 'exc': 1},
+            catcher.referenced_symbols)
+        self.assertEqual(
+            {'caught', 'local', 'exc'}, catcher.local_declared_symbols)
+
+        catcher_child = catcher.funcdecl(None)
+        catcher_child.reference('global')
+        catcher_child.reference('local')
+        catcher_child.reference('exc')
+        self.assertEqual(
+            {'global': 1, 'local': 1, 'exc': 1},
+            catcher_child.leaked_referenced_symbols)
+
+        # these should remain unchanged for now.
+        self.assertEqual(
+            {'caught': 1, 'global': 1, 'local': 2},
+            parent.referenced_symbols)
+        self.assertEqual(
+            {'caught': 1, 'global': 1, 'local': 2, 'exc': 1},
+            catcher.referenced_symbols)
+
+        parent.close_all()
+        # parent should inherit everything
+        self.assertEqual(
+            {'caught': 1, 'global': 2, 'local': 3},
+            parent.referenced_symbols)
+        self.assertEqual(
+            {'caught': 1, 'global': 2, 'local': 3, 'exc': 2},
+            catcher.referenced_symbols)
+
+        # build the table and try some lookup
+        parent.build_remap_symbols(NameGenerator, False)
+        # should not resolve into anything, 'exc' is exclusive to the
+        # catch context and not its parent.
+        self.assertEqual('exc', parent.resolve('exc'))
+        # local has been referenced the most, and generated first
+        self.assertEqual('a', parent.resolve('local'))
+        # parent should be able to resolve the 'caught' variable as it
+        # was declared in the catch context which is mirrored onto its
+        # actual context.
+        self.assertEqual('b', parent.resolve('caught'))
+        # should resolve into c, since it cannot shadow the remapped
+        # global that is used by its children, or as a matter of fact,
+        # its actual scope.
+        self.assertEqual('c', catcher.resolve('exc'))
+        self.assertEqual('b', catcher.resolve('caught'))
+        self.assertEqual('a', catcher.resolve('local'))
+        # the child will be resolving the same values its parent, the
+        # catch context, sees.
+        self.assertEqual('c', catcher_child.resolve('exc'))
+        self.assertEqual('b', catcher_child.resolve('caught'))
+        self.assertEqual('a', catcher_child.resolve('local'))
 
 
 class ObfuscatorTestCase(unittest.TestCase):
