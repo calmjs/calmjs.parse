@@ -292,8 +292,41 @@ class ScopeTestCase(unittest.TestCase):
         # the same reason.
         self.assertEqual('b', greatgrandchild.resolve('baz'))
 
+    def test_build_remap_not_shadowed(self):
+        ng = NameGenerator()
+        d0 = Scope(None)
+        d1 = d0.nest(None)
+        d2 = d1.nest(None)
+        d3 = d2.nest(None)
+        d4 = d3.nest(None)
+        d5 = d4.nest(None)
+
+        d0.declare('root')
+        d0.reference('root')
+        d1.declare('d1')
+        d1.reference('d1')
+        d2.declare('d2')
+        d2.reference('d2')
+        d3.declare('d3')
+        d3.reference('d3')
+        d4.declare('d4')
+        d4.reference('d4')
+        d5.declare('d5')
+        d5.reference('d5')
+        # and the innermost descedent references root at d0.
+        d5.reference('root')
+
+        d0.build_remap_symbols(ng, children_only=False)
+        self.assertEqual('a', d0.resolve('root'))
+        self.assertEqual('a', d1.resolve('d1'))
+        self.assertEqual('a', d2.resolve('d2'))
+        self.assertEqual('a', d5.resolve('root'))
+        self.assertEqual('b', d5.resolve('d5'))
+
 
 class ObfuscatorTestCase(unittest.TestCase):
+
+    maxDiff = None
 
     def test_simple_manual(self):
         tree = es5(dedent("""
@@ -526,6 +559,68 @@ class ObfuscatorTestCase(unittest.TestCase):
             default_layout_handlers,
             indentation(indent_str='    '),
             obfuscate(obfuscate_globals=True),
+        ))(node)))
+
+    def test_multi_scope(self):
+        node = es5(dedent("""
+        (function(value) {
+          var parent = 1;
+          (function(value) {
+            var child = 2;
+            (function(value) {
+              var grandchild = 3;
+              (function(value) {
+                var greatgrandchild = 4;
+                (function(value) {
+                  var result = 1;
+                  // using greatgrandchild a lot to ensure priority
+                  // mucking
+                  console.log(parent);
+                  console.log(greatgrandchild);
+                  console.log(greatgrandchild * value);
+                  console.log(greatgrandchild * parent);
+                  console.log(greatgrandchild * greatgrandchild);
+                })(value);
+              })(value);
+            })(value);
+          })(value);
+        })(0);
+        """).strip())
+
+        # Note that grandchild and greatgrandchild never had any of
+        # their local variables referenced by any of their nested
+        # scopes, their values got shadowed in the greatgrandchild scope
+        # before both that and parent is used in the innermost scope.
+        # Also, note that since greatgrandchild stopped propagating the
+        # reference usage upwards, even though it has a lot more usage,
+        # it never will claim priority over the parent at the parent
+        # scope since parent got mapped to 'a' thus forcing
+        # greatgrandchild to map to 'b', the next lowest value symbol.
+        self.assertEqual(dedent("""
+        (function(b) {
+          var a = 1;
+          (function(b) {
+            var c = 2;
+            (function(b) {
+              var c = 3;
+              (function(c) {
+                var b = 4;
+                (function(c) {
+                  var d = 1;
+                  console.log(a);
+                  console.log(b);
+                  console.log(b * c);
+                  console.log(b * a);
+                  console.log(b * b);
+                })(c);
+              })(b);
+            })(b);
+          })(b);
+        })(0);
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_layout_handlers,
+            indentation(indent_str='  '),
+            obfuscate(),
         ))(node)))
 
     def test_obfuscate_try_catch_shadowed(self):

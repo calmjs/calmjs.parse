@@ -168,6 +168,10 @@ class Scope(object):
 
         # the key thing that needs to be done is to claim all references
         # to symbols done by all children that they have not declared.
+        # the reason for this is that parents will be generating ALL
+        # references that their children (and their children) have made.
+        # This also allow the remapped symbol map at the parent reserve
+        # all lowest identifiers first.
 
         for child in self.children:
             for k, v in child.leaked_referenced_symbols.items():
@@ -193,19 +197,25 @@ class Scope(object):
         """
 
         if not children_only:
-            parent_remapped_symbols = (
-                self.parent.remapped_symbols if self.parent else {})
+            # Resolve _all_ local references first from parents before
+            # building, skipping all local declared symbols because it
+            # can have its own local mapping for that.
+            # Those symbols (rather, the remapped symbols table) from
+            # parent can be added to this one, but it would prevent the
+            # local symbols being their own thing, though it may not
+            # matter.  If performance becomes an issue that can be done.
+            remapped_parents_symbols = {
+                self.resolve(v) for v in
+                (set(self.referenced_symbols) - self.local_declared_symbols)
+            }
 
             replacement = name_generator(skip=(
                 # block implicit children globals.
-                self.global_symbols_in_children | set(
-                    # resolve the remapped symbols
-                    v for k, v in parent_remapped_symbols.items()
-                    # only skip over referenced symbols and not
-                    # already redefined locally
-                    if (k in self.referenced_symbols and
-                        k not in self.local_declared_symbols)
-                ) | self.global_symbols
+                self.global_symbols_in_children |
+                # also not any global symbols
+                self.global_symbols |
+                # also all remapped parent symbols referenced here
+                remapped_parents_symbols
             ))
 
             for symbol, c in reversed(sorted(
