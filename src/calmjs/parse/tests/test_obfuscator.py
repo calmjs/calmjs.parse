@@ -745,3 +745,175 @@ class ObfuscatorTestCase(unittest.TestCase):
             indentation(indent_str='    '),
             obfuscate(obfuscate_globals=True),
         ))(node)))
+
+    def test_obfuscate_try_catch_shadowed_scoped(self):
+        node = es5(dedent("""
+        var value = 100;
+        (function() {
+          var value = 1;
+          try {
+            console.log(value);
+            throw Error("welp");
+          }
+          catch (value) {
+            console.log(value);
+          }
+        })();
+        console.log(value);
+        """).strip())
+
+        self.assertEqual(dedent("""
+        var value = 100;
+        (function() {
+          var a = 1;
+          try {
+            console.log(a);
+            throw Error("welp");
+          }
+          catch (a) {
+            console.log(a);
+          }
+        })();
+        console.log(value);
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_layout_handlers,
+            indentation(indent_str='  '),
+            obfuscate(),
+        ))(node)))
+
+    def test_obfuscate_try_catch_no_declare(self):
+        node = es5(dedent("""
+        var value = 100;
+        (function() {
+          value = 1;
+          try {
+            console.log(value);
+            throw Error("welp");
+          }
+          catch (value) {
+            value = 0;
+            console.log(value);
+          }
+          console.log(value);
+        })();
+        console.log(value);
+        """).strip())
+
+        self.assertEqual(dedent("""
+        var value = 100;
+        (function() {
+          value = 1;
+          try {
+            console.log(value);
+            throw Error("welp");
+          }
+          catch (a) {
+            a = 0;
+            console.log(a);
+          }
+          console.log(value);
+        })();
+        console.log(value);
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_layout_handlers,
+            indentation(indent_str='  '),
+            obfuscate(),
+        ))(node)))
+
+    def test_obfuscate_try_catch_vardeclare_inside_catch(self):
+        node = es5(dedent("""
+        var value = 100;
+        (function() {
+          console.log(value);
+          value = 1;
+          try {
+            console.log(value);
+            throw Error("welp");
+          }
+          catch (exc) {
+            var value = 2;
+            console.log(value);
+          }
+          value = 3;
+        })();
+        console.log(value);
+        """).strip())
+
+        self.assertEqual(dedent("""
+        var value = 100;
+        (function() {
+          console.log(a);
+          a = 1;
+          try {
+            console.log(a);
+            throw Error("welp");
+          }
+          catch (b) {
+            var a = 2;
+            console.log(a);
+          }
+          a = 3;
+        })();
+        console.log(value);
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_layout_handlers,
+            indentation(indent_str='  '),
+            obfuscate(),
+        ))(node)))
+
+    def test_obfuscate_try_catch_scope_inside_catch(self):
+        node = es5(dedent("""
+        var value = 100;
+        (function() {
+          var dummy = 0;
+          console.log(value);
+          value = 1;
+          try {
+            console.log(value);
+            throw Error("welp");
+          }
+          catch (exc) {
+            var value = 2;
+            var welped = value;
+            welped = 'welped';
+            (function() {
+              console.log(exc);
+              console.log(value);
+              console.log(welped);
+            })();
+          }
+          value = 3;
+        })();
+        console.log(value);
+        """).strip())
+
+        # note that dummy -> c because exc is a local, not counted in
+        # the priority at the parent scope.
+        self.assertEqual(dedent("""
+        var value = 100;
+        (function() {
+          var c = 0;
+          console.log(a);
+          a = 1;
+          try {
+            console.log(a);
+            throw Error("welp");
+          }
+          catch (d) {
+            var a = 2;
+            var b = a;
+            b = 'welped';
+            (function() {
+              console.log(d);
+              console.log(a);
+              console.log(b);
+            })();
+          }
+          a = 3;
+        })();
+        console.log(value);
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_layout_handlers,
+            indentation(indent_str='  '),
+            obfuscate(),
+        ))(node)))

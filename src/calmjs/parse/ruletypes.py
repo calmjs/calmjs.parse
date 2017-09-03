@@ -213,6 +213,18 @@ class PopScope(Structure):
     """
 
 
+class PushCatch(Structure):
+    """
+    Push catch context
+    """
+
+
+class PopCatch(Structure):
+    """
+    Pops catch context.
+    """
+
+
 class Attr(Token):
     """
     Return the value as specified in the attribute

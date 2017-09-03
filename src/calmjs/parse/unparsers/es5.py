@@ -15,6 +15,8 @@ from calmjs.parse.ruletypes import (
     Dedent,
     PushScope,
     PopScope,
+    PushCatch,
+    PopCatch,
 )
 from calmjs.parse.ruletypes import (
     Attr,
@@ -210,11 +212,10 @@ definitions = {
     ),
     'Catch': (
         Text(value='catch'), Space,
-        # PushCatchScope,
-        # Declare may need to be DeclareCatch for the special rule.
-        Text(value='('), Attr(Declare('identifier')), Text(value=')'), Space,
+        PushCatch,
+        Text(value='('), Attr('identifier'), Text(value=')'), Space,
         Attr('elements'),
-        # PopCatchScope,
+        PopCatch,
     ),
     'Finally': (
         Text(value='finally'), Space, Attr('elements'),

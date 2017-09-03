@@ -12,6 +12,8 @@ from calmjs.parse.asttypes import Identifier
 from calmjs.parse.ruletypes import SourceChunk
 from calmjs.parse.ruletypes import PushScope
 from calmjs.parse.ruletypes import PopScope
+from calmjs.parse.ruletypes import PushCatch
+from calmjs.parse.ruletypes import PopCatch
 from calmjs.parse.ruletypes import Declare
 from calmjs.parse.ruletypes import Resolve
 from calmjs.parse.layout import rule_handler_noop
@@ -416,7 +418,12 @@ class Obfuscator(object):
         return self.stack[-1]
 
     def push_scope(self, dispatcher, node, *a, **kw):
-        scope = self.current_scope.nest(node)
+        scope = self.current_scope.funcdecl(node)
+        self.scopes[node] = scope
+        self.stack.append(scope)
+
+    def push_catch(self, dispatcher, node, *a, **kw):
+        scope = self.current_scope.catchctx(node)
         self.scopes[node] = scope
         self.stack.append(scope)
 
@@ -467,6 +474,12 @@ class Obfuscator(object):
             layout_handlers={
                 PushScope: self.push_scope,
                 PopScope: self.pop_scope,
+                PushCatch: self.push_catch,
+                # should really be different, but given that the
+                # mechanism is within the same tree, the only difference
+                # would be sanity check which should have been tested in
+                # the first place in the primitives anyway.
+                PopCatch: self.pop_scope,
             },
             deferrable_handlers={
                 Declare: self.declare,
