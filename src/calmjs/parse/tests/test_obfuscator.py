@@ -413,7 +413,8 @@ class ObfuscatorTestCase(unittest.TestCase):
         # do some validation on the scope itself.
         self.assertEqual(set(), obfuscator.global_scope.declared_symbols)
         self.assertEqual(
-            {'factory': 1}, obfuscator.global_scope.referenced_symbols)
+            {'factory': 1, 'baz': 1, 'window': 1},
+            obfuscator.global_scope.referenced_symbols)
         scope = obfuscator.global_scope.children[0]
 
         self.assertEqual({'root', 'foo', 'bar'}, scope.declared_symbols)

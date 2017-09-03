@@ -152,31 +152,25 @@ class Scope(object):
         self.referenced_symbols[symbol] = self.referenced_symbols.get(
             symbol, 0)
 
-    def reference(self, symbol):
+    def reference(self, symbol, count=1):
         # increment reference counter, declare one if not already did.
         self.referenced_symbols[symbol] = self.referenced_symbols.get(
-            symbol, 0) + 1
+            symbol, 0) + count
 
     def close(self):
         """
         Mark the scope as closed, i.e. all symbols have been declared,
-        and no changes should be done.
+        and no further declarations should be done.
         """
 
         if self._closed:
             raise ValueError('scope is already marked as closed')
 
-        # the key thing that needs to be done is to claim all references
-        # to symbols done by all children that they have not declared.
-        # the reason for this is that parents will be generating ALL
-        # references that their children (and their children) have made.
-        # This also allow the remapped symbol map at the parent reserve
-        # all lowest identifiers first.
-
-        for child in self.children:
-            for k, v in child.leaked_referenced_symbols.items():
-                self.referenced_symbols[k] = self.referenced_symbols.get(
-                    k, 0) + v
+        # By letting parent know which symbols this scope has leaked, it
+        # will let them reserve all lowest identifiers first.
+        if self.parent:
+            for symbol, c in self.leaked_referenced_symbols.items():
+                self.parent.reference(symbol, c)
 
         self._closed = True
 
