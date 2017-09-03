@@ -169,6 +169,9 @@ definitions = {
     ),
     'With': (
         Text(value='with'), Space,
+        # should _really_ have a token for logging a warning
+        # https://developer.mozilla.org/en-US/docs/Web/JavaScript/
+        #   Reference/Statements/with
         Text(value='('), Attr('expr'), Text(value=')'), Space,
         Attr('statement'),
     ),
