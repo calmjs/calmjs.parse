@@ -56,6 +56,7 @@ setup(
         'install': InstallHook,
     },
     install_requires=[
+        'setuptools',
         'ply>=3.6',
     ],
     entry_points={
