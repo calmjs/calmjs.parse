@@ -14,7 +14,8 @@ def make_suite():  # pragma: no cover
 
     parser = doctest.DocTestParser()
     optflags = doctest.NORMALIZE_WHITESPACE | doctest.ELLIPSIS
-    pkgdesc = get_distribution('calmjs.parse').get_metadata('PKG-INFO')
+    pkgdesc = get_distribution('calmjs.parse').get_metadata(
+        'PKG-INFO').replace('\r', '')
     pkgdesc_tests = [
         t for t in parser.parse(pkgdesc) if isinstance(t, doctest.Example)]
 
