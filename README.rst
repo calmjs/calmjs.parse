@@ -193,54 +193,6 @@ corresponding lexer class with the same name is also provided under the
 ``calmjs.parse.lexers`` module.  For the moment, only ES5 support is
 implemented.
 
-Tree walking
-~~~~~~~~~~~~
-
-AST (Abstract Syntax Tree) generic walker classes are defined under the
-appropriate named modules ``calmjs.parse.walkers``.  Two default walker
-classes are supplied, one of which is used for the repr-like output as
-shown previously (the ``ReprWalker`` class).  The other is a collection
-of methods implemented under the ``Walker`` class.  An example usage on
-how one might extract all Object assignments from a given script file.
-
-.. code:: python
-
-    >>> from calmjs.parse import es5
-    >>> from calmjs.parse.asttypes import Object, VarDecl
-    >>> from calmjs.parse.walkers import Walker
-    >>> walker = Walker()
-    >>> declarations = es5('''
-    ... var i = 1;
-    ... var s = {
-    ...     a: "test",
-    ...     o: {
-    ...         v: "value"
-    ...     }
-    ... };
-    ... function bar() {
-    ...     var t = {
-    ...         foo: "bar",
-    ...     }
-    ... }
-    ... ''')
-    >>> for node in walker.filter(declarations, lambda node: (
-    ...         isinstance(node, VarDecl) and
-    ...         isinstance(node.initializer, Object))):
-    ...     print(node.initializer)
-    ...
-    {
-      a: "test",
-      o: {
-        v: "value"
-      }
-    }
-    {
-      foo: "bar"
-    }
-
-Further details and example usage can be consulted from the documetation
-in the module docstrings.
-
 Pretty/minified printing
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -347,6 +299,10 @@ Likewise, this works similarly for the minify printer, which provides
     >>> print(stream_m.getvalue())
     var a=function(b){var a="hello "+b;return a;};console.log(a('world'));
 
+
+Advanced usage
+--------------
+
 Lower level unparsing API
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -416,6 +372,54 @@ indentation for the output of an ES5 AST can be constructed like so:
     })(window);
     var value = window.factorial(5) / window.fibonacci(5);
     console.log('the value is ' + value);
+
+Tree walking
+~~~~~~~~~~~~
+
+AST (Abstract Syntax Tree) generic walker classes are defined under the
+appropriate named modules ``calmjs.parse.walkers``.  Two default walker
+classes are supplied, one of which is used for the repr-like output as
+shown previously (the ``ReprWalker`` class).  The other is a collection
+of methods implemented under the ``Walker`` class.  An example usage on
+how one might extract all Object assignments from a given script file.
+
+.. code:: python
+
+    >>> from calmjs.parse import es5
+    >>> from calmjs.parse.asttypes import Object, VarDecl
+    >>> from calmjs.parse.walkers import Walker
+    >>> walker = Walker()
+    >>> declarations = es5('''
+    ... var i = 1;
+    ... var s = {
+    ...     a: "test",
+    ...     o: {
+    ...         v: "value"
+    ...     }
+    ... };
+    ... function bar() {
+    ...     var t = {
+    ...         foo: "bar",
+    ...     }
+    ... }
+    ... ''')
+    >>> for node in walker.filter(declarations, lambda node: (
+    ...         isinstance(node, VarDecl) and
+    ...         isinstance(node.initializer, Object))):
+    ...     print(node.initializer)
+    ...
+    {
+      a: "test",
+      o: {
+        v: "value"
+      }
+    }
+    {
+      foo: "bar"
+    }
+
+Further details and example usage can be consulted from the documetation
+in the module docstrings.
 
 
 Troubleshooting
