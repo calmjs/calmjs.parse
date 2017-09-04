@@ -152,20 +152,21 @@ Usage
 -----
 
 As this is a parser library, no executable shell commands are provided.
-There is however a helper function provided at the top level for
+There is however a helper callable object provided at the top level for
 immediate access to the parsing feature.  It may be used like so:
 
 .. code:: python
 
     >>> from calmjs.parse import es5
-    >>> program = es5(u'''
+    >>> program_source = u'''
     ... // simple program
     ... var main = function(greet) {
     ...     var hello = "hello " + greet;
     ...     return hello;
     ... };
     ... console.log(main('world'));
-    ... ''')
+    ... '''
+    >>> program = es5(program_source)
     >>> program  # for a simple repr-like nested view of the ast
     <ES5Program @3:1 ?children=[
       <VarStatement @3:1 ?children=[
@@ -232,11 +233,24 @@ and this is generally not an option that should be enabled on production
 library code that is meant to be reused by other packages (other sources
 referencing the original unobfuscated names will be unable to do so).
 
+Alternatively, direct invocation on a raw string can be done using the
+attributes that were provided under the same name as the base object that
+was imported initially.
+
+.. code:: python
+
+    >>> print(es5.pretty_print(program_source))
+    var main = function(greet) {
+      var hello = "hello " + greet;
+      return hello;
+    };
+    console.log(main('world'));
+
+    >>> print(es5.minify_print(program_source, obfuscate=True))
+    var main=function(b){var a="hello "+b;return a;};console.log(main('world'));
+
 Source map generation
 ~~~~~~~~~~~~~~~~~~~~~
-
-.. TODO should provide a bit higher level that can *_print a string
-   directly; perhaps using that WIP builder factory
 
 For the generation of source maps, a lower level unparser instance can
 be constructed through one of the printer factory functions.  Passing
