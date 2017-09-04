@@ -22,9 +22,12 @@
 #
 ###############################################################################
 
+from __future__ import unicode_literals
+
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 from collections import defaultdict
+from calmjs.parse.utils import str
 
 # This should be nodetypes; asttypes means type of AST, and defining a
 # type for the entire tree is not the scope of what's being defined here

@@ -4,6 +4,8 @@ Rule types are used for building descriptions for processing and
 regenerating for a given type of AST back into a string.
 """
 
+from __future__ import unicode_literals
+
 from collections import namedtuple
 from functools import partial
 

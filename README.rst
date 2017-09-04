@@ -158,7 +158,7 @@ immediate access to the parsing feature.  It may be used like so:
 .. code:: python
 
     >>> from calmjs.parse import es5
-    >>> program = es5('''
+    >>> program = es5(u'''
     ... // simple program
     ... var main = function(greet) {
     ...     var hello = "hello " + greet;
@@ -258,15 +258,15 @@ results into a sourcemap file.  An example:
     >>> names_p, rawmap_p = write(print_p(program), stream_p)
     >>> sourcemap_p = encode_sourcemap(
     ...     'demo.min.js', rawmap_p, ['demo.js'], names_p)
-    >>> print(json.dumps(sourcemap_p, indent=2))
+    >>> print(json.dumps(sourcemap_p, indent=2, sort_keys=True))
     {
-      "version": 3,
+      "file": "demo.min.js",
+      "mappings": "AAEA;IACI;IACA;AACJ;AACA;",
+      "names": [],
       "sources": [
         "demo.js"
       ],
-      "names": [],
-      "mappings": "AAEA;IACI;IACA;AACJ;AACA;",
-      "file": "demo.min.js"
+      "version": 3
     }
     >>> print(stream_p.getvalue())
     var main = function(greet) {
@@ -282,19 +282,19 @@ Likewise, this works similarly for the minify printer, which provides
     >>> names_m, rawmap_m = write(print_m(program), stream_m)
     >>> sourcemap_m = encode_sourcemap(
     ...     'demo.min.js', rawmap_m, ['demo.js'], names_m)
-    >>> print(json.dumps(sourcemap_m, indent=2))
+    >>> print(json.dumps(sourcemap_m, indent=2, sort_keys=True))
     {
-      "version": 3,
-      "sources": [
-        "demo.js"
-      ],
+      "file": "demo.min.js",
+      "mappings": "AAEA,IAAIA,CAAK,CAAE,SAASC,CAAK,CAAE,CACvB,...,YAAYF,CAAI",
       "names": [
         "main",
         "greet",
         "hello"
       ],
-      "mappings": "AAEA,IAAIA,CAAK,CAAE,SAASC,CAAK,CAAE,CACvB,...,YAAYF,CAAI",
-      "file": "demo.min.js"
+      "sources": [
+        "demo.js"
+      ],
+      "version": 3
     }
     >>> print(stream_m.getvalue())
     var a=function(b){var a="hello "+b;return a;};console.log(a('world'));
@@ -331,7 +331,7 @@ indentation for the output of an ES5 AST can be constructed like so:
     ...     indentation(indent_str='    '),
     ...     obfuscate(obfuscate_globals=False),
     ... ))
-    >>> math_module = es5('''
+    >>> math_module = es5(u'''
     ... (function(root) {
     ...   var fibonacci = function(count) {
     ...     if (count < 2)
@@ -357,18 +357,18 @@ indentation for the output of an ES5 AST can be constructed like so:
     ... console.log('the value is ' + value);
     ... ''')
     >>> print(''.join(c.text for c in pretty_obfuscate(math_module)))
-    (function(c) {
+    (function(b) {
         var a = function(b) {
             if (b < 2) return b;
             else return a(b - 1) + a(b - 2);
         };
-        var b = function(a) {
+        var c = function(a) {
             if (a < 1) throw new Error('factorial where n < 1 not supported');
             else if (a == 1) return 1;
-            else return a * b(a - 1);
+            else return a * c(a - 1);
         };
-        c.fibonacci = a;
-        c.factorial = b;
+        b.fibonacci = a;
+        b.factorial = c;
     })(window);
     var value = window.factorial(5) / window.fibonacci(5);
     console.log('the value is ' + value);
@@ -389,7 +389,7 @@ how one might extract all Object assignments from a given script file.
     >>> from calmjs.parse.asttypes import Object, VarDecl
     >>> from calmjs.parse.walkers import Walker
     >>> walker = Walker()
-    >>> declarations = es5('''
+    >>> declarations = es5(u'''
     ... var i = 1;
     ... var s = {
     ...     a: "test",

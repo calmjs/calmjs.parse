@@ -3,6 +3,8 @@
 Classes for achieving the name mangling effect.
 """
 
+from __future__ import unicode_literals
+
 import logging
 from operator import itemgetter
 from itertools import count

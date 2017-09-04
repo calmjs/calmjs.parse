@@ -8,6 +8,8 @@ formats can be constructed very trivially by simply changing how or what
 of the following layouts to use to plug into the unparser walker setup.
 """
 
+from __future__ import unicode_literals
+
 import re
 
 from calmjs.parse.ruletypes import Dedent

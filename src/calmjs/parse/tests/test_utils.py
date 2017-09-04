@@ -29,3 +29,16 @@ class UtilsTestCase(unittest.TestCase):
         lextab, yacctab = utils.generate_tab_names('some.package')
         self.assertEqual(lextab, 'some.lextab_package_py3_plyunknown')
         self.assertEqual(yacctab, 'some.yacctab_package_py3_plyunknown')
+
+    def test_repr_compat(self):
+        class fake_unicode(object):
+            def __repr__(self):
+                return "u'fake'"
+
+        previous = utils.unicode
+        self.addCleanup(setattr, utils, 'unicode', previous)
+
+        utils.unicode = fake_unicode
+        self.assertEqual("'fake'", utils.repr_compat(fake_unicode()))
+        utils.unicode = None
+        self.assertEqual("u'fake'", utils.repr_compat(fake_unicode()))

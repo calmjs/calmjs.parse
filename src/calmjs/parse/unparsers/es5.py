@@ -3,6 +3,7 @@
 Description for ES5 unparser.
 """
 
+from __future__ import unicode_literals
 from calmjs.parse.lexers.es5 import Lexer
 from calmjs.parse.layout import indentation
 

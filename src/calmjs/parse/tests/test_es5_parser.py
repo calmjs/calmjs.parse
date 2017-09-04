@@ -22,6 +22,8 @@
 #
 ###############################################################################
 
+from __future__ import unicode_literals
+
 import textwrap
 import unittest
 
@@ -44,6 +46,13 @@ class ParserTestCase(unittest.TestCase):
     def test_line_terminator_at_the_end_of_file(self):
         parser = Parser()
         parser.parse('var $_ = function(x){}(window);\n')
+
+    def test_wrong_type(self):
+        parser = Parser()
+        with self.assertRaises(TypeError) as e:
+            parser.parse(b'var bytes = "banned"')
+        # exact message depends on Python version
+        self.assertIn('argument expected, got', e.exception.args[0])
 
     def test_bad_char_error(self):
         parser = Parser()

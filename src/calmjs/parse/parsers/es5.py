@@ -33,6 +33,7 @@ from calmjs.parse.unparsers.es5 import pretty_print
 from calmjs.parse.walkers import ReprWalker
 from calmjs.parse.utils import generate_tab_names
 from calmjs.parse.utils import format_lex_token
+from calmjs.parse.utils import str
 
 asttypes = AstTypesFactory(pretty_print, ReprWalker())
 
@@ -123,6 +124,10 @@ class Parser(object):
             raise ECMASyntaxError('Unexpected %s' % format_lex_token(token))
 
     def parse(self, text, debug=False):
+        if not isinstance(text, str):
+            raise TypeError("'%s' argument expected, got '%s'" % (
+                str.__name__, type(text).__name__))
+
         return self.parser.parse(
             text, lexer=self.lexer, debug=debug, tracking=self.yacc_tracking)
 

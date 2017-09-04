@@ -4,6 +4,8 @@ Base class and function for making a walk through a given asttypes tree
 possible.
 """
 
+from __future__ import unicode_literals
+
 from itertools import chain
 from calmjs.parse.ruletypes import Token
 from calmjs.parse.ruletypes import Deferrable
