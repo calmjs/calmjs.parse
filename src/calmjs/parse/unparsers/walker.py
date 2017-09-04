@@ -4,8 +4,12 @@ Base class and function for making a walk through a given asttypes tree
 possible.
 """
 
+from __future__ import unicode_literals
+
 from itertools import chain
 from calmjs.parse.ruletypes import Token
+from calmjs.parse.ruletypes import Deferrable
+from calmjs.parse.ruletypes import Structure
 from calmjs.parse.ruletypes import LayoutRuleChunk
 
 # the default noop.
@@ -46,7 +50,8 @@ class Dispatcher(object):
     """
 
     def __init__(
-            self, definitions, token_handler, layout_handlers,
+            self, definitions, token_handler,
+            layout_handlers, deferrable_handlers,
             indent_str='  ', newline_str='\n'):
         """
         The constructor takes three arguments.
@@ -74,16 +79,27 @@ class Dispatcher(object):
 
         layout_handlers
             A map (dictionary) from Layout types to the handlers, which
-            are callables that accepts these four arguments
+            are callables that accepts these five arguments
 
             dispatcher
                 an instance of this class
             node
-                a Node instance (from asttypes)
+                an asttypes.Node instance.
             before
                 a value that was yielded by the previous token
             after
                 a value to be yielded by the subsequent token
+            prev
+                the previously yielded layout token
+
+        deferrable_handlers
+            A map (dictionary) from Deferrable types to the handlers,
+            which are callables that accepts these two arguments
+
+            dispatcher
+                an instance of this class
+            node
+                an asttypes.Node instance.
 
         indent_str
             The string used to indent a line with.  Default is '  '.
@@ -99,19 +115,46 @@ class Dispatcher(object):
         self.__token_handler = token_handler
         self.__layout_handlers = {}
         self.__layout_handlers.update(layout_handlers)
+        self.__deferrable_handlers = {}
+        self.__deferrable_handlers.update(deferrable_handlers)
         self.__definitions = {}
         self.__definitions.update(definitions)
         self.__indent_str = indent_str
         self.__newline_str = newline_str
 
+    def __iter__(self):
+        for item in self.__definitions.items():
+            yield item
+
     def __getitem__(self, key):
-        # TODO figure out how to do proper lookup by the type, rather
-        # than this string hack.
+        """
+        This is for getting at the definition for a particular asttype.
+        """
+
+        # TODO figure out how to do lookup by the type itself directly,
+        # rather than this string hack.
+        # The reason why the types were not used simply because it would
+        # be a bit annoying to deal with subclasses, as resolution will
+        # have to be done for the parent class, given that asttypes are
+        # always subclassed.  While working with types directly is the
+        # correct way to handle that, it is however rather complicated
+        # for this particular goal when this naive solution achieves the
+        # goal without too much issues.
         return self.__definitions[key.__class__.__name__]
 
     def __call__(self, rule):
+        """
+        This is to find a callable for the particular rule encountered.
+        """
+
+        # this is really starting to look like a multi-dispatcher,
+        # especially if it can accept multiple arguments to invoke the
+        # located callable in one go with the arguments supplied here.
+
         if isinstance(rule, Token):
             return self.__token_handler
+        if isinstance(rule, Deferrable):
+            return self.__deferrable_handlers.get(type(rule), NotImplemented)
         else:
             return self.__layout_handlers.get(rule, NotImplemented)
 
@@ -124,12 +167,25 @@ class Dispatcher(object):
         return self.__newline_str
 
 
-def walk(dispatcher, node, definition):
+def walk(dispatcher, node, definition=None):
     """
     The default, standalone walk function following the standard
-    argument format, where the first argument is a Dispatcher, second
-    being the node, third being the definition tuple to follow from for
-    generating a rendering of the node.
+    argument ordering for the unparsing walkers.
+
+    Arguments:
+
+    dispatcher
+        a Dispatcher instance, defined earlier in this module.  This
+        instance will dispatch out the correct callable for the various
+        object types encountered throughout this recursive function.
+
+    node
+        the starting Node from asttypes.
+
+    definition
+        a standalone definition tuple to start working on the node with;
+        if none is provided, an initial definition will be looked up
+        using the dispatcher with the node for the generation of output.
 
     While the dispatcher object is able to provide the lookup directly,
     this extra definition argument allow more flexibility in having
@@ -138,7 +194,10 @@ def walk(dispatcher, node, definition):
     output.
     """
 
-    def _walk(dispatcher, node, definition):
+    def _walk(dispatcher, node, definition=None):
+        if definition is None:
+            definition = dispatcher[node]
+
         for rule in definition:
             if isinstance(rule, Token):
                 # tokens are callables that will generate the chunks
@@ -146,9 +205,18 @@ def walk(dispatcher, node, definition):
                 # that with this function, the dispatcher and the node.
                 for chunk in rule(_walk, dispatcher, node):
                     yield chunk
+            elif issubclass(rule, Structure):
+                # A stucture layout marker; these will be actioned
+                # immediately as it relates to the handling of the
+                # structural description of the asttype at the current
+                # point.
+                handler = dispatcher(rule)
+                if handler is not NotImplemented:
+                    handler(dispatcher, node)
             else:
-                # Otherwise, it's simply a layout class (inert and does
-                # nothing aside from serving as a marker); yield a
+                # Otherwise, it's assumed to be a format layout marker.
+                # in the definition.  Since there will be further
+                # processing required later, defer by yielding a
                 # LayoutRuleChunk as a marker, and resolve any rules
                 # that haven't had a handler registered with the noop
                 # rule handler.

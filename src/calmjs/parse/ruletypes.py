@@ -4,9 +4,14 @@ Rule types are used for building descriptions for processing and
 regenerating for a given type of AST back into a string.
 """
 
+from __future__ import unicode_literals
+
 from collections import namedtuple
+from functools import partial
+
 from calmjs.parse.asttypes import Node
 from calmjs.parse.asttypes import Elision
+from calmjs.parse.asttypes import Identifier
 
 LayoutRuleChunk = namedtuple('LayoutRuleChunk', [
     'rule', 'handler', 'node'])
@@ -34,6 +39,30 @@ class Layout(Rule):
     they will serve as keys); for the subclasses to be used as par of
     the definition for the structure of a given asttype, it must be
     instantiated.
+    """
+
+
+class Structure(Layout):
+    """
+    These are for structural related, i.e. does not relate to production
+    of output chunks.  They will be acted upon immediately.
+
+    The resolved function for these layout tokens should have the
+    following signature:
+
+    (dispatcher, node)
+    """
+
+
+class Format(Layout):
+    """
+    These are format related layouts.  The walk function generally will
+    buffer these for the final generation.
+
+    The resolved function for these layout tokens should have the
+    following signature:
+
+    (dispatcher, node, before_text, after_text, prev_text)
     """
 
 
@@ -75,7 +104,7 @@ class Token(Rule):
 
     def resolve(self, walk, dispatcher, node, value):
         if isinstance(value, Node):
-            return walk(dispatcher, value, dispatcher[value])
+            return walk(dispatcher, value)
         else:
             return dispatcher(self)(self, dispatcher, node, value)
 
@@ -94,39 +123,107 @@ class Token(Rule):
         raise NotImplementedError
 
 
-class Space(Layout):
+class Deferrable(Rule):
+    """
+    These are rules that can be considered as a restricted subset of
+    Token types in the sense that they cannot independently have the
+    ability to walk through the node (as the callable signature does not
+    have provision for one), however the Dispatcher has a provision to
+    acquire a specific handler for this Rule type (hence deferrable,
+    i.e. the production of output can be deferred to the Dispatcher).
+
+    An initial implementation was for the _getattr private method of the
+    Attr Token type, where originally it was just a simple callable so
+    that iter can be used to generate an iterator, however that is now
+    formalized to be of this type.
+
+    Another use case, as mentioned, is the ability for these rules to
+    defer to the Dispatcher for the generation of output, which this
+    instance can make use of to achieve that by acquiring a possible
+    handler like so in the __call__ implementation:
+
+        handler = dispatcher(self)
+
+    If a callable was returned, it should be invoked with the same
+    arguments that were passed into that context, which should be
+    (dispatcher, node).
+
+    Note that this particular Rule type is to be defined within the
+    context of a Token, as these are designed to operate within one.
+
+    The constructors for subclasses are implementation specific.
+    """
+
+    def __call__(self, dispatcher, node):
+        """
+        Arguments
+
+        dispatcher
+            a walker.Dispatcher instance.
+        node
+            a Node instance.
+        """
+
+        raise NotImplementedError
+
+
+class Space(Format):
     """
     Represents a space.
     """
 
 
-class OptionalSpace(Layout):
+class OptionalSpace(Format):
     """
     Represents optional space character.
     """
 
 
-class Newline(Layout):
+class Newline(Format):
     """
     Represents a newline character.
     """
 
 
-class OptionalNewline(Layout):
+class OptionalNewline(Format):
     """
     Represents an optional newline character.
     """
 
 
-class Indent(Layout):
+class Indent(Format):
     """
     Represents an increment to the indentation level.
     """
 
 
-class Dedent(Layout):
+class Dedent(Format):
     """
     Represents an decrement to the indentation level.
+    """
+
+
+class PushScope(Structure):
+    """
+    Push in a new scope
+    """
+
+
+class PopScope(Structure):
+    """
+    Pops out a scope.
+    """
+
+
+class PushCatch(Structure):
+    """
+    Push catch context
+    """
+
+
+class PopCatch(Structure):
+    """
+    Pops catch context.
     """
 
 
@@ -136,8 +233,8 @@ class Attr(Token):
     """
 
     def _getattr(self, dispatcher, node):
-        if callable(self.attr):
-            return self.attr(node)
+        if isinstance(self.attr, Deferrable):
+            return self.attr(dispatcher, node)
         else:
             return getattr(node, self.attr)
 
@@ -279,7 +376,71 @@ class Operator(Attr):
             return self.value
 
 
-# other helpful shorthands.
+class Iter(Deferrable):
+    """
+    Produces an iterator for the Attr.
+    """
 
-children_newline = JoinAttr(iter, value=(Newline,))
-children_comma = JoinAttr(iter, value=(Text(value=','), Space,))
+    def __call__(self, dispatcher, node):
+        return iter(node)
+
+
+class Declare(Deferrable):
+    """
+    Record the declaration of the specific identifier.
+    """
+
+    def __init__(self, attr):
+        self.attr = attr
+
+    def _handle(self, handler, parent, child, idx=None):
+        if not isinstance(child, Identifier):
+            raise TypeError(
+                "in %r, the resolved attribute '%s%s' is not an Identifier" %
+                (parent, self.attr, '' if idx is None else '[%d]' % idx)
+            )
+        # invoke it with the specific method signature for Deferrable
+        # handlers.
+        handler(child)
+
+    def __call__(self, dispatcher, node):
+        target = getattr(node, self.attr)
+
+        if is_empty(target):
+            # can't record nothing.
+            return target
+
+        # look up the layout handler for this deferrable type
+        handler = dispatcher(self)
+        if handler is not NotImplemented:
+            handler = partial(handler, dispatcher)
+            if isinstance(target, list):
+                for idx, item in enumerate(target):
+                    self._handle(handler, node, item, idx)
+            else:
+                self._handle(handler, node, target)
+
+        # finally, return the actual attribute
+        return target
+
+
+class Resolve(Deferrable):
+    """
+    Resolve an identifier.  Naturally, this is used by the Identifier
+    asttype to look up previously declared names.
+    """
+
+    def __call__(self, dispatcher, node):
+        if not isinstance(node, Identifier):
+            raise TypeError(
+                "the Resolve Deferrable type only works with Identifier")
+
+        handler = dispatcher(self)
+        if handler is not NotImplemented:
+            # the handler will return the value
+            return handler(dispatcher, node)
+        return node.value
+
+
+children_newline = JoinAttr(Iter(), value=(Newline,))
+children_comma = JoinAttr(Iter(), value=(Text(value=','), Space,))

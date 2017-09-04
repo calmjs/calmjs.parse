@@ -379,7 +379,7 @@ def encode_sourcemap(filename, mappings, sources, names=[]):
     >>> from calmjs.parse import es5
     >>> from calmjs.parse.unparsers.es5 import pretty_printer
     >>> from calmjs.parse.sourcemap import write, encode_sourcemap
-    >>> program = es5("var i = 'hello';")
+    >>> program = es5(u"var i = 'hello';")
     >>> stream = StringIO()
     >>> printer = pretty_printer()
     >>> names, rawmap = write(printer(program), stream)

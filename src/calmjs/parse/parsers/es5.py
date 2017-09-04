@@ -33,6 +33,7 @@ from calmjs.parse.unparsers.es5 import pretty_print
 from calmjs.parse.walkers import ReprWalker
 from calmjs.parse.utils import generate_tab_names
 from calmjs.parse.utils import format_lex_token
+from calmjs.parse.utils import str
 
 asttypes = AstTypesFactory(pretty_print, ReprWalker())
 
@@ -123,6 +124,10 @@ class Parser(object):
             raise ECMASyntaxError('Unexpected %s' % format_lex_token(token))
 
     def parse(self, text, debug=False):
+        if not isinstance(text, str):
+            raise TypeError("'%s' argument expected, got '%s'" % (
+                str.__name__, type(text).__name__))
+
         return self.parser.parse(
             text, lexer=self.lexer, debug=debug, tracking=self.yacc_tracking)
 
@@ -425,8 +430,22 @@ class Parser(object):
                 prop_name=p[2], parameters=p[4], elements=p[7])
             p[0].setpos(p)
 
+    # For the evaluation of Object Initialisere as described in 11.1.5,
+    # and property accessors as described in 11.2.1, the IdentifierName
+    # is evaluated to a String value, thus they are not to be treated as
+    # standard Identifier types.  In this case, it can be marked as a
+    # PropIdentifier to identifiy this specific case.
+    def p_identifier_name_string(self, p):
+        """identifier_name_string : identifier_name
+        """
+        p[0] = asttypes.PropIdentifier(p[1].value)
+        # manually clone the position attributes.
+        for k in ('_token_map', 'lexpos', 'lineno', 'colno'):
+            setattr(p[0], k, getattr(p[1], k))
+
+    # identifier_name_string ~= identifier_name
     def p_property_name(self, p):
-        """property_name : identifier_name
+        """property_name : identifier_name_string
                          | string_literal
                          | numeric_literal
         """
@@ -438,11 +457,14 @@ class Parser(object):
         p[0] = p[1]
 
     # 11.2 Left-Hand-Side Expressions
+
+    # identifier_name_string ~= identifier_name, as specified in section
+    # 11.2.1; same for the further cases.
     def p_member_expr(self, p):
         """member_expr : primary_expr
                        | function_expr
                        | member_expr LBRACKET expr RBRACKET
-                       | member_expr PERIOD identifier_name
+                       | member_expr PERIOD identifier_name_string
                        | NEW member_expr arguments
         """
         if len(p) == 2:
@@ -463,7 +485,7 @@ class Parser(object):
         """member_expr_nobf : primary_expr_no_brace
                             | function_expr
                             | member_expr_nobf LBRACKET expr RBRACKET
-                            | member_expr_nobf PERIOD identifier_name
+                            | member_expr_nobf PERIOD identifier_name_string
                             | NEW member_expr arguments
         """
         if len(p) == 2:
@@ -504,7 +526,7 @@ class Parser(object):
         """call_expr : member_expr arguments
                      | call_expr arguments
                      | call_expr LBRACKET expr RBRACKET
-                     | call_expr PERIOD identifier_name
+                     | call_expr PERIOD identifier_name_string
         """
         if len(p) == 3:
             p[0] = self.asttypes.FunctionCall(p[1], p[2])
@@ -520,7 +542,7 @@ class Parser(object):
         """call_expr_nobf : member_expr_nobf arguments
                           | call_expr_nobf arguments
                           | call_expr_nobf LBRACKET expr RBRACKET
-                          | call_expr_nobf PERIOD identifier_name
+                          | call_expr_nobf PERIOD identifier_name_string
         """
         if len(p) == 3:
             p[0] = self.asttypes.FunctionCall(p[1], p[2])

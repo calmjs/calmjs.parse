@@ -13,6 +13,21 @@ except ImportError:  # pragma: no cover
     ply_dist = None
 
 py_major = sys.version_info.major
+unicode = unicode if py_major < 3 else None  # noqa: F821
+str = str if sys.version_info.major > 2 else unicode  # noqa: F821
+
+
+def repr_compat(s):
+    """
+    Since Python 2 is annoying with unicode literals, and that we are
+    enforcing the usage of unicode, this ensures the repr doesn't spew
+    out the unicode literal prefix.
+    """
+
+    if unicode and isinstance(s, unicode):
+        return repr(s)[1:]
+    else:
+        return repr(s)
 
 
 def generate_tab_names(name):
@@ -34,5 +49,5 @@ def generate_tab_names(name):
 
 
 def format_lex_token(token):
-    return '%r at %s:%s' % (
-        token.value, token.lineno, getattr(token, 'colno', '?'))
+    return '%s at %s:%s' % (
+        repr_compat(token.value), token.lineno, getattr(token, 'colno', '?'))

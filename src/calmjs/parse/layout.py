@@ -8,6 +8,8 @@ formats can be constructed very trivially by simply changing how or what
 of the following layouts to use to plug into the unparser walker setup.
 """
 
+from __future__ import unicode_literals
+
 import re
 
 from calmjs.parse.ruletypes import Dedent
@@ -95,12 +97,12 @@ class Indentation(object):
 def indentation(indent_str=None):
     def make_layout():
         inst = Indentation(indent_str)
-        return {
+        return {'layout_handlers': {
             Indent: inst.layout_handler_indent,
             Dedent: inst.layout_handler_dedent,
             Newline: inst.layout_handler_newline,
             OptionalNewline: inst.layout_handler_newline_optional,
-        }
+        }}
     return make_layout
 
 

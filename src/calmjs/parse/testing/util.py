@@ -15,7 +15,7 @@ def build_testcase(name, f, manifest, create_test_method, **default_attrs):
             raise ValueError('label "' + label + '" has been redefined')
         attrs[method_name] = create_test_method(argument, answer)
 
-    return type(name, (unittest.TestCase,), attrs)
+    return type(str(name), (unittest.TestCase,), attrs)
 
 
 def build_equality_testcase(name, f, manifest):

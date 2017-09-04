@@ -3,7 +3,8 @@
 Description for ES5 unparser.
 """
 
-from calmjs.parse.layout import token_handler_str_default
+from __future__ import unicode_literals
+from calmjs.parse.lexers.es5 import Lexer
 from calmjs.parse.layout import indentation
 
 from calmjs.parse.ruletypes import (
@@ -13,6 +14,10 @@ from calmjs.parse.ruletypes import (
     OptionalNewline,
     Indent,
     Dedent,
+    PushScope,
+    PopScope,
+    PushCatch,
+    PopCatch,
 )
 from calmjs.parse.ruletypes import (
     Attr,
@@ -24,13 +29,19 @@ from calmjs.parse.ruletypes import (
     ElisionJoinAttr,
 )
 from calmjs.parse.ruletypes import (
+    Declare,
+    Resolve,
+)
+from calmjs.parse.ruletypes import (
     children_newline,
     children_comma,
 )
 from calmjs.parse.unparsers.base import (
     BaseUnparser,
     default_layout_handlers,
+    minimum_layout_handlers,
 )
+from calmjs.parse import obfuscator
 
 value = (
     Attr('value'),
@@ -53,37 +64,43 @@ definitions = {
         Text(value='var'), Space, children_comma, Text(value=';'),
     ),
     'VarDecl': (
-        Attr('identifier'), Optional('initializer', (
+        Attr(Declare('identifier')), Optional('initializer', (
             Space, Operator(value='='), Space, Attr('initializer'),),),
     ),
     'VarDeclNoIn': (
-        Text(value='var '), Attr('identifier'), Optional('initializer', (
+        Text(value='var '), Attr(Declare('identifier')),
+        Optional('initializer', (
             Space, Operator(value='='), Space, Attr('initializer'),),),
     ),
     'GroupingOp': (
         Text(value='('), Attr('expr'), Text(value=')'),
     ),
-    'Identifier': value,
+    'Identifier': (Attr(Resolve()),),
+    'PropIdentifier': value,
     'Assign': (
         Attr('left'), OptionalSpace, Attr('op'), Space, Attr('right'),
     ),
     'GetPropAssign': (
         Text(value='get'), Space, Attr('prop_name'),
+        PushScope,
         Text(value='('), Text(value=')'), Space,
         Text(value='{'),
         Indent, Newline,
         JoinAttr(attr='elements', value=(Newline,)),
         Dedent, OptionalNewline,
         Text(value='}'),
+        PopScope,
     ),
     'SetPropAssign': (
         Text(value='set'), Space, Attr('prop_name'), Text(value='('),
-        Attr('parameters'), Text(value=')'), Space,
+        PushScope,
+        Attr(Declare('parameters')), Text(value=')'), Space,
         Text(value='{'),
         Indent, Newline,
         JoinAttr(attr='elements', value=(Newline,)),
         Dedent, OptionalNewline,
         Text(value='}'),
+        PopScope,
     ),
     'Number': value,
     'Comma': (
@@ -153,6 +170,9 @@ definitions = {
     ),
     'With': (
         Text(value='with'), Space,
+        # should _really_ have a token for logging a warning
+        # https://developer.mozilla.org/en-US/docs/Web/JavaScript/
+        #   Reference/Statements/with
         Text(value='('), Attr('expr'), Text(value=')'), Space,
         Attr('statement'),
     ),
@@ -196,33 +216,39 @@ definitions = {
     ),
     'Catch': (
         Text(value='catch'), Space,
+        PushCatch,
         Text(value='('), Attr('identifier'), Text(value=')'), Space,
         Attr('elements'),
+        PopCatch,
     ),
     'Finally': (
         Text(value='finally'), Space, Attr('elements'),
     ),
     'FuncDecl': (
         Text(value='function'), Optional('identifier', (Space,)),
-        Attr('identifier'), Text(value='('),
-        JoinAttr('parameters', value=(Text(value=','), Space)),
+        Attr(Declare('identifier')), Text(value='('),
+        PushScope,
+        JoinAttr(Declare('parameters'), value=(Text(value=','), Space)),
         Text(value=')'), Space,
         Text(value='{'),
         Indent, Newline,
         JoinAttr('elements', value=(Newline,)),
         Dedent, OptionalNewline,
         Text(value='}'),
+        PopScope,
     ),
     'FuncExpr': (
         Text(value='function'), Optional('identifier', (Space,)),
-        Attr('identifier'), Text(value='('),
-        JoinAttr('parameters', value=(Text(value=','), Space,)),
+        Attr(Declare('identifier')), Text(value='('),
+        PushScope,
+        JoinAttr(Declare('parameters'), value=(Text(value=','), Space,)),
         Text(value=')'), Space,
         Text(value='{'),
         Indent, Newline,
         JoinAttr('elements', value=(Newline,)),
         Dedent, OptionalNewline,
         Text(value='}'),
+        PopScope,
     ),
     'Conditional': (
         Attr('predicate'), Space, Text(value='?'), Space,
@@ -275,12 +301,20 @@ class Unparser(BaseUnparser):
     def __init__(
             self,
             definitions=definitions,
-            token_handler=token_handler_str_default,
-            layouts=(default_layout_handlers,),
-            layout_handlers=None):
+            token_handler=None,
+            rules=(default_layout_handlers,),
+            layout_handlers=None,
+            deferrable_handlers=None,
+            prewalk_hooks=()):
 
         super(Unparser, self).__init__(
-            definitions, token_handler, layouts, layout_handlers)
+            definitions=definitions,
+            token_handler=token_handler,
+            rules=rules,
+            layout_handlers=layout_handlers,
+            deferrable_handlers=deferrable_handlers,
+            prewalk_hooks=(),
+        )
 
 
 def pretty_printer(indent_str='    '):
@@ -288,8 +322,10 @@ def pretty_printer(indent_str='    '):
     Construct a pretty printing unparser
     """
 
-    return Unparser(layouts=(default_layout_handlers, indentation(
-        indent_str=indent_str)))
+    return Unparser(rules=(
+        default_layout_handlers,
+        indentation(indent_str=indent_str),
+    ))
 
 
 def pretty_print(ast, indent_str='  '):
@@ -306,3 +342,44 @@ def pretty_print(ast, indent_str='  '):
     """
 
     return ''.join(chunk.text for chunk in pretty_printer(indent_str)(ast))
+
+
+def minify_printer(obfuscate=False, obfuscate_globals=False):
+    """
+    Construct a minimum printer.
+    """
+
+    rules = [minimum_layout_handlers]
+    if obfuscate:
+        rules.append(obfuscator.obfuscate(
+            obfuscate_globals, reserved_keywords=(Lexer.keywords_dict.keys())))
+
+    return Unparser(rules=rules)
+
+
+def minify_print(ast, obfuscate=False, obfuscate_globals=False):
+    """
+    Simple minify print function; returns a string rendering of an input
+    AST of an ES5 program
+
+    Arguments
+
+    ast
+        The AST to minify print
+    obfuscate
+        If True, obfuscate identifiers nested in each scope with a
+        shortened identifier name to further reduce output size.
+
+        Defaults to False.
+    obfuscate_globals
+        Also do the same to identifiers nested on the global scope; do
+        not enable unless the renaming of global variables in a not
+        fully deterministic manner into something else is guaranteed to
+        not cause problems with the generated code and other code that
+        in the same environment that it will be executed in.
+
+        Defaults to False for the reason above.
+    """
+
+    return ''.join(chunk.text for chunk in minify_printer(
+        obfuscate, obfuscate_globals)(ast))

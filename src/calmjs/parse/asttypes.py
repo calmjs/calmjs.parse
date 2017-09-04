@@ -22,9 +22,12 @@
 #
 ###############################################################################
 
+from __future__ import unicode_literals
+
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 from collections import defaultdict
+from calmjs.parse.utils import str
 
 # This should be nodetypes; asttypes means type of AST, and defining a
 # type for the entire tree is not the scope of what's being defined here
@@ -129,6 +132,15 @@ class Number(Node):
 class Identifier(Node):
     def __init__(self, value):
         self.value = value
+
+
+class PropIdentifier(Identifier):
+    """
+    Technically still an Identifier, but this is to be used for context
+    of dealing with properties, where the Identifiers are used as
+    a PropertyName in the Object Initialiser (11.1.5), or they are used
+    as Property Accessors (11.2.1).
+    """
 
 
 class String(Node):

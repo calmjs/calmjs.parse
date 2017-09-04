@@ -3,7 +3,10 @@
 Generic walkers.
 """
 
+from __future__ import unicode_literals
+
 from calmjs.parse.asttypes import Node
+from calmjs.parse.utils import repr_compat
 
 
 class Walker(object):
@@ -174,7 +177,7 @@ class ReprWalker(object):
                 attrs.append(
                     (k, '[' + header + joiner.join(items) + tailer + ']'))
             else:
-                attrs.append((k, v.__repr__()))
+                attrs.append((k, repr_compat(v)))
 
         if ids:
             # for unnamed child nodes.

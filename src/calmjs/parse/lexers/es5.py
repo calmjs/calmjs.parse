@@ -26,6 +26,7 @@ __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 import ply.lex
 
+from calmjs.parse.utils import repr_compat
 from calmjs.parse.exceptions import (
     ECMASyntaxError,
     ECMARegexSyntaxError,
@@ -571,8 +572,8 @@ class Lexer(object):
 
     def t_error(self, token):
         raise ECMASyntaxError(
-            'Illegal character %r at %s:%s after %s' % (
-                token.value[0], token.lineno, self._get_colno(token),
-                format_lex_token(self.cur_token),
+            'Illegal character %s at %s:%s after %s' % (
+                repr_compat(token.value[0]), token.lineno,
+                self._get_colno(token), format_lex_token(self.cur_token),
             )
         )
