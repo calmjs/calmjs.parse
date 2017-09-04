@@ -11,11 +11,13 @@ Changelog
   walkers, so move them to that name and leave it at that.  Methods
   were also renamed to better reflect their implementation and purpose.
 - Legacy visitor module and classes removed.
-- Renamed and moved the source map generation function from vlqsm to
+- Renamed and moved the source map generation function from vlq to
   sourcemap.
 - There is now a Deferred type for marking certain Tokens that need
   extra handling.  The support for this has changed the various API
   that deals with setting up of this.
+- Provide a name obfuscation function for shortening identifiers, to
+  further achieve minified output.
 
 0.10.1 - 2017-08-26
 -------------------

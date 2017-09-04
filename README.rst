@@ -2,7 +2,7 @@ calmjs.parse
 ============
 
 A collection of parsers and helper libraries for understanding
-ECMAScript; a partial fork of |slimit|_.
+ECMAScript; a fork of |slimit|_.
 
 .. image:: https://travis-ci.org/calmjs/calmjs.parse.svg?branch=master
     :target: https://travis-ci.org/calmjs/calmjs.parse
@@ -61,8 +61,9 @@ in the future.
 Installation
 ------------
 
-The following command may be executed to source the |calmjs.parse| wheel
-from PyPI for installation into the current Python environment.
+The following command may be executed to source the latest stable
+version of |calmjs.parse| wheel from PyPI for installation into the
+current Python environment.
 
 .. code:: sh
 
@@ -240,8 +241,8 @@ how one might extract all Object assignments from a given script file.
 Further details and example usage can be consulted from the documetation
 in the module docstrings.
 
-Pretty printing
-~~~~~~~~~~~~~~~
+Pretty/minified printing
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 There is also a set of pretty printing helpers, which are generated
 through the ``calmjs.parse.unparsers`` modules and classes (note that
@@ -262,13 +263,37 @@ characters to use for indentation:
 
     >>>
 
+There is also one for printing without any unneeded whitespaces, works
+as a source minifier:
+
+.. code:: python
+
+    >>> from calmjs.parse.unparsers.es5 import minify_print
+    >>> print(minify_print(program))
+    var main=function(greet){var hello="hello "+greet;return hello;};...
+    >>> print(minify_print(program, obfuscate=True, obfuscate_globals=True))
+    var a=function(b){var a="hello "+b;return a;};console.log(a('world'));
+
+Note that in the second example, the ``obfuscate_globals`` option was
+only enabled to demonstrate the source obfuscation on the global scope,
+and this is generally not an option that should be enabled on production
+library code that is meant to be reused by other packages (other sources
+referencing the original unobfuscated names will be unable to do so).
+
 Source map generation
 ~~~~~~~~~~~~~~~~~~~~~
 
+.. TODO should provide a bit higher level that can *_print a string
+   directly; perhaps using that WIP builder factory
+
 For the generation of source maps, a lower level unparser instance can
-be constructed through the pretty_printer factory, and then instead of
-going through each yielded value returned, a series of helper functions
-from the ``calmjs.parse.sourcemap`` module can be used like so:
+be constructed through one of the printer factory functions.  Passing
+in an AST node will produce a generator which produces tuples containing
+the yielded text fragment, plus other information which will aid in the
+generation of source maps.  There are helper functions from the
+``calmjs.parse.sourcemap`` module can be used like so to write the
+regenerated source code to some stream, along with processing the
+results into a sourcemap file.  An example:
 
 .. code:: python
 
@@ -276,11 +301,12 @@ from the ``calmjs.parse.sourcemap`` module can be used like so:
     >>> from io import StringIO
     >>> from calmjs.parse.unparsers.es5 import pretty_printer
     >>> from calmjs.parse.sourcemap import encode_sourcemap, write
-    >>> stream = StringIO()
-    >>> printer = pretty_printer()
-    >>> names, rawmap = write(printer(program), stream)
-    >>> sourcemap = encode_sourcemap('demo.min.js', rawmap, ['demo.js'], names)
-    >>> print(json.dumps(sourcemap, indent=2))
+    >>> stream_p = StringIO()
+    >>> print_p = pretty_printer()
+    >>> names_p, rawmap_p = write(print_p(program), stream_p)
+    >>> sourcemap_p = encode_sourcemap(
+    ...     'demo.min.js', rawmap_p, ['demo.js'], names_p)
+    >>> print(json.dumps(sourcemap_p, indent=2))
     {
       "version": 3,
       "sources": [
@@ -290,9 +316,106 @@ from the ``calmjs.parse.sourcemap`` module can be used like so:
       "mappings": "AAEA;IACI;IACA;AACJ;AACA;",
       "file": "demo.min.js"
     }
-    >>> print(stream.getvalue())
+    >>> print(stream_p.getvalue())
     var main = function(greet) {
     ...
+
+Likewise, this works similarly for the minify printer, which provides
+
+.. code:: python
+
+    >>> from calmjs.parse.unparsers.es5 import minify_printer
+    >>> stream_m = StringIO()
+    >>> print_m = minify_printer(obfuscate=True, obfuscate_globals=True)
+    >>> names_m, rawmap_m = write(print_m(program), stream_m)
+    >>> sourcemap_m = encode_sourcemap(
+    ...     'demo.min.js', rawmap_m, ['demo.js'], names_m)
+    >>> print(json.dumps(sourcemap_m, indent=2))
+    {
+      "version": 3,
+      "sources": [
+        "demo.js"
+      ],
+      "names": [
+        "main",
+        "greet",
+        "hello"
+      ],
+      "mappings": "AAEA,IAAIA,CAAK,CAAE,SAASC,CAAK,CAAE,CACvB,...,YAAYF,CAAI",
+      "file": "demo.min.js"
+    }
+    >>> print(stream_m.getvalue())
+    var a=function(b){var a="hello "+b;return a;};console.log(a('world'));
+
+Lower level unparsing API
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Naturally, the printers demonstrated previously are constructed using
+the underlying Unparser class, which in turn bridges together the walk
+function and the Dispatcher class found in the walker module.  The walk
+function walks through the AST node with an instance of the Dispatcher
+class, which provides a description of all node types for the particular
+type of AST node provided, along with the relevant handlers.  These
+handlers can be set up using existing rule provider functions.  For
+instance, a printer for obfuscating identifier names while maintaining
+indentation for the output of an ES5 AST can be constructed like so:
+
+.. TODO when builder factories are done, formalize the rule modules.
+   for more consistency for where to source the rules and how they are
+   to be called.
+
+.. code:: python
+
+    >>> from calmjs.parse.unparsers.es5 import Unparser
+    >>> from calmjs.parse.unparsers.base import default_layout_handlers
+    >>> from calmjs.parse.layout import indentation
+    >>> from calmjs.parse.obfuscator import obfuscate
+    >>> pretty_obfuscate = Unparser(rules=(
+    ...     default_layout_handlers,
+    ...     indentation(indent_str='    '),
+    ...     obfuscate(obfuscate_globals=False),
+    ... ))
+    >>> math_module = es5('''
+    ... (function(root) {
+    ...   var fibonacci = function(count) {
+    ...     if (count < 2)
+    ...       return count;
+    ...     else
+    ...       return fibonacci(count - 1) + fibonacci(count - 2);
+    ...   };
+    ...
+    ...   var factorial = function(n) {
+    ...     if (n < 1)
+    ...       throw new Error('factorial where n < 1 not supported');
+    ...     else if (n == 1)
+    ...       return 1;
+    ...     else
+    ...       return n * factorial(n - 1);
+    ...   }
+    ...
+    ...   root.fibonacci = fibonacci;
+    ...   root.factorial = factorial;
+    ... })(window);
+    ...
+    ... var value = window.factorial(5) / window.fibonacci(5);
+    ... console.log('the value is ' + value);
+    ... ''')
+    >>> print(''.join(c.text for c in pretty_obfuscate(math_module)))
+    (function(c) {
+        var a = function(b) {
+            if (b < 2) return b;
+            else return a(b - 1) + a(b - 2);
+        };
+        var b = function(a) {
+            if (a < 1) throw new Error('factorial where n < 1 not supported');
+            else if (a == 1) return 1;
+            else return a * b(a - 1);
+        };
+        c.fibonacci = a;
+        c.factorial = b;
+    })(window);
+    var value = window.factorial(5) / window.fibonacci(5);
+    console.log('the value is ' + value);
 
 
 Troubleshooting
