@@ -35,7 +35,7 @@ However, as of mid-2017, it was noted that |slimit| remained in a
 minimum state of maintenance for more than four years (its most recent
 release, 0.8.1, was made 2013-03-26), along with a number of serious
 outstanding issues have left unattended and unresolved for the duration
-of that timespan.  As the development of the Calmjs framework require
+of that time span.  As the development of the Calmjs framework require
 those issues to be rectified as soon as possible, a decision to fork the
 parser portion of |slimit| was made. This was done in order to cater to
 the interests current to Calmjs project at that moment in time.
@@ -418,8 +418,8 @@ how one might extract all Object assignments from a given script file.
       foo: "bar"
     }
 
-Further details and example usage can be consulted from the documetation
-in the module docstrings.
+Further details and example usage can be consulted from the various
+docstrings found within the module.
 
 
 Troubleshooting

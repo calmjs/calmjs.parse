@@ -18,6 +18,9 @@ Changelog
   that deals with setting up of this.
 - Provide a name obfuscation function for shortening identifiers, to
   further achieve minified output.
+- The usage of the Python 3 ``str`` type (``unicode`` in Python 2) is
+  now enforced for the parser, to avoid various failure cases where
+  mismatch types occur.
 
 0.10.1 - 2017-08-26
 -------------------
