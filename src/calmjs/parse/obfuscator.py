@@ -239,7 +239,7 @@ class Scope(object):
         if not children_only:
             replacement = name_generator(skip=(self._reserved_symbols))
             for symbol, c in reversed(sorted(
-                    self.referenced_symbols.items(), key=itemgetter(1))):
+                    self.referenced_symbols.items(), key=itemgetter(1, 0))):
                 if symbol not in self.local_declared_symbols:
                     continue
                 self.remapped_symbols[symbol] = next(replacement)
