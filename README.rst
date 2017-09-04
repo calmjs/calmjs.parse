@@ -287,7 +287,7 @@ from the ``calmjs.parse.sourcemap`` module can be used like so:
         "demo.js"
       ],
       "names": [],
-      "mappings": "AAEA,GAEG;IACC,GACG;IACH,MACM;AACV;AACA;",
+      "mappings": "AAEA;IACI;IACA;AACJ;AACA;",
       "file": "demo.min.js"
     }
     >>> print(stream.getvalue())

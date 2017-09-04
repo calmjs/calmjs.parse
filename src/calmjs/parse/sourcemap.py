@@ -274,9 +274,15 @@ def write(source, stream, names=None, book=None, normalize=True):
             if lineno is None or colno is None:
                 mappings[-1].append((book.sink_column,))
             else:
-                # only track lineno if specified
                 if lineno:
+                    # a new lineno is provided, apply it to the book and
+                    # use the result as the written value.
                     book.source_line = lineno
+                    source_line = book.source_line
+                else:
+                    # no change in offset, do not calculate and assume
+                    # the value to be written is unchanged.
+                    source_line = 0
 
                 # if the provided colno is to be implied, calculate it
                 # based on the previous line length plus the previous
@@ -290,13 +296,13 @@ def write(source, stream, names=None, book=None, normalize=True):
                 if original_name is not None:
                     mappings[-1].append((
                         book.sink_column, filename,
-                        book.source_line, book.source_column,
+                        source_line, book.source_column,
                         name_id
                     ))
                 else:
                     mappings[-1].append((
                         book.sink_column, filename,
-                        book.source_line, book.source_column
+                        source_line, book.source_column
                     ))
 
             # doing this last to update the position for the next line

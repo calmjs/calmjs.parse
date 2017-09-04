@@ -343,7 +343,7 @@ class SourceMapTestCase(unittest.TestCase):
     def test_source_map_inferred(self):
         stream = StringIO()
 
-        # Note the None values, as that signifies inferred elements.
+        # Note the 0 values, as that signifies inferred elements.
         fragments = [
             ('console', 1, 1, None),
             ('.', 1, 8, None),
@@ -359,6 +359,24 @@ class SourceMapTestCase(unittest.TestCase):
         self.assertEqual(names, [])
         self.assertEqual(mapping, [
             [(0, 0, 0, 0)],
+        ])
+
+    def test_source_map_inferred_row_offset(self):
+        stream = StringIO()
+
+        # Note that the first row is 3.
+        fragments = [
+            ('var', 3, 1, None),
+            (' ', 0, 0, None),
+            ('main', 3, 5, None),
+            (';', 0, 0, None),
+        ]
+
+        names, mapping = sourcemap.write(fragments, stream, normalize=False)
+        self.assertEqual(stream.getvalue(), 'var main;')
+        self.assertEqual(names, [])
+        self.assertEqual(mapping, [
+            [(0, 0, 2, 0), (3, 0, 0, 3), (1, 0, 0, 1), (4, 0, 0, 4)],
         ])
 
     def test_source_map_known_standard_newline(self):
