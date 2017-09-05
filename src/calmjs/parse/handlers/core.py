@@ -37,6 +37,8 @@ assignment_tokens = {
     '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '>>>=', '&=', '^=', '|=', '='}
 # other symbols
 optional_rhs_space_tokens = {';', ')', None}
+space_imply = TextChunk(' ', 0, 0, None)
+space_drop = TextChunk(' ', None, None, None)
 
 
 def rule_handler_noop(*a, **kw):
@@ -77,13 +79,13 @@ def token_handler_unobfuscate(token, dispatcher, node, subnode):
 def layout_handler_space_imply(dispatcher, node, before, after, prev):
     # default layout handler where the space will be rendered, with the
     # line/column set to 0 for sourcemap to generate the implicit value.
-    yield TextChunk(' ', 0, 0, None)
+    yield space_imply
 
 
 def layout_handler_space_drop(dispatcher, node, before, after, prev):
     # default layout handler where the space will be rendered, with the
     # line/column set to None for sourcemap to terminate the position.
-    yield TextChunk(' ', None, None, None)
+    yield space_drop
 
 
 def layout_handler_newline_simple(dispatcher, node, before, after, prev):
@@ -119,7 +121,7 @@ def layout_handler_space_optional_pretty(
         dispatcher, node, before, after, prev):
     if isinstance(node, (If, For, ForIn, While)):
         if after not in optional_rhs_space_tokens:
-            yield TextChunk(' ', 0, 0, None)
+            yield space_imply
             return
 
     if before is None or after is None:
@@ -128,7 +130,7 @@ def layout_handler_space_optional_pretty(
     s = before[-1:] + after[:1]
 
     if required_space.match(s) or after in assignment_tokens:
-        yield TextChunk(' ', 0, 0, None)
+        yield space_imply
         return
 
 
@@ -138,7 +140,7 @@ def layout_handler_space_minimum(dispatcher, node, before, after, prev):
         return
     s = before[-1:] + after[:1]
     if required_space.match(s):
-        yield TextChunk(' ', 0, 0, None)
+        yield space_imply
 
 
 def default_rules():

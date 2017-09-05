@@ -171,7 +171,7 @@ class Deferrable(Rule):
 
 class Space(Format):
     """
-    Represents a space.
+    Represents a space character with unspecified characteristics.
     """
 
 
