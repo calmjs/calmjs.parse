@@ -13,7 +13,7 @@ from calmjs.parse.ruletypes import Structure
 from calmjs.parse.ruletypes import LayoutRuleChunk
 
 # the default noop.
-from calmjs.parse.layout import rule_handler_noop
+from calmjs.parse.handlers.core import rule_handler_noop
 
 
 class Dispatcher(object):
@@ -43,10 +43,10 @@ class Dispatcher(object):
     generic object that allow arbitrary assignments of arguments for
     consumption by layout functions, it's better to have a dedicated
     class that provide instance methods that plug into this.  See the
-    ``calmjs.parse.layout`` module for the Indentation class and its
-    factory function for an example on how this could be set up.  To
-    better maintain object purity, users of this class should not
-    assign additional attributes to instances of this class.
+    modules inside ``calmjs.parse.handlers`` for various examples on
+    how this could be set up.  To better maintain object purity, users
+    of this class should not assign additional attributes to instances
+    of this class.
     """
 
     def __init__(

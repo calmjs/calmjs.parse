@@ -338,11 +338,11 @@ indentation for the output of an ES5 AST can be constructed like so:
 
     >>> from calmjs.parse.unparsers.es5 import Unparser
     >>> from calmjs.parse.unparsers.base import default_layout_handlers
-    >>> from calmjs.parse.layout import indentation
-    >>> from calmjs.parse.obfuscator import obfuscate
+    >>> from calmjs.parse.handlers.indentation import indent
+    >>> from calmjs.parse.handlers.obfuscation import obfuscate
     >>> pretty_obfuscate = Unparser(rules=(
     ...     default_layout_handlers,
-    ...     indentation(indent_str='    '),
+    ...     indent(indent_str='    '),
     ...     obfuscate(obfuscate_globals=False),
     ... ))
     >>> math_module = es5(u'''

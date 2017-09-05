@@ -18,10 +18,11 @@ from calmjs.parse.ruletypes import PushCatch
 from calmjs.parse.ruletypes import PopCatch
 from calmjs.parse.ruletypes import Declare
 from calmjs.parse.ruletypes import Resolve
-from calmjs.parse.layout import rule_handler_noop
 
 from calmjs.parse.unparsers.walker import Dispatcher
 from calmjs.parse.unparsers.walker import walk
+
+from calmjs.parse.handlers.core import rule_handler_noop
 
 logger = logging.getLogger(__name__)
 logger.level = logging.WARNING
@@ -514,6 +515,10 @@ class Obfuscator(object):
 
 
 def obfuscate(obfuscate_globals=False, reserved_keywords=()):
+    """
+    An example obfuscate ruleset.
+    """
+
     def name_obfuscation_rules():
         inst = Obfuscator(
             obfuscate_globals=obfuscate_globals,

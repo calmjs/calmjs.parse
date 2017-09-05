@@ -21,7 +21,7 @@ from calmjs.parse.unparsers.walker import (
     Dispatcher,
     walk,
 )
-from calmjs.parse.layout import (
+from calmjs.parse.handlers.core import (
     rule_handler_noop,
     token_handler_str_default,
     layout_handler_space_imply,

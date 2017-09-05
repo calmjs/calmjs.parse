@@ -11,21 +11,22 @@ from calmjs.parse.asttypes import Catch
 from calmjs.parse.ruletypes import Attr
 from calmjs.parse.ruletypes import Resolve
 from calmjs.parse.ruletypes import Space
-from calmjs.parse.layout import indentation
-from calmjs.parse.layout import rule_handler_noop
-from calmjs.parse.layout import token_handler_str_default
-from calmjs.parse.layout import layout_handler_space_minimum
 from calmjs.parse.unparsers.base import Dispatcher
 from calmjs.parse.unparsers.base import minimum_layout_handlers
 from calmjs.parse.unparsers.base import default_layout_handlers
 from calmjs.parse.unparsers.walker import walk
 from calmjs.parse.unparsers.es5 import Unparser
-from calmjs.parse.obfuscator import Scope
-from calmjs.parse.obfuscator import CatchScope
-from calmjs.parse.obfuscator import Obfuscator
-from calmjs.parse.obfuscator import NameGenerator
-from calmjs.parse.obfuscator import obfuscate
-from calmjs.parse.obfuscator import token_handler_unobfuscate
+from calmjs.parse.handlers.indentation import indent
+from calmjs.parse.handlers.core import rule_handler_noop
+from calmjs.parse.handlers.core import token_handler_str_default
+from calmjs.parse.handlers.core import layout_handler_space_minimum
+
+from calmjs.parse.handlers.obfuscation import Scope
+from calmjs.parse.handlers.obfuscation import CatchScope
+from calmjs.parse.handlers.obfuscation import Obfuscator
+from calmjs.parse.handlers.obfuscation import NameGenerator
+from calmjs.parse.handlers.obfuscation import obfuscate
+from calmjs.parse.handlers.obfuscation import token_handler_unobfuscate
 
 empty_set = set({})
 
@@ -585,7 +586,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         })();
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
             default_layout_handlers,
-            indentation(indent_str='    '),
+            indent(indent_str='    '),
             obfuscate(obfuscate_globals=False),
         ))(node)))
 
@@ -598,7 +599,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         })();
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
             default_layout_handlers,
-            indentation(indent_str='    '),
+            indent(indent_str='    '),
             obfuscate(obfuscate_globals=True),
         ))(node)))
 
@@ -615,7 +616,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         })();
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
             default_layout_handlers,
-            indentation(indent_str='    '),
+            indent(indent_str='    '),
             obfuscate(reserved_keywords=('a', 'b',)),
         ))(node)))
 
@@ -634,7 +635,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         })();
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
             default_layout_handlers,
-            indentation(indent_str='    '),
+            indent(indent_str='    '),
             obfuscate(obfuscate_globals=True),
         ))(node)))
 
@@ -655,7 +656,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         })(c);
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
             default_layout_handlers,
-            indentation(indent_str='    '),
+            indent(indent_str='    '),
             obfuscate(obfuscate_globals=True),
         ))(node)))
 
@@ -717,7 +718,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         })(0);
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
             default_layout_handlers,
-            indentation(indent_str='  '),
+            indent(indent_str='  '),
             obfuscate(),
         ))(node)))
 
@@ -744,7 +745,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         }
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
             default_layout_handlers,
-            indentation(indent_str='    '),
+            indent(indent_str='    '),
             obfuscate(obfuscate_globals=True),
         ))(node)))
 
@@ -779,7 +780,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         console.log(value);
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
             default_layout_handlers,
-            indentation(indent_str='  '),
+            indent(indent_str='  '),
             obfuscate(),
         ))(node)))
 
@@ -818,7 +819,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         console.log(value);
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
             default_layout_handlers,
-            indentation(indent_str='  '),
+            indent(indent_str='  '),
             obfuscate(),
         ))(node)))
 
@@ -859,7 +860,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         console.log(value);
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
             default_layout_handlers,
-            indentation(indent_str='  '),
+            indent(indent_str='  '),
             obfuscate(),
         ))(node)))
 
@@ -916,6 +917,6 @@ class ObfuscatorTestCase(unittest.TestCase):
         console.log(value);
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
             default_layout_handlers,
-            indentation(indent_str='  '),
+            indent(indent_str='  '),
             obfuscate(),
         ))(node)))
