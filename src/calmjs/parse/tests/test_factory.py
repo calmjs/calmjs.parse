@@ -2,11 +2,11 @@
 import unittest
 
 from calmjs.parse import asttypes
-from calmjs.parse.factory import Factory
+from calmjs.parse.factory import SRFactory
 from calmjs.parse.factory import AstTypesFactory
 
 
-class FactoryTestCase(unittest.TestCase):
+class SRFactoryTestCase(unittest.TestCase):
 
     def test_basic(self):
         # a quick and dirty classes and a container
@@ -29,7 +29,7 @@ class FactoryTestCase(unittest.TestCase):
         o.A = A
         o.B = B
 
-        factory = Factory(o, dummy_str, dummy_repr)
+        factory = SRFactory(o, dummy_str, dummy_repr)
         a = A()
         wrapped_a = factory.A()
         self.assertNotEqual(str(a), '65')
@@ -57,3 +57,17 @@ class FactoryTestCase(unittest.TestCase):
         self.assertFalse(repr(normal_node).startswith('Node has id'))
         self.assertEqual(str(custom_node), 'This is a Node')
         self.assertTrue(repr(custom_node).startswith('Node has id'))
+
+
+class ParserUnparserFactoryTestCase(unittest.TestCase):
+
+    def test_base(self):
+        # simply just test the basic functions... while the top level
+        # readme covers this, just ensure this covers it
+        from calmjs.parse import es5
+
+        src = u'var a;'
+        self.assertTrue(isinstance(es5(src), asttypes.Node))
+        self.assertEqual(es5.pretty_print(src).strip(), src)
+        self.assertEqual(es5.minify_print(src), src)
+        self.assertEqual(es5.minify_print(src, True, True), src)

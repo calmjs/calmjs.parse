@@ -3,15 +3,15 @@
 Provides factories to build classes.
 """
 
+from importlib import import_module
 from functools import partial
+from functools import wraps
 from calmjs.parse import asttypes
 
-
-class _M(object):
-    pass
+PKGNAME = 'calmjs.parse'  # should derive this.
 
 
-class Factory(object):
+class SRFactory(object):
     """
     A factory that will generate a new subclass that has the specified
     __str__ and __repr__ implementations.  Given the number of potential
@@ -34,8 +34,10 @@ class Factory(object):
                 '__repr__': __repr__,
                 '__str__': __str__,
             }) for cls in (
-                # type(_M) replicates the removed types.ClassType
-                v for v in vars(module).values() if isinstance(v, type(_M))
+                # type(type(self)) creates the class "type", which works
+                # like the removed types.ClassType.
+                v for v in vars(module).values() if isinstance(
+                    v, type(type(self)))
             )
         )}
 
@@ -50,4 +52,47 @@ class Factory(object):
         return self.classes[attr]
 
 
-AstTypesFactory = partial(Factory, asttypes)
+AstTypesFactory = partial(SRFactory, asttypes)
+
+
+def RawParserUnparserFactory(parser_name, parse_callable, *unparse_callables):
+    """
+    Produces a callable object that also has callable attributes that
+    passes its first argument to the parent callable.
+    """
+
+    def build_unparse(f):
+        @wraps(f)
+        def unparse(self, source, *a, **kw):
+            node = parse_callable(source)
+            return f(node, *a, **kw)
+        # a dumb and lazy docstring replacement
+        unparse.__doc__ = f.__doc__.replace(
+            'ast\n        The AST ',
+            'source\n        The source ',
+        )
+        return unparse
+
+    def build_parse(f):
+        @wraps(f)
+        def parse(self, source):
+            return f(source)
+        parse.__name__ = parser_name
+        parse.__qualname__ = parser_name
+        return parse
+
+    callables = {f.__name__: build_unparse(f) for f in unparse_callables}
+    callables['__call__'] = build_parse(parse_callable)
+    callables['__module__'] = PKGNAME
+    return type(parser_name, (object,), callables)()
+
+
+def ParserUnparserFactory(module_name, *unparser_names):
+    """
+    Produce a new parser/unparser object from the names provided.
+    """
+
+    parse_callable = import_module(PKGNAME + '.parsers.' + module_name).parse
+    unparser_module = import_module(PKGNAME + '.unparsers.' + module_name)
+    return RawParserUnparserFactory(module_name, parse_callable, *[
+        getattr(unparser_module, name) for name in unparser_names])
