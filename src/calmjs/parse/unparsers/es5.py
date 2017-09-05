@@ -5,7 +5,6 @@ Description for ES5 unparser.
 
 from __future__ import unicode_literals
 from calmjs.parse.lexers.es5 import Lexer
-from calmjs.parse.layout import indentation
 
 from calmjs.parse.ruletypes import (
     Space,
@@ -36,12 +35,8 @@ from calmjs.parse.ruletypes import (
     children_newline,
     children_comma,
 )
-from calmjs.parse.unparsers.base import (
-    BaseUnparser,
-    default_layout_handlers,
-    minimum_layout_handlers,
-)
-from calmjs.parse import obfuscator
+from calmjs.parse.unparsers.base import BaseUnparser
+from calmjs.parse import rules
 
 value = (
     Attr('value'),
@@ -302,7 +297,7 @@ class Unparser(BaseUnparser):
             self,
             definitions=definitions,
             token_handler=None,
-            rules=(default_layout_handlers,),
+            rules=(rules.default(),),
             layout_handlers=None,
             deferrable_handlers=None,
             prewalk_hooks=()):
@@ -322,10 +317,7 @@ def pretty_printer(indent_str='    '):
     Construct a pretty printing unparser
     """
 
-    return Unparser(rules=(
-        default_layout_handlers,
-        indentation(indent_str=indent_str),
-    ))
+    return Unparser(rules=(rules.indent(indent_str=indent_str),))
 
 
 def pretty_print(ast, indent_str='  '):
@@ -338,7 +330,7 @@ def pretty_print(ast, indent_str='  '):
     ast
         The AST to pretty print
     indent_str
-        The string used for indentation.  Defaults to two spaces.
+        The string used for indentations.  Defaults to two spaces.
     """
 
     return ''.join(chunk.text for chunk in pretty_printer(indent_str)(ast))
@@ -349,12 +341,10 @@ def minify_printer(obfuscate=False, obfuscate_globals=False):
     Construct a minimum printer.
     """
 
-    rules = [minimum_layout_handlers]
-    if obfuscate:
-        rules.append(obfuscator.obfuscate(
-            obfuscate_globals, reserved_keywords=(Lexer.keywords_dict.keys())))
-
-    return Unparser(rules=rules)
+    return Unparser(rules=(
+        rules.obfuscate(obfuscate_globals, reserved_keywords=(
+            Lexer.keywords_dict.keys())),)
+        if obfuscate else (rules.minimum(),))
 
 
 def minify_print(ast, obfuscate=False, obfuscate_globals=False):

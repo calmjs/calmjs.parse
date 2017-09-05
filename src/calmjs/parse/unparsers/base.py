@@ -9,48 +9,14 @@ from __future__ import unicode_literals
 
 import logging
 
-from calmjs.parse.ruletypes import (
-    Space,
-    OptionalSpace,
-    Newline,
-    OptionalNewline,
-    Indent,
-    Dedent,
-)
 from calmjs.parse.unparsers.walker import (
     Dispatcher,
     walk,
 )
-from calmjs.parse.layout import (
-    rule_handler_noop,
-    token_handler_str_default,
-    layout_handler_space_imply,
-    layout_handler_newline_optional_pretty,
-    layout_handler_newline_simple,
-    layout_handler_space_optional_pretty,
-    layout_handler_space_minimum,
-)
+from calmjs.parse.handlers.core import default_rules
+from calmjs.parse.handlers.core import token_handler_str_default
 
 logger = logging.getLogger(__name__)
-
-
-def default_layout_handlers():
-    return {'layout_handlers': {
-        Space: layout_handler_space_imply,
-        OptionalSpace: layout_handler_space_optional_pretty,
-        Newline: layout_handler_newline_simple,
-        OptionalNewline: layout_handler_newline_optional_pretty,
-        # if an indent is immediately followed by dedent without actual
-        # content, simply do nothing.
-        (Indent, Newline, Dedent): rule_handler_noop,
-    }}
-
-
-def minimum_layout_handlers():
-    return {'layout_handlers': {
-        Space: layout_handler_space_minimum,
-        OptionalSpace: layout_handler_space_minimum,
-    }}
 
 
 class BaseUnparser(object):
@@ -63,7 +29,7 @@ class BaseUnparser(object):
             self,
             definitions,
             token_handler=None,
-            rules=(default_layout_handlers,),
+            rules=(default_rules,),
             layout_handlers=None,
             deferrable_handlers=None,
             prewalk_hooks=(),

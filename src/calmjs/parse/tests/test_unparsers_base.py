@@ -4,10 +4,10 @@ from __future__ import unicode_literals
 import unittest
 
 from calmjs.parse.asttypes import Node
-from calmjs.parse.layout import token_handler_str_default
 from calmjs.parse.unparsers.base import logger
 from calmjs.parse.unparsers.base import BaseUnparser
 from calmjs.parse.unparsers.walker import Dispatcher
+from calmjs.parse.handlers.core import token_handler_str_default
 
 from calmjs.parse.testing.util import setup_logger
 
