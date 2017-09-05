@@ -1995,5 +1995,15 @@ MinfyPrintTestCase = build_equality_testcase(
         """,
         "(function(){var a=1;try{console.log(a);throw Error('welp');}catch(a){"
         "console.log(a);}})();"
+    ), (
+        'function_dollar_sign',
+        """
+        (function $() {
+          (function $() {
+            var foo = 1;
+          })()
+        })();
+        """,
+        '(function $(){(function a(){var a=1;})();})();',
     )])
 )

@@ -10,6 +10,7 @@ rules as having prescedence for any rule conflicts.
 from calmjs.parse.ruletypes import (
     Space,
     OptionalSpace,
+    RequiredSpace,
     Newline,
     OptionalNewline,
     Indent,
@@ -68,6 +69,7 @@ def indent(indent_str=None):
         return {'layout_handlers': {
             Space: layout_handler_space_imply,
             OptionalSpace: layout_handler_space_optional_pretty,
+            RequiredSpace: layout_handler_space_imply,
             Indent: inst.layout_handler_indent,
             Dedent: inst.layout_handler_dedent,
             Newline: inst.layout_handler_newline,
@@ -92,6 +94,7 @@ def obfuscate(obfuscate_globals=False, reserved_keywords=()):
             'layout_handlers': {
                 Space: layout_handler_space_minimum,
                 OptionalSpace: layout_handler_space_minimum,
+                RequiredSpace: layout_handler_space_imply,
             },
             'deferrable_handlers': {
                 Resolve: inst.resolve,

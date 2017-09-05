@@ -8,6 +8,7 @@ from calmjs.parse.lexers.es5 import Lexer
 
 from calmjs.parse.ruletypes import (
     Space,
+    RequiredSpace,
     OptionalSpace,
     Newline,
     OptionalNewline,
@@ -220,7 +221,7 @@ definitions = {
         Text(value='finally'), Space, Attr('elements'),
     ),
     'FuncDecl': (
-        Text(value='function'), Optional('identifier', (Space,)),
+        Text(value='function'), Optional('identifier', (RequiredSpace,)),
         Attr(Declare('identifier')), Text(value='('),
         PushScope,
         JoinAttr(Declare('parameters'), value=(Text(value=','), Space)),
@@ -233,7 +234,7 @@ definitions = {
         PopScope,
     ),
     'FuncExpr': (
-        Text(value='function'), Optional('identifier', (Space,)),
+        Text(value='function'), Optional('identifier', (RequiredSpace,)),
         Attr(Declare('identifier')), Text(value='('),
         PushScope,
         JoinAttr(Declare('parameters'), value=(Text(value=','), Space,)),

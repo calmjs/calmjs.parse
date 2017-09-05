@@ -24,6 +24,7 @@ from calmjs.parse.ruletypes import (
 
     Space,
     OptionalSpace,
+    RequiredSpace,
     Newline,
     OptionalNewline,
     Indent,
@@ -147,6 +148,7 @@ def default_rules():
     return {'layout_handlers': {
         Space: layout_handler_space_imply,
         OptionalSpace: layout_handler_space_optional_pretty,
+        RequiredSpace: layout_handler_space_imply,
         Newline: layout_handler_newline_simple,
         OptionalNewline: layout_handler_newline_optional_pretty,
         # if an indent is immediately followed by dedent without actual
@@ -159,4 +161,5 @@ def minimum_rules():
     return {'layout_handlers': {
         Space: layout_handler_space_minimum,
         OptionalSpace: layout_handler_space_minimum,
+        RequiredSpace: layout_handler_space_imply,
     }}

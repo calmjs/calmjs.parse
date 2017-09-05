@@ -181,6 +181,12 @@ class OptionalSpace(Format):
     """
 
 
+class RequiredSpace(Format):
+    """
+    Represents a required space character.
+    """
+
+
 class Newline(Format):
     """
     Represents a newline character.
