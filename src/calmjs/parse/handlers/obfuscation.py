@@ -10,8 +10,6 @@ from operator import itemgetter
 from itertools import count
 from itertools import product
 
-from calmjs.parse.asttypes import Identifier
-from calmjs.parse.ruletypes import SourceChunk
 from calmjs.parse.ruletypes import PushScope
 from calmjs.parse.ruletypes import PopScope
 from calmjs.parse.ruletypes import PushCatch
@@ -23,31 +21,12 @@ from calmjs.parse.unparsers.walker import Dispatcher
 from calmjs.parse.unparsers.walker import walk
 
 from calmjs.parse.handlers.core import rule_handler_noop
+from calmjs.parse.handlers.core import token_handler_unobfuscate
 
 logger = logging.getLogger(__name__)
 logger.level = logging.WARNING
 
 ID_CHARS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_'
-
-
-def token_handler_unobfuscate(token, dispatcher, node, subnode):
-    """
-    A token handler that will return the original identifier
-    value.
-    """
-
-    original = (
-        node.value
-        if isinstance(node, Identifier) and node.value != subnode else
-        None
-    )
-
-    if isinstance(token.pos, int):
-        _, lineno, colno = node.getpos(original or subnode, token.pos)
-    else:
-        lineno, colno = None, None
-
-    yield SourceChunk(subnode, lineno, colno, original)
 
 
 class NameGenerator(object):

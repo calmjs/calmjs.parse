@@ -13,10 +13,10 @@ from calmjs.parse.parsers.es5 import parse
 from calmjs.parse.walkers import Walker
 
 from calmjs.parse.handlers.core import layout_handler_space_drop
+from calmjs.parse.handlers.core import default_rules
+from calmjs.parse.handlers.core import minimum_rules
 from calmjs.parse.handlers.indentation import indent
 
-from calmjs.parse.unparsers.base import default_layout_handlers
-from calmjs.parse.unparsers.base import minimum_layout_handlers
 from calmjs.parse.unparsers.es5 import Unparser
 from calmjs.parse.unparsers.es5 import definitions
 from calmjs.parse.unparsers.es5 import pretty_print
@@ -430,14 +430,14 @@ class OtherUsageTestCase(unittest.TestCase):
 
 def parse_to_sourcemap_tokens_pretty(text):
     return list(Unparser(rules=(
-        default_layout_handlers,
+        default_rules,
         indent(),
     ))(parse(text)))
 
 
 def parse_to_sourcemap_tokens_min(text):
     return list(Unparser(rules=(
-        minimum_layout_handlers,
+        minimum_rules,
     ))(parse(text)))
 
 

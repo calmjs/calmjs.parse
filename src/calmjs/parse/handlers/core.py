@@ -12,12 +12,23 @@ from __future__ import unicode_literals
 
 import re
 
-from calmjs.parse.ruletypes import SourceChunk
+from calmjs.parse.asttypes import (
+    Identifier,
+    If,
+    For,
+    ForIn,
+    While,
+)
+from calmjs.parse.ruletypes import (
+    SourceChunk,
 
-from calmjs.parse.asttypes import If
-from calmjs.parse.asttypes import For
-from calmjs.parse.asttypes import ForIn
-from calmjs.parse.asttypes import While
+    Space,
+    OptionalSpace,
+    Newline,
+    OptionalNewline,
+    Indent,
+    Dedent,
+)
 
 required_space = re.compile(r'^(?:\w\w|\+\+|\-\-)$')
 
@@ -41,6 +52,26 @@ def token_handler_str_default(token, dispatcher, node, subnode):
     else:
         lineno, colno = None, None
     yield SourceChunk(subnode, lineno, colno, None)
+
+
+def token_handler_unobfuscate(token, dispatcher, node, subnode):
+    """
+    A token handler that will resolve and return the original identifier
+    value.
+    """
+
+    original = (
+        node.value
+        if isinstance(node, Identifier) and node.value != subnode else
+        None
+    )
+
+    if isinstance(token.pos, int):
+        _, lineno, colno = node.getpos(original or subnode, token.pos)
+    else:
+        lineno, colno = None, None
+
+    yield SourceChunk(subnode, lineno, colno, original)
 
 
 def layout_handler_space_imply(dispatcher, node, before, after, prev):
@@ -108,3 +139,22 @@ def layout_handler_space_minimum(dispatcher, node, before, after, prev):
     s = before[-1:] + after[:1]
     if required_space.match(s):
         yield SourceChunk(' ', 0, 0, None)
+
+
+def default_rules():
+    return {'layout_handlers': {
+        Space: layout_handler_space_imply,
+        OptionalSpace: layout_handler_space_optional_pretty,
+        Newline: layout_handler_newline_simple,
+        OptionalNewline: layout_handler_newline_optional_pretty,
+        # if an indent is immediately followed by dedent without actual
+        # content, simply do nothing.
+        (Indent, Newline, Dedent): rule_handler_noop,
+    }}
+
+
+def minimum_rules():
+    return {'layout_handlers': {
+        Space: layout_handler_space_minimum,
+        OptionalSpace: layout_handler_space_minimum,
+    }}

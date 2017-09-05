@@ -12,14 +12,14 @@ from calmjs.parse.ruletypes import Attr
 from calmjs.parse.ruletypes import Resolve
 from calmjs.parse.ruletypes import Space
 from calmjs.parse.unparsers.base import Dispatcher
-from calmjs.parse.unparsers.base import minimum_layout_handlers
-from calmjs.parse.unparsers.base import default_layout_handlers
 from calmjs.parse.unparsers.walker import walk
 from calmjs.parse.unparsers.es5 import Unparser
 from calmjs.parse.handlers.indentation import indent
 from calmjs.parse.handlers.core import rule_handler_noop
 from calmjs.parse.handlers.core import token_handler_str_default
 from calmjs.parse.handlers.core import layout_handler_space_minimum
+from calmjs.parse.handlers.core import minimum_rules
+from calmjs.parse.handlers.core import default_rules
 
 from calmjs.parse.handlers.obfuscation import Scope
 from calmjs.parse.handlers.obfuscation import CatchScope
@@ -435,8 +435,8 @@ class ObfuscatorTestCase(unittest.TestCase):
         })(this);
         """).strip())
         obfuscator_unparser = Unparser(rules=(
+            minimum_rules,
             obfuscate(),
-            minimum_layout_handlers,
         ))
 
         self.assertEqual(
@@ -585,7 +585,7 @@ class ObfuscatorTestCase(unittest.TestCase):
             a = a_global;
         })();
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
-            default_layout_handlers,
+            default_rules,
             indent(indent_str='    '),
             obfuscate(obfuscate_globals=False),
         ))(node)))
@@ -598,7 +598,7 @@ class ObfuscatorTestCase(unittest.TestCase):
             b = a;
         })();
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
-            default_layout_handlers,
+            default_rules,
             indent(indent_str='    '),
             obfuscate(obfuscate_globals=True),
         ))(node)))
@@ -615,7 +615,7 @@ class ObfuscatorTestCase(unittest.TestCase):
             var d = c;
         })();
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
-            default_layout_handlers,
+            default_rules,
             indent(indent_str='    '),
             obfuscate(reserved_keywords=('a', 'b',)),
         ))(node)))
@@ -634,7 +634,7 @@ class ObfuscatorTestCase(unittest.TestCase):
             a.is_not_declared_in_this_file(b);
         })();
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
-            default_layout_handlers,
+            default_rules,
             indent(indent_str='    '),
             obfuscate(obfuscate_globals=True),
         ))(node)))
@@ -655,7 +655,7 @@ class ObfuscatorTestCase(unittest.TestCase):
             b.is_not_declared_in_this_file(a, c);
         })(c);
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
-            default_layout_handlers,
+            default_rules,
             indent(indent_str='    '),
             obfuscate(obfuscate_globals=True),
         ))(node)))
@@ -717,7 +717,7 @@ class ObfuscatorTestCase(unittest.TestCase):
           })(b);
         })(0);
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
-            default_layout_handlers,
+            default_rules,
             indent(indent_str='  '),
             obfuscate(),
         ))(node)))
@@ -744,7 +744,7 @@ class ObfuscatorTestCase(unittest.TestCase):
             console.log(a);
         }
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
-            default_layout_handlers,
+            default_rules,
             indent(indent_str='    '),
             obfuscate(obfuscate_globals=True),
         ))(node)))
@@ -779,7 +779,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         })();
         console.log(value);
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
-            default_layout_handlers,
+            default_rules,
             indent(indent_str='  '),
             obfuscate(),
         ))(node)))
@@ -818,7 +818,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         })();
         console.log(value);
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
-            default_layout_handlers,
+            default_rules,
             indent(indent_str='  '),
             obfuscate(),
         ))(node)))
@@ -859,7 +859,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         })();
         console.log(value);
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
-            default_layout_handlers,
+            default_rules,
             indent(indent_str='  '),
             obfuscate(),
         ))(node)))
@@ -916,7 +916,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         })();
         console.log(value);
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
-            default_layout_handlers,
+            default_rules,
             indent(indent_str='  '),
             obfuscate(),
         ))(node)))

@@ -2,7 +2,7 @@ calmjs.parse
 ============
 
 A collection of parsers and helper libraries for understanding
-ECMAScript; a fork of |slimit|_.
+ECMAScript; a near feature complete fork of |slimit|_.
 
 .. image:: https://travis-ci.org/calmjs/calmjs.parse.svg?branch=master
     :target: https://travis-ci.org/calmjs/calmjs.parse
@@ -330,20 +330,17 @@ handlers can be set up using existing rule provider functions.  For
 instance, a printer for obfuscating identifier names while maintaining
 indentation for the output of an ES5 AST can be constructed like so:
 
-.. TODO when builder factories are done, formalize the rule modules.
-   for more consistency for where to source the rules and how they are
-   to be called.
-
 .. code:: python
 
     >>> from calmjs.parse.unparsers.es5 import Unparser
-    >>> from calmjs.parse.unparsers.base import default_layout_handlers
-    >>> from calmjs.parse.handlers.indentation import indent
-    >>> from calmjs.parse.handlers.obfuscation import obfuscate
+    >>> from calmjs.parse.rules import indent
+    >>> from calmjs.parse.rules import obfuscate
     >>> pretty_obfuscate = Unparser(rules=(
-    ...     default_layout_handlers,
-    ...     indent(indent_str='    '),
+    ...     # note that indent must come after, so that the whitespace
+    ...     # handling rules by indent will shadow over the minimum set
+    ...     # provided by obfuscate.
     ...     obfuscate(obfuscate_globals=False),
+    ...     indent(indent_str='    '),
     ... ))
     >>> math_module = es5(u'''
     ... (function(root) {
@@ -439,8 +436,8 @@ docstrings found within the module.
 Troubleshooting
 ---------------
 
-Instantiation the parser fails with ``UnicodeEncodeError``
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Instantiation of parser classes fails with ``UnicodeEncodeError``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For platforms or systems that do not have utf8 configured as the default
 encoding, the automatic table generation may fail when constructing a
