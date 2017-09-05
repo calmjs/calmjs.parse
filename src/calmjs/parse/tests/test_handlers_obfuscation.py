@@ -938,3 +938,31 @@ class ObfuscatorTestCase(unittest.TestCase):
             indent(indent_str='  '),
             obfuscate(),
         ))(node)))
+
+    def test_functions_in_lists(self):
+        node = es5(dedent("""
+        (function main(root) {
+          root.exports = [
+            (function(module, exports) {
+              module.exports = {};
+            }),
+            (function(module, exports) {
+              exports.fun = 1;
+            }),
+          ];
+        })(this);
+        """).strip())
+
+        self.assertEqual(dedent("""
+        (function main(a) {
+          a.exports = [(function(a, b) {
+            a.exports = {};
+          }), (function(b, a) {
+            a.fun = 1;
+          })];
+        })(this);
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_rules,
+            indent(indent_str='  '),
+            obfuscate(),
+        ))(node)))

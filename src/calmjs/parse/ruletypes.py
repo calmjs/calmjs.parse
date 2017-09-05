@@ -334,10 +334,19 @@ class ElisionJoinAttr(ElisionToken):
             # note that self.value is to be defined in the definition
             # format also.
             if not isinstance(previous_node, Elision):
-                # TODO find a better way to deal with this magic string
-                # using next_node to avoid using the Array which may
-                # provide a misleading position
-                yield next(walk(dispatcher, next_node, (Text(value=','),)))
+                # TODO find a better way to generate the ',' (the string
+                # that is required here by ES5), and figure out a better
+                # way to generate this output.  Perhaps generate a dummy
+                # node so that the top level Array node will not be used
+                # as that isn't going to provide an accurate row/col.
+
+                # Anyway, just provide a description for the generation
+                # of a single ',' using a Text token, and also make use
+                # of the dispatcher through the walk function to resolve
+                # the token_handler, which will produce the output that
+                # will be yielded here.
+                for c in walk(dispatcher, next_node, (Text(value=','),)):
+                    yield c
 
             if not isinstance(next_node, Elision):
                 for value_node in walk(dispatcher, node, self.value):
