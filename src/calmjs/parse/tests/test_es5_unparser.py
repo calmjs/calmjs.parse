@@ -268,6 +268,17 @@ class BaseVisitorTestCase(unittest.TestCase):
             (';', 1, 10, None), ('\n', 0, 0, None),
         ])
 
+    def test_elision_1v1(self):
+        unparser = Unparser()
+        ast = parse('[, 1,,];')
+        self.assertEqual(list(i[:4] for i in unparser(ast)), [
+            ('[', 1, 1, None),
+            (',', 1, 2, None), (' ', 0, 0, None),
+            ('1', 1, 4, None), (',', 0, 0, None),
+            (',', 1, 6, None), (']', 1, 7, None),
+            (';', 1, 8, None), ('\n', 0, 0, None),
+        ])
+
     def test_if_else_block(self):
         unparser = Unparser()
         ast = parse('if (true) {} else {}')

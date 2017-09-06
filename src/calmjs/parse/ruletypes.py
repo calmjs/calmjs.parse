@@ -314,10 +314,23 @@ class ElisionToken(Attr, Text):
 class ElisionJoinAttr(ElisionToken):
     """
     The Elision type does require a bit of special handling, given that
-    particular Node type also serve the function of the joiner.
+    particular Node type supplies the token that serves as the joiner
+    for the preceding and subsequent nodes, including other Elision
+    nodes which must also be handled separately.
 
-    Note that the ',' token will always be automatically yielded.
+    This Token implementation makes the assumption that the Elision
+    nodes with a length of 1 result in an equivalent representation of
+    separators (which typically is ',' for ES5) for the rendering of the
+    nodes provided.
+
+    Also note that the value should be a description (i.e. tuple of
+    rules) that do not contain any Text tokens for generating the
+    separator - that will be done through the Elision token.
     """
+
+    # the surrogate Elision node to be treated as a separator.
+    sep = Elision(1)
+    sep._token_map = {}  # so its getpos returns an implied position
 
     def __call__(self, walk, dispatcher, node):
         nodes = iter(self._getattr(dispatcher, node))
@@ -331,21 +344,10 @@ class ElisionJoinAttr(ElisionToken):
             yield chunk
 
         for next_node in nodes:
-            # note that self.value is to be defined in the definition
-            # format also.
             if not isinstance(previous_node, Elision):
-                # TODO find a better way to generate the ',' (the string
-                # that is required here by ES5), and figure out a better
-                # way to generate this output.  Perhaps generate a dummy
-                # node so that the top level Array node will not be used
-                # as that isn't going to provide an accurate row/col.
-
-                # Anyway, just provide a description for the generation
-                # of a single ',' using a Text token, and also make use
-                # of the dispatcher through the walk function to resolve
-                # the token_handler, which will produce the output that
-                # will be yielded here.
-                for c in walk(dispatcher, next_node, (Text(value=','),)):
+                # Have the walk function walk our "separator" node, as
+                # explained in the docstring for this class.
+                for c in walk(dispatcher, self.sep):
                     yield c
 
             if not isinstance(next_node, Elision):
