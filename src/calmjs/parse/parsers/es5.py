@@ -387,7 +387,8 @@ class Parser(object):
             # increment the Elision value.
             p[1][-1].value += 1
             p[0] = p[1]
-        # TODO figure out a cleaner way to provide this lookup
+        # TODO there should be a cleaner API for the lexer and their
+        # token types for ensuring that the mappings are available.
         p[0][0]._token_map = {(',' * p[0][0].value): [
             p[0][0].findpos(p, 0)]}
         return

@@ -545,7 +545,6 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
         test();
         """,
         [
-            # TODO have asttypes call manual position settings
             ('test', 1, 1, None), ('(', 1, 5, None), (')', 1, 6, None),
             (';', 1, 7, None),
             ('\n', 0, 0, None),
@@ -763,7 +762,6 @@ ParsedToMinimumTestcase = build_equality_testcase(
         test();
         """,
         [
-            # TODO have asttypes call manual position settings
             ('test', 1, 1, None), ('(', 1, 5, None), (')', 1, 6, None),
             (';', 1, 7, None),
         ],

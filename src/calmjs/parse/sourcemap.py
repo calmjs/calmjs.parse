@@ -147,10 +147,9 @@ def normalize_mapping_line(mapping_line, previous_source_column=0):
             result = (record[0], segment[1], segment[2], record[3], segment[4])
         else:
             result = (record[0], segment[1], segment[2], record[3])
-        # reset the record
-        # XXX this is insufficient, we need to know exactly where the
-        # record is, because for pretty-printing of a long line into
-        # proper indentation, this will reset the positions wrongly
+        # Ideally the exact location should still be kept, but given
+        # that the sourcemap format is accumulative and permits a lot
+        # of inferred positions, resetting all values to 0 is intended.
         record[:] = [0, 0, 0, 0]
         return result
 

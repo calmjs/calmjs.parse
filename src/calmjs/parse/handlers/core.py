@@ -48,8 +48,11 @@ def rule_handler_noop(*a, **kw):
 
 
 def token_handler_str_default(token, dispatcher, node, subnode):
-    # TODO the mangler could provide an implementation of this that will
-    # fill out the last element of the yielded tuple.
+    """
+    Standard token handler that will return the value, ignoring any
+    tokens or strings that have been remapped.
+    """
+
     if isinstance(token.pos, int):
         _, lineno, colno = node.getpos(subnode, token.pos)
     else:
