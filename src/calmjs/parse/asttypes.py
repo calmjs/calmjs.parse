@@ -272,8 +272,7 @@ class VarDeclNoIn(VarDecl):
     """
 
 
-class UnaryOp(Node):
-    # XXX should be rennamed to UnaryExpr
+class UnaryExpr(Node):
     def __init__(self, op, value, postfix=False):
         self.op = op
         self.value = value
@@ -282,7 +281,7 @@ class UnaryOp(Node):
         return [self.value]
 
 
-class PostfixExpr(UnaryOp):
+class PostfixExpr(UnaryExpr):
     def __init__(self, op, value):
         self.op = op
         self.value = value

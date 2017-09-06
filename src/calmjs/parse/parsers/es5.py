@@ -635,7 +635,7 @@ class Parser(object):
                              | BNOT unary_expr
                              | NOT unary_expr
         """
-        p[0] = self.asttypes.UnaryOp(p[1], p[2])
+        p[0] = self.asttypes.UnaryExpr(p[1], p[2])
         p[0].setpos(p)
 
     # 11.5 Multiplicative Operators

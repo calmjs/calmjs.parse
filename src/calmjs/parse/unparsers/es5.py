@@ -127,7 +127,7 @@ definitions = {
     'BinOp': (
         Attr('left'), Space, Operator(attr='op'), Space, Attr('right'),
     ),
-    'UnaryOp': (
+    'UnaryExpr': (
         Operator(attr='op'), OptionalSpace, Attr('value'),
     ),
     'PostfixExpr': (

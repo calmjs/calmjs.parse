@@ -542,7 +542,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
           <For @1:1 cond=<ExprStatement @1:14 expr=<FunctionCall @1:14 args=<
               Arguments @1:18 items=[]>,
               identifier=<Identifier @1:14 value='cond'>>>,
-            count=<UnaryOp @1:22 op='++',
+            count=<UnaryExpr @1:22 op='++',
               value=<Identifier @1:24 value='z'>>,
             init=<ExprStatement @1:6 expr=<Regex @1:6 value='/^.+/g'>>,
             statement=<Block @1:27 ?children=[
@@ -908,9 +908,9 @@ ParsedNodeTypeTestCase = build_equality_testcase(
             Number @1:1 value='5'>, op='+', right=<Number @1:5 value='7'>>,
               op='-', right=<BinOp @1:12 left=<Number @1:9 value='20'>, op='*',
                 right=<Number @1:14 value='10'>>>>,
-          <ExprStatement @2:1 expr=<UnaryOp @2:1 op='++',
+          <ExprStatement @2:1 expr=<UnaryExpr @2:1 op='++',
             value=<Identifier @2:3 value='x'>>>,
-          <ExprStatement @3:1 expr=<UnaryOp @3:1 op='--',
+          <ExprStatement @3:1 expr=<UnaryExpr @3:1 op='--',
             value=<Identifier @3:3 value='x'>>>,
           <ExprStatement @4:1 expr=<PostfixExpr @4:2 op='++',
             value=<Identifier @4:1 value='x'>>>,
@@ -1419,7 +1419,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
                   right=<Number @1:17 value='1'>>
                 ]>>
           ]>,
-          <ExprStatement @2:1 expr=<UnaryOp @2:1 op='delete',
+          <ExprStatement @2:1 expr=<UnaryExpr @2:1 op='delete',
             value=<DotAccessor @2:11 identifier=<
               PropIdentifier @2:12 value='foo'>,
               node=<Identifier @2:8 value='obj'>>>>
@@ -1432,7 +1432,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
         """
         <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<UnaryOp @1:1 op='void',
+          <ExprStatement @1:1 expr=<UnaryExpr @1:1 op='void',
             value=<Number @1:6 value='0'>>>
         ]>
         """,
@@ -1640,7 +1640,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
             right=<FunctionCall @1:28 args=<Arguments @1:42 items=[
                 <Identifier @1:43 value='a'>,
                 <Identifier @1:46 value='d'>,
-                <UnaryOp @1:49 op='!', value=<
+                <UnaryExpr @1:49 op='!', value=<
                   Number @1:50 value='0'>>
               ]>,
               identifier=<DotAccessor @1:37 identifier=<
@@ -1653,7 +1653,8 @@ ParsedNodeTypeTestCase = build_equality_testcase(
           predicate=<FunctionCall @1:1 args=<Arguments @1:4 items=[
             <Identifier @1:5 value='d'>
           ]>, identifier=<DotAccessor @1:2 identifier=<
-            PropIdentifier @1:3 value='b'>, node=<Identifier @1:1 value='e'>>>>>
+            PropIdentifier @1:3 value='b'>, node=<Identifier @1:1 value='e'>>
+          >>>
         ]>
         """,
     ), (
@@ -1680,7 +1681,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'return !(match === true || elem.getAttribute("classid") !== match);',
         """
         <ES5Program @1:1 ?children=[<Return @1:1 expr=<
-          UnaryOp @1:8 op='!',
+          UnaryExpr @1:8 op='!',
             value=<GroupingOp @1:9 expr=<BinOp @1:25 left=<
               BinOp @1:16 left=<Identifier @1:10 value='match'>, op='===',
                 right=<Boolean @1:20 value='true'>>, op='||', right=<
@@ -1718,8 +1719,8 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'typeof second.length === "number";',
         """
         <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<BinOp @1:22 left=<UnaryOp @1:1 op='typeof',
-            value=<DotAccessor @1:14 identifier=
+          <ExprStatement @1:1 expr=<BinOp @1:22 left=<
+            UnaryExpr @1:1 op='typeof', value=<DotAccessor @1:14 identifier=
               <PropIdentifier @1:15 value='length'>, node=<
                 Identifier @1:8 value='second'>>>,
             op='===', right=<String @1:26 value='"number"'
@@ -1994,7 +1995,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
         """
         <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<BinOp @1:4 left=<UnaryOp @1:1 op='!',
+          <ExprStatement @1:1 expr=<BinOp @1:4 left=<UnaryExpr @1:1 op='!',
               value=<Number @1:2 value='0'>>,
             op='%', right=<Number @1:6 value='1'>>>
         ]>
