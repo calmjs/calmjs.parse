@@ -1350,6 +1350,20 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         ]>
         """
     ), (
+        'new_expr_args',
+        """
+        new T(arg1, arg2)
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<NewExpr @1:1 args=<Arguments @1:6 items=[
+            <Identifier @1:7 value='arg1'>,
+            <Identifier @1:13 value='arg2'>
+          ]>,
+          identifier=<Identifier @1:5 value='T'>>>
+        ]>
+        """
+    ), (
         'new_new_expr',
         # a function that returns a function, then used as a constructor
         # var T = function(){ return function (){} }
@@ -1359,12 +1373,12 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
         """
         <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<NewExpr @1:1 args=[], identifier=<
+          <ExprStatement @1:1 expr=<NewExpr @1:1 args=None, identifier=<
             NewExpr @1:5 args=<Arguments @1:10 items=[]>, identifier=<
               Identifier @1:9 value='T'>>>>,
           <VarStatement @2:1 ?children=[
             <VarDecl @2:5 identifier=<Identifier @2:5 value='x'>,
-              initializer=<NewExpr @2:9 args=[], identifier=<
+              initializer=<NewExpr @2:9 args=None, identifier=<
                 NewExpr @2:13 args=<Arguments @2:18 items=[]>,
                   identifier=<Identifier @2:17 value='T'>>>>
           ]>
@@ -2248,6 +2262,20 @@ ParserToECMAASITestCase = build_equality_testcase(
           y();
         }
         """
+    ), (
+        'new_new_expr',
+        """
+        new new T()
+        var x = new new T()
+        new new T(a1, a2, a3)
+        var y = new new T(a1, a2, a3)
+        """,
+        """
+        new new T();
+        var x = new new T();
+        new new T(a1, a2, a3);
+        var y = new new T(a1, a2, a3);
+        """,
     ), (
         'for_loop_first_empty',
         """

@@ -186,8 +186,7 @@ class Object(Node):
 class NewExpr(Node):
     def __init__(self, identifier, args=None):
         self.identifier = identifier
-        # TODO should simply be args
-        self.args = [] if args is None else args
+        self.args = args
 
     def children(self):
         return [self.identifier, self.args]
@@ -196,8 +195,7 @@ class NewExpr(Node):
 class FunctionCall(Node):
     def __init__(self, identifier, args=None):
         self.identifier = identifier
-        # TODO should simply be args
-        self.args = [] if args is None else args
+        self.args = args
 
     def children(self):
         return [self.identifier, self.args]
