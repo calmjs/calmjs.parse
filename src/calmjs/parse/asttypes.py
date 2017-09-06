@@ -277,8 +277,6 @@ class UnaryOp(Node):
     def __init__(self, op, value, postfix=False):
         self.op = op
         self.value = value
-        # XXX deprecated
-        self.postfix = postfix
 
     def children(self):
         return [self.value]
