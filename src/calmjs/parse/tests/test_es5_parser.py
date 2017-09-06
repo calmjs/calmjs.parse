@@ -65,19 +65,6 @@ class ParserTestCase(unittest.TestCase):
             "Illegal character '\\x01' at 1:4 after 'var' at 1:1"
         )
 
-    # XXX: function expression ?
-    def test_function_expression(self):
-        text = """
-        if (true) {
-          function() {
-            foo;
-            location = 'http://anywhere.com';
-          }
-        }
-        """
-        parser = Parser()
-        parser.parse(text)
-
     def test_modify_tree(self):
         text = """
         for (var i = 0; i < 10; i++) {
@@ -138,11 +125,9 @@ class ParserTestCase(unittest.TestCase):
             parser.parse(text)
         self.assertEqual(
             str(e.exception),
-            "Unexpected '<' at 1:1")
+            "Unexpected end of input after '<' at 1:1")
 
     def test_previous_token(self):
-        # XXX do note that the auto-semi _looks_ like a real token and
-        # so it shouldn't be flagged if it isn't there.
         text = textwrap.dedent("""
         throw;
         """).strip()
@@ -152,6 +137,83 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual(
             str(e.exception),
             "Unexpected ';' at 1:6 after 'throw' at 1:1")
+
+    def test_skip_var_autosemi_in_function(self):
+        text = textwrap.dedent("""
+        (function() { var })()
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            "Unexpected '}' at 1:19 after 'var' at 1:15", str(e.exception),
+        )
+
+    def test_skip_throw_autosemi_in_function(self):
+        text = textwrap.dedent("""
+        (function() { throw })()
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            "Unexpected '}' at 1:21 after 'throw' at 1:15", str(e.exception),
+        )
+
+    def test_report_var_real_tokens(self):
+        text = textwrap.dedent("""
+        var;
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            "Unexpected ';' at 1:4 after 'var' at 1:1", str(e.exception),
+        )
+
+    def test_report_do_real_tokens(self):
+        text = textwrap.dedent("""
+        do;
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            "Unexpected end of input after ';' at 1:3", str(e.exception),
+        )
+
+    def test_skip_do_auto_tokens(self):
+        text = textwrap.dedent("""
+        do
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            "Unexpected end of input after 'do' at 1:1", str(e.exception),
+        )
+
+    def test_skip_if_auto_tokens(self):
+        text = textwrap.dedent("""
+        if
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            "Unexpected end of input after 'if' at 1:1", str(e.exception),
+        )
+
+    def test_skip_var_auto_tokens(self):
+        text = textwrap.dedent("""
+        var
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            "Unexpected end of input after 'var' at 1:1", str(e.exception),
+        )
 
     def test_ecma_262_whitespace_slimt_issue_84(self):
         text = u'''\uFEFF
