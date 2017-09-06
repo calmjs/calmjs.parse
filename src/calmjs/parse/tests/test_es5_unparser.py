@@ -6,6 +6,7 @@ import textwrap
 from functools import partial
 
 from calmjs.parse import asttypes
+from calmjs.parse import es5
 from calmjs.parse.ruletypes import Declare
 from calmjs.parse.ruletypes import Space
 from calmjs.parse.ruletypes import Text
@@ -885,15 +886,8 @@ ParsedToMinimumTestcase = build_equality_testcase(
 )
 
 
-# TODO use the finalized shorthand invocation to do this; for now show
-# that the identity source code can be correctly regenerated.
-
-def parse_to_prettyprint(text):
-    return ''.join(c[0] for c in parse_to_sourcemap_tokens_pretty(text))
-
-
 ES5IdentityTestCase = build_equality_testcase(
-    'ES5IdentityTestCase', parse_to_prettyprint, ((
+    'ES5IdentityTestCase', es5.pretty_print, ((
         label, value, value,
     ) for label, value in ((
         label,

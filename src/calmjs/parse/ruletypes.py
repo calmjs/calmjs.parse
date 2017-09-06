@@ -383,10 +383,10 @@ class Operator(Attr):
     An operator symbol.
     """
 
-    # TODO figure out how to yield it in a way that tags this as an
-    # operator, so that it can be properly normalized by the dispatcher base
-    # tracker class. (i.e. no space before ':' but after, no space
-    # between + iff not followed by unary +/++)
+    # A nice to have feature will be the ability to have this produce
+    # something that marks the operator with rendering information, so
+    # that the heuristics that are currently being employed for dealing
+    # with things such as whitespaces be not so ad-hoc.
 
     def _getattr(self, dispatcher, node):
         if self.attr:
