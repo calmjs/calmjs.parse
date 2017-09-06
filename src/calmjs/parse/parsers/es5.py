@@ -429,7 +429,7 @@ class Parser(object):
             p[0].setpos(p)
         else:
             p[0] = self.asttypes.SetPropAssign(
-                prop_name=p[2], parameters=p[4], elements=p[7])
+                prop_name=p[2], parameter=p[4], elements=p[7])
             p[0].setpos(p)
 
     # For the evaluation of Object Initialisere as described in 11.1.5,

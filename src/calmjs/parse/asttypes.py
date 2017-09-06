@@ -242,15 +242,14 @@ class GetPropAssign(Node):
 
 
 class SetPropAssign(Node):
-    def __init__(self, prop_name, parameters, elements):
+    def __init__(self, prop_name, parameter, elements):
         """elements - function body"""
         self.prop_name = prop_name
-        self.parameters = parameters
+        self.parameter = parameter
         self.elements = elements or []
 
     def children(self):
-        # XXX sourcemap compat has changed parameters to singular.
-        return [self.prop_name, self.parameters] + self.elements
+        return [self.prop_name, self.parameter] + self.elements
 
 
 class VarStatement(Node):

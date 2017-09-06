@@ -90,7 +90,7 @@ definitions = {
     'SetPropAssign': (
         Text(value='set'), Space, Attr('prop_name'), Text(value='('),
         PushScope,
-        Attr(Declare('parameters')), Text(value=')'), Space,
+        Attr(Declare('parameter')), Text(value=')'), Space,
         Text(value='{'),
         Indent, Newline,
         JoinAttr(attr='elements', value=(Newline,)),
