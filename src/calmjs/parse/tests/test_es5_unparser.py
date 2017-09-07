@@ -280,6 +280,55 @@ class BaseVisitorTestCase(unittest.TestCase):
             (';', 1, 8, None), ('\n', 0, 0, None),
         ])
 
+    def test_elision_splits_spaces(self):
+        unparser = Unparser()
+        # note the spaces and how they are ignored
+        ast = parse('[, 1, , 2 , ,,,,, 3,, ,,,, ,,,4,];')
+        self.assertEqual(list(i[:4] for i in unparser(ast)), [
+            ('[', 1, 1, None), (',', 1, 2, None), (' ', 0, 0, None),
+            ('1', 1, 4, None), (',', 0, 0, None),
+            (',', 1, 7, None), (' ', 0, 0, None),
+            ('2', 1, 9, None), (',', 0, 0, None),
+            (',,,,,', 1, 13, None), (' ', 0, 0, None),
+            ('3', 1, 19, None), (',', 0, 0, None),
+            # though rowcols of the starting comma are maintained.
+            (',,,,,,,,', 1, 21, None), (' ', 0, 0, None),
+            ('4', 1, 31, None),
+            (']', 1, 33, None),
+            (';', 1, 34, None),
+            ('\n', 0, 0, None),
+        ])
+
+    def test_elision_splits_newlines(self):
+        # the newlines in this case will be completely dropped, but
+        # again as long as the first comma is not shifted, it will be
+        # a syntactically accurate reconstruction, while the sourcemap
+        # that is generated isn't completely reflective of what the
+        # original is.
+        unparser = Unparser()
+        ast = parse(textwrap.dedent('''
+        [, 1,
+        , 2 , ,,
+        ,,, 3,,
+        ,,,,
+        ,,,4,];
+        ''').strip())
+        self.assertEqual(list(i[:4] for i in unparser(ast)), [
+            ('[', 1, 1, None), (',', 1, 2, None), (' ', 0, 0, None),
+            ('1', 1, 4, None), (',', 0, 0, None),
+            (',', 2, 1, None), (' ', 0, 0, None),
+            ('2', 2, 3, None), (',', 0, 0, None), (',,,,,', 2, 7, None),
+            (' ', 0, 0, None),
+            ('3', 3, 5, None),
+            (',', 0, 0, None),
+            (',,,,,,,,', 3, 7, None),
+            (' ', 0, 0, None),
+            ('4', 5, 4, None),
+            (']', 5, 6, None),
+            (';', 5, 7, None),
+            ('\n', 0, 0, None),
+        ])
+
     def test_if_else_block(self):
         unparser = Unparser()
         ast = parse('if (true) {} else {}')
