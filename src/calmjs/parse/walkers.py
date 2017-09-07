@@ -29,7 +29,7 @@ class Walker(object):
     >>> from calmjs.parse.unparsers.es5 import pretty_print
     >>> from calmjs.parse.walkers import Walker
     >>>
-    >>> text = '''
+    >>> text = u'''
     ... var globals = {};
     ... function x(k, v) {
     ...     globals[k] = v;
@@ -120,7 +120,7 @@ class ReprWalker(object):
     >>> from calmjs.parse.walkers import ReprWalker
     >>> parser = Parser()
     >>> repr_walker = ReprWalker()
-    >>> tree = parser.parse('var x = function(x, y) { return x + y; };')
+    >>> tree = parser.parse(u'var x = function(x, y) { return x + y; };')
     >>> print(repr_walker.walk(tree))
     <ES5Program ?children=[<VarStatement ?children=[...]>]>
 

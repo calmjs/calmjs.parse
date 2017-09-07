@@ -69,15 +69,23 @@ current Python environment.
 
     $ pip install calmjs.parse
 
-As this package uses |ply|, which produces auto-generated modules that
-are shipped with the Python wheel for this package, this results in some
-caveats.  The modules at hand contain generated tables for |ply|; the
-wheel for this package will be compatible up to ``ply-3.10``, or the
-latest release available at the time of release of |calmjs.parse|.  If a
-more recent version of |ply| becomes available and is installed, the
-generated tables in this package may become incompatible, thus a manual
-optimization step outlined later in this document may be required.
-Alternatively, |ply| may be downgraded to version 3.10.
+As this package uses |ply|, it requires the generation of optimization
+modules for its lexer.  The wheel distribution of |calmjs.parse| does
+not require this extra step as it contains these pre-generated modules
+for |ply| up to version 3.10 (the latest version available at the time
+of previous release), however the source tarball or if |ply| version
+that is installed lies outside of the supported versions, the following
+caveats will apply.
+
+If a more recent release of |ply| becomes available and the environment
+upgrades to that version, those pre-generated modules may become
+incompatible, which may result in a decreased performance and/or errors.
+A corrective action can be achieved through a `manual optimization`_
+step if a newer version of |calmjs.parse| is not available, or |ply| may
+be downgraded back to version 3.10 if possible.
+
+Once the package is installed, the installation may be `tested`_ or be
+`used directly`_.
 
 Alternative installation methods (for developers, advanced users)
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -131,6 +139,8 @@ This step is generally optionally for users who installed this package
 from PyPI via a Python wheel, provided the caveats as outlined in the
 installation section are addressed.
 
+.. _tested:
+
 Testing the installation
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -150,6 +160,8 @@ installed, plus other information related to the issue at hand.
 
 Usage
 -----
+
+.. _used directly:
 
 As this is a parser library, no executable shell commands are provided.
 There is however a helper callable object provided at the top level for
@@ -197,12 +209,16 @@ implemented.
 Pretty/minified printing
 ~~~~~~~~~~~~~~~~~~~~~~~~
 
-There is also a set of pretty printing helpers, which are generated
-through the ``calmjs.parse.unparsers`` modules and classes (note that
+There is also a set of pretty printing helpers for turning the AST back
+into a string.  These are available as functions or class constructors,
+and are produced by composing various lower level classes available in
+the ``calmjs.parse.unparsers`` and related modules.
+
+There is a default short-hand helper for turning the previously produced
+AST back into a string, which can be manually invoked with certain
+parameters, such as what characters to use for indentation: (note that
 the ``__str__`` call implicitly invoked through ``print`` shown
-previously is implemented through this).  There is a default short-hand
-helper which can be manually invoked with other parameters, such as what
-characters to use for indentation:
+previously is implemented through this).
 
 .. code:: python
 
@@ -235,7 +251,9 @@ referencing the original unobfuscated names will be unable to do so).
 
 Alternatively, direct invocation on a raw string can be done using the
 attributes that were provided under the same name as the base object that
-was imported initially.
+was imported initially.  For instance, it can simply pretty print a
+JavaScript source file without comments, or minify the source file
+directly.
 
 .. code:: python
 
@@ -457,10 +475,11 @@ Tree walking
 
 AST (Abstract Syntax Tree) generic walker classes are defined under the
 appropriate named modules ``calmjs.parse.walkers``.  Two default walker
-classes are supplied, one of which is used for the repr-like output as
-shown previously (the ``ReprWalker`` class).  The other is a collection
-of methods implemented under the ``Walker`` class.  An example usage on
-how one might extract all Object assignments from a given script file.
+classes are supplied.  One of them is the ``ReprWalker`` class which was
+previously demonstrated.  The other is the ``Walker`` class, which
+supplies a collection of generic tree walking methods for a tree of AST
+nodes.  The following is an example usage on how one might extract all
+Object assignments from a given script file:
 
 .. code:: python
 
@@ -531,8 +550,8 @@ A workaround helper script is provided, it may be executed like so:
 
     $ python -m calmjs.parse.parsers.optimize
 
-For more details, refer to the `Manual optimization`_ section of this
-document.
+Further details on this topic may be found in the `manual optimization`_
+section of this document.
 
 
 Contribute

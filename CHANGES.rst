@@ -4,20 +4,54 @@ Changelog
 1.0.0 - Unreleased
 ------------------
 
-- Various changes to names for the 1.0.0 release.  Please consult the
-  README and docstrings for the detailed updates.
+- Various changes to internal class and function names for the 1.0.0
+  release.  A non exhaustive listing of changes to modules relative to
+  the root of this package name as compared to previous major release
+  follows:
+
+  ``asttypes``
+    - All ``slimit`` compatibility features removed.
+    - ``Switch`` (the incorrect version) removed.
+    - ``SwitchStatement`` -> ``Switch``
+    - ``SetPropAssign`` constructor: ``parameters`` -> ``parameter``
+    - ``UnaryOp`` -> ``UnaryExpr``
+    - Other general deprecated features also removed.
+  ``factory``
+    - ``Factory`` -> ``SRFactory``
+  ``visitors``
+    - Removed (details follow).
+  ``walkers``
+    - ``visitors.generic.ReprVisitor`` -> ``walkers.ReprWalker``
+  ``layouts``
+    - Module was split and reorganised; the simple base ones can be
+      found in ``handlers.core``, the indentation related features are
+      now in ``handlers.indentation``.
+  ``unparsers.base``
+    - ``.default_layout_handlers`` -> ``handlers.core.default_rules``
+    - ``.minimum_layout_handlers`` -> ``handlers.core.minimum_rules``
+  ``unparsers.prettyprint``
+    - Renamed to ``unparsers.walker``.
+    - The implementation was actually standard tree walking, no
+      correctly implemented visitor functions/classes were ever present.
+  ``vlq``
+    - ``.create_sourcemap`` -> ``sourcemap.create_sourcemap``
+
 - Broke up the visitors class as they weren't really visitors as
   described.  The new implementations (calmjs.parse-0.9.0) were really
   walkers, so move them to that name and leave it at that.  Methods
   were also renamed to better reflect their implementation and purpose.
-- Legacy visitor module and classes removed.
+- Many slimit compatibility modules, classes and incorrectly implemented
+  functionalities removed.
 - Renamed and moved the source map generation function from vlq to
   sourcemap.
-- There is now a Deferred type for marking certain Tokens that need
-  extra handling.  The support for this has changed the various API
-  that deals with setting up of this.
+- There is now a ``Deferrable`` rule type for marking certain Tokens
+  that need extra handling.  The support for this has changed the
+  various API that deals with setting up of this.
+- For support of the sourcemap generation, a number of new ruletypes
+  have been added.
 - Provide a name obfuscation function for shortening identifiers, to
-  further achieve minified output.
+  further achieve minified output.  Note that this does not fully
+  achieve the level of minification ``slimit`` had.
 - The usage of the Python 3 ``str`` type (``unicode`` in Python 2) is
   now enforced for the parser, to avoid various failure cases where
   mismatch types occur.
@@ -34,6 +68,17 @@ Changelog
   processes.
 - Also provide an even higher level function for usage with streams
   through the ``calmjs.parse.io`` module.
+
+Bug fixes:
+
+- Functions starting with a non-word character will now always have a
+  whitespace rendered before it to avoid syntax error.
+- Correct an incorrect iterator usage in the walk function.
+- Ensure List separators don't use the rowcol positions of a subsequent
+  Elision node.
+- Lexer will only report real lexer tokens on errors (ASI generated
+  tokens are now dropped as they don't exist in the original source
+  which results in confusing rowcol reporting).
 
 0.10.1 - 2017-08-26
 -------------------
