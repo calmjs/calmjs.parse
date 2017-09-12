@@ -49,6 +49,9 @@ class Parser(object):
     a relational expression with the `in` operator in a `for` statement.
 
     '*nobf' stands for 'no brace or function'
+
+    This is a stateful, low level parser.  Please use the parse function
+    instead for general, higher level usage.
     """
 
     def __init__(self, lex_optimize=True, lextab=lextab,
@@ -1479,3 +1482,14 @@ def parse(source):
 
     parser = Parser()
     return parser.parse(source)
+
+
+def read(stream):
+    """
+    Return an AST from the input ES5 stream.
+    """
+
+    text = stream.read()
+    result = parse(text)
+    result.sourcepath = getattr(stream, 'name', None)
+    return result
