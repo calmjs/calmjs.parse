@@ -10,7 +10,7 @@ from itertools import chain
 from calmjs.parse.ruletypes import Token
 from calmjs.parse.ruletypes import Deferrable
 from calmjs.parse.ruletypes import Structure
-from calmjs.parse.ruletypes import LayoutRuleChunk
+from calmjs.parse.ruletypes import LayoutChunk
 
 # the default noop.
 from calmjs.parse.handlers.core import rule_handler_noop
@@ -217,14 +217,14 @@ def walk(dispatcher, node, definition=None):
                 # Otherwise, it's assumed to be a format layout marker.
                 # in the definition.  Since there will be further
                 # processing required later, defer by yielding a
-                # LayoutRuleChunk as a marker, and resolve any rules
-                # that haven't had a handler registered with the noop
-                # rule handler.
+                # LayoutChunk as a marker, and resolve any rules that
+                # haven't had a handler registered with the noop rule
+                # handler.
                 handler = dispatcher(rule)
                 if handler is NotImplemented:
-                    yield LayoutRuleChunk(rule, rule_handler_noop, node)
+                    yield LayoutChunk(rule, rule_handler_noop, node)
                 else:
-                    yield LayoutRuleChunk(rule, handler, node)
+                    yield LayoutChunk(rule, handler, node)
 
     def process_layouts(layout_rule_chunks, last_chunk, chunk):
         before_text = last_chunk.text if last_chunk else None
@@ -261,7 +261,7 @@ def walk(dispatcher, node, definition=None):
                 continue
             # so a handler is found, generate a new layout rule chunk,
             # and junk the stack.
-            normalized_lrcs.append(LayoutRuleChunk(
+            normalized_lrcs.append(LayoutChunk(
                 tuple(rule_stack), handler, layout_rule_chunks[0].node))
             lrcs_stack[:] = []
             rule_stack[:] = []
@@ -280,7 +280,7 @@ def walk(dispatcher, node, definition=None):
     layout_rule_chunks = []
 
     for chunk in _walk(dispatcher, node, definition):
-        if isinstance(chunk, LayoutRuleChunk):
+        if isinstance(chunk, LayoutChunk):
             layout_rule_chunks.append(chunk)
         else:
             # process layout rule chunks that had been cached.

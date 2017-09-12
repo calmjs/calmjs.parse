@@ -13,9 +13,9 @@ from calmjs.parse.asttypes import Node
 from calmjs.parse.asttypes import Elision
 from calmjs.parse.asttypes import Identifier
 
-LayoutRuleChunk = namedtuple('LayoutRuleChunk', [
+LayoutChunk = namedtuple('LayoutChunk', [
     'rule', 'handler', 'node'])
-SourceChunk = namedtuple('SourceChunk', [
+TextChunk = namedtuple('TextChunk', [
     'text', 'lineno', 'colno', 'original'])
 
 
