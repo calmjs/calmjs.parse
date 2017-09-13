@@ -663,6 +663,69 @@ class SourceMapTestCase(unittest.TestCase):
             [(0, 0, 0, 0)],
         ])
 
+    def test_donottrack_names_source_of_dropped(self):
+        stream = StringIO()
+
+        fragments = [
+            ('  ', None, None, '\t', 'original.py'),
+            ('console', None, None, 'print', 'nowhere.js'),
+            ('.', None, None, 'dot', 'somewhere.js'),
+            ('log', 1, 1, 'print', 'original.py'),
+            ('(', 0, 0, None, None),
+            ('"hello world"', 1, 7, None, None),
+            (')', 0, 0, None, None),
+            (';', None, None, None, None),
+        ]
+
+        mapping, sources, names = sourcemap.write(fragments, stream)
+        self.assertEqual(stream.getvalue(), '  console.log("hello world");')
+        self.assertEqual(names, ['print'])
+        self.assertEqual(sources, ['original.py'])
+        self.assertEqual(mapping, [
+            [(10, 0, 0, 0, 0), (3, 0, 0, 5), (15,)],
+        ])
+
+    def test_track_shrunk_name(self):
+        stream = StringIO()
+
+        # 123456789012345678901234567
+        # console.log("hello world");
+        fragments = [
+            ('print', 1, 1, 'console.log', 'original.js'),
+            ('(', 0, 0, None, None),
+            ('"hello world"', 1, 13, None, None),
+            (')', 0, 0, None, None),
+        ]
+
+        mapping, sources, names = sourcemap.write(fragments, stream)
+        self.assertEqual(stream.getvalue(), 'print("hello world")')
+        self.assertEqual(names, ['console.log'])
+        self.assertEqual(sources, ['original.js'])
+        self.assertEqual(mapping, [
+            [(0, 0, 0, 0, 0), (5, 0, 0, 11)],
+        ])
+
+    def test_track_expanded_name(self):
+        stream = StringIO()
+
+        # 12345678901234567890
+        # print("hello world")
+        fragments = [
+            ('console.log', 0, 0, 'print', 'original.py'),
+            ('(', 0, 0, None, None),
+            ('"hello world"', 1, 7, None, None),
+            (')', 0, 0, None, None),
+            (';', None, None, None, None),
+        ]
+
+        mapping, sources, names = sourcemap.write(fragments, stream)
+        self.assertEqual(stream.getvalue(), 'console.log("hello world");')
+        self.assertEqual(names, ['print'])
+        self.assertEqual(sources, ['original.py'])
+        self.assertEqual(mapping, [
+            [(0, 0, 0, 0, 0), (11, 0, 0, 5), (15,)],
+        ])
+
     def test_multiple_unmapped_chunks(self):
         stream = StringIO()
 

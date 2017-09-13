@@ -258,7 +258,7 @@ def write(
     # finalize initial states; the most recent list (mappings[-1]) is
     # the current line
     push_line()
-    p_line_len = 0
+    p_line_len = p_source_offset = 0
 
     for chunk, lineno, colno, original_name, source in stream_fragments:
         # note that lineno/colno are assumed to be both provided or none
@@ -266,13 +266,6 @@ def write(
         lines = chunk.splitlines(True)
         for line in lines:
             stream.write(line)
-
-            name_id = names.update(original_name)
-            # this is a bit of a trick: an unspecified value (None) will
-            # simply be treated as the implied value, hence 0.  However,
-            # a NotImplemented will be recorded and be convereted to the
-            # invalid url at the end.
-            source_id = sources.update(source) or 0
 
             # Two separate checks are done.  As per specification, if
             # either lineno or colno are unspecified, it is assumed that
@@ -287,6 +280,13 @@ def write(
             if lineno is None or colno is None:
                 mappings[-1].append((book.sink_column,))
             else:
+                name_id = names.update(original_name)
+                # this is a bit of a trick: an unspecified value (None)
+                # will simply be treated as the implied value, hence 0.
+                # However, a NotImplemented will be recorded and be
+                # convereted to the invalid url at the end.
+                source_id = sources.update(source) or 0
+
                 if lineno:
                     # a new lineno is provided, apply it to the book and
                     # use the result as the written value.
@@ -304,7 +304,7 @@ def write(
                 if colno:
                     book.source_column = colno
                 else:
-                    book.source_column = book._source_column + p_line_len
+                    book.source_column = book._source_column + p_source_offset
 
                 if original_name is not None:
                     mappings[-1].append((
@@ -331,7 +331,7 @@ def write(
                 colno = (
                     colno if colno in (0, None) else
                     colno + len(line.rstrip()))
-                p_line_len = 0
+                p_source_offset = p_line_len = 0
                 push_line()
 
                 if line is not lines[-1]:
@@ -347,6 +347,8 @@ def write(
                     )
             else:
                 p_line_len = len(line)
+                p_source_offset = (
+                    len(original_name) if original_name else p_line_len)
                 book.sink_column = book._sink_column + p_line_len
 
     # normalize everything
