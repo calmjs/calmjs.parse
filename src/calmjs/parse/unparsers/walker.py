@@ -11,6 +11,8 @@ from calmjs.parse.ruletypes import Token
 from calmjs.parse.ruletypes import Deferrable
 from calmjs.parse.ruletypes import Structure
 from calmjs.parse.ruletypes import LayoutChunk
+from calmjs.parse.ruletypes import StreamFragment
+from calmjs.parse.ruletypes import TextChunk
 
 # the default noop.
 from calmjs.parse.handlers.core import rule_handler_noop
@@ -167,7 +169,46 @@ class Dispatcher(object):
         return self.__newline_str
 
 
-def walk(dispatcher, node, definition=None):
+def textchunk_to_streamfragment(textchunk, source=None):
+    return StreamFragment(
+        text=textchunk.text,
+        lineno=textchunk.lineno,
+        colno=textchunk.colno,
+        name=textchunk.original,
+        source=source,
+    )
+
+
+def walk_stacktracking_streamfragment(walk):
+    sourcepath_stack = [NotImplemented]
+
+    def _walk(dispatcher, node, definition=None):
+        pushed = False
+        if node.sourcepath:
+            pushed = True
+            sourcepath_stack.append(node.sourcepath)
+
+        for chunk in walk(dispatcher, node, definition=definition):
+            if isinstance(chunk, TextChunk):
+                yield textchunk_to_streamfragment(chunk, sourcepath_stack[-1])
+            else:
+                yield chunk
+
+        if pushed:
+            sourcepath_stack.pop(-1)
+
+    return _walk
+
+
+def walk_finalize_streamfragment(chunk):
+    return chunk if isinstance(
+        chunk, StreamFragment) else textchunk_to_streamfragment(chunk)
+
+
+def walk(
+        dispatcher, node, definition=None,
+        walk_decorator=walk_stacktracking_streamfragment,
+        finalize_chunk=walk_finalize_streamfragment):
     """
     The default, standalone walk function following the standard
     argument ordering for the unparsing walkers.
@@ -187,6 +228,21 @@ def walk(dispatcher, node, definition=None):
         if none is provided, an initial definition will be looked up
         using the dispatcher with the node for the generation of output.
 
+    Advanced optional arguments:
+
+    walk_decorator
+        The decorator function that will be applied to the inner walk
+        function.  By default the walk_stacktracking_streamfragment
+        function will be passed in, so that the source will be filled
+        from the sourcepath attribute of the node or the most immediate
+        parent that have declared one.  Otherwise, an identity function
+        can be passed in to disable this.
+
+    finalize_chunk
+        The function that will turn chunks into their finalized form.
+        This defaults to walk_finalize_streamfragment, so the remainder
+        TextChunks will be converted into StreamFragments.
+
     While the dispatcher object is able to provide the lookup directly,
     this extra definition argument allow more flexibility in having
     Token subtypes being able to provide specific definitions also that
@@ -194,7 +250,13 @@ def walk(dispatcher, node, definition=None):
     output.
     """
 
+    # The inner walk function - this is actually exposed to the token
+    # rule objects so they can also make use of it to process the node
+    # with the dispatcher.
+
+    @walk_decorator
     def _walk(dispatcher, node, definition=None):
+
         if definition is None:
             definition = dispatcher[node]
 
@@ -226,6 +288,9 @@ def walk(dispatcher, node, definition=None):
                 else:
                     yield LayoutChunk(rule, handler, node)
 
+    # Format layout markers are not handled immediately in the walk -
+    # they will simply be buffered so that a collection of them can be
+    # handled at once.
     def process_layouts(layout_rule_chunks, last_chunk, chunk):
         before_text = last_chunk.text if last_chunk else None
         after_text = chunk.text if chunk else None
@@ -299,4 +364,4 @@ def walk(dispatcher, node, definition=None):
             yield chunk_from_layout
 
     for chunk in walk():
-        yield chunk
+        yield finalize_chunk(chunk)

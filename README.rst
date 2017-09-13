@@ -267,11 +267,12 @@ results into a sourcemap file.  An example:
     >>> from io import StringIO
     >>> from calmjs.parse.unparsers.es5 import pretty_printer
     >>> from calmjs.parse.sourcemap import encode_sourcemap, write
+    >>> program.sourcepath = 'demo.js'  # say this was opened there
     >>> stream_p = StringIO()
     >>> print_p = pretty_printer()
-    >>> names_p, rawmap_p = write(print_p(program), stream_p)
+    >>> rawmap_p, sources_p, names_p = write(print_p(program), stream_p)
     >>> sourcemap_p = encode_sourcemap(
-    ...     'demo.min.js', rawmap_p, ['demo.js'], names_p)
+    ...     'demo.min.js', rawmap_p, sources_p, names_p)
     >>> print(json.dumps(sourcemap_p, indent=2, sort_keys=True))
     {
       "file": "demo.min.js",
@@ -287,15 +288,16 @@ results into a sourcemap file.  An example:
     ...
 
 Likewise, this works similarly for the minify printer, which provides
+the ability to create out a minified output with unneeded whitespaces
+removed and identifiers obfuscated with the shortest possible value.
 
 .. code:: python
 
     >>> from calmjs.parse.unparsers.es5 import minify_printer
     >>> stream_m = StringIO()
     >>> print_m = minify_printer(obfuscate=True, obfuscate_globals=True)
-    >>> names_m, rawmap_m = write(print_m(program), stream_m)
     >>> sourcemap_m = encode_sourcemap(
-    ...     'demo.min.js', rawmap_m, ['demo.js'], names_m)
+    ...     'demo.min.js', *write(print_m(program), stream_m))
     >>> print(json.dumps(sourcemap_m, indent=2, sort_keys=True))
     {
       "file": "demo.min.js",

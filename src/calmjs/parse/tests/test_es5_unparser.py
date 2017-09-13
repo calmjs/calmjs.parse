@@ -26,6 +26,10 @@ from calmjs.parse.unparsers.es5 import minify_print
 from calmjs.parse.testing.util import build_equality_testcase
 
 
+def quad(items):
+    return [i[:4] for i in items]
+
+
 class BaseVisitorTestCase(unittest.TestCase):
     # Many of these tests are here are for showing individual fixes that
     # were done to other classes in order to properly support the source
@@ -34,13 +38,13 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_empty_program(self):
         unparser = Unparser()
         ast = parse('')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
         ])
 
     def test_basic_integer(self):
         unparser = Unparser()
         ast = parse('0;')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('0', 1, 1, None),
             (';', 1, 2, None),
             ('\n', 0, 0, None),
@@ -49,7 +53,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_basic_var_space_standard(self):
         unparser = Unparser()
         ast = parse('var x = 0;')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('var', 1, 1, None), (' ', 0, 0, None), ('x', 1, 5, None),
             (' ', 0, 0, None), ('=', 1, 7, None), (' ', 0, 0, None),
             ('0', 1, 9, None), (';', 1, 10, None),
@@ -67,7 +71,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         })
         ast = parse('var x = 0;')
         # just run through the ast
-        list(unparser(ast))
+        quad(unparser(ast))
         self.assertEqual(['x'], declared_vars)
 
     def test_basic_var_space_drop(self):
@@ -75,7 +79,7 @@ class BaseVisitorTestCase(unittest.TestCase):
             Space: layout_handler_space_drop,
         })
         ast = parse('var x = 0;\nvar y = 0;')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('var', 1, 1, None), (' ', None, None, None), ('x', 1, 5, None),
             (' ', None, None, None), ('=', 1, 7, None),
             (' ', None, None, None), ('0', 1, 9, None), (';', 1, 10, None),
@@ -93,7 +97,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         # if there are no layout handlers, the layout nodes will just
         # simply be skipped - not very useful as note that there is now
         # no separation between `var` and `x`.
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('var', 1, 1, None), ('x', 1, 5, None), ('=', 1, 7, None),
             ('0', 1, 9, None), (';', 1, 10, None),
         ])
@@ -101,7 +105,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_simple_identifier(self):
         unparser = Unparser()
         ast = parse('this;')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('this', 1, 1, None), (';', 1, 5, None), ('\n', 0, 0, None),
         ])
 
@@ -112,14 +116,14 @@ class BaseVisitorTestCase(unittest.TestCase):
         new_definitions['This'] = (Text(value='this', pos=None),)
         unparser = Unparser(definitions=new_definitions)
         ast = parse('this;')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('this', None, None, None), (';', 1, 5, None), ('\n', 0, 0, None),
         ])
 
     def test_empty_object(self):
         unparser = Unparser()
         ast = parse('thing = {};')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('thing', 1, 1, None), (' ', 0, 0, None), ('=', 1, 7, None),
             (' ', 0, 0, None), ('{', 1, 9, None), ('}', 1, 10, None),
             (';', 1, 11, None), ('\n', 0, 0, None),
@@ -128,7 +132,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_simple_function_declare(self):
         unparser = Unparser()
         ast = parse('function(){};')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('function', 1, 1, None),
             ('(', 1, 9, None), (')', 1, 10, None), (' ', 0, 0, None),
             ('{', 1, 11, None), ('\n', 0, 0, None), ('}', 1, 12, None),
@@ -138,7 +142,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_simple_function_invoke(self):
         unparser = Unparser()
         ast = parse('foo();')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('foo', 1, 1, None), ('(', 1, 4, None), (')', 1, 5, None),
             (';', 1, 6, None), ('\n', 0, 0, None),
         ])
@@ -146,7 +150,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_new_new(self):
         unparser = Unparser()
         ast = parse('new new T();')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('new', 1, 1, None), (' ', 0, 0, None),
             ('new', 1, 5, None), (' ', 0, 0, None),
             ('T', 1, 9, None), ('(', 1, 10, None), (')', 1, 11, None),
@@ -156,7 +160,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_getter(self):
         unparser = Unparser()
         ast = parse('x = {get p() {}};')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('x', 1, 1, None), (' ', 0, 0, None), ('=', 1, 3, None),
             (' ', 0, 0, None), ('{', 1, 5, None), ('\n', 0, 0, None),
             ('get', 1, 6, None), (' ', 0, 0, None), ('p', 1, 10, None),
@@ -169,7 +173,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_setter(self):
         unparser = Unparser()
         ast = parse('x = {set p(a) {}};')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('x', 1, 1, None), (' ', 0, 0, None), ('=', 1, 3, None),
             (' ', 0, 0, None), ('{', 1, 5, None), ('\n', 0, 0, None),
             ('set', 1, 6, None), (' ', 0, 0, None), ('p', 1, 10, None),
@@ -182,7 +186,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_switch_case_default_case(self):
         unparser = Unparser()
         ast = parse('switch (v) { case true: break; default: case false: }')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('switch', 1, 1, None), (' ', 0, 0, None), ('(', 1, 8, None),
             ('v', 1, 9, None), (')', 1, 10, None), (' ', 0, 0, None),
             ('{', 1, 12, None),
@@ -205,7 +209,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         # basically empty list
         unparser = Unparser()
         ast = parse('[];')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('[', 1, 1, None), (']', 1, 2, None),
             (';', 1, 3, None), ('\n', 0, 0, None),
         ])
@@ -213,7 +217,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_elision_1(self):
         unparser = Unparser()
         ast = parse('[,];')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('[', 1, 1, None), (',', 1, 2, None), (']', 1, 3, None),
             (';', 1, 4, None), ('\n', 0, 0, None),
         ])
@@ -221,7 +225,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_elision_2(self):
         unparser = Unparser()
         ast = parse('[,,];')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('[', 1, 1, None), (',,', 1, 2, None), (']', 1, 4, None),
             (';', 1, 5, None), ('\n', 0, 0, None),
         ])
@@ -229,7 +233,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_elision_4(self):
         unparser = Unparser()
         ast = parse('[,,,,];')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('[', 1, 1, None), (',,,,', 1, 2, None), (']', 1, 6, None),
             (';', 1, 7, None), ('\n', 0, 0, None),
         ])
@@ -237,7 +241,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_elision_v3(self):
         unparser = Unparser()
         ast = parse('[1,,,,];')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('[', 1, 1, None), ('1', 1, 2, None), (',', 0, 0, None),
             (',,,', 1, 4, None), (']', 1, 7, None),
             (';', 1, 8, None), ('\n', 0, 0, None),
@@ -246,7 +250,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_elision_vv3(self):
         unparser = Unparser()
         ast = parse('[1, 2,,,,];')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('[', 1, 1, None),
             ('1', 1, 2, None), (',', 0, 0, None), (' ', 0, 0, None),
             ('2', 1, 5, None), (',', 0, 0, None),  # ditto for this
@@ -257,7 +261,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_elision_v3v(self):
         unparser = Unparser()
         ast = parse('[1,,,, 1];')
-        self.assertEqual(list(unparser(ast)), [
+        self.assertEqual(quad(unparser(ast)), [
             ('[', 1, 1, None), ('1', 1, 2, None), (',', 0, 0, None),
             (',,,', 1, 4, None),
             (' ', 0, 0, None),
@@ -268,7 +272,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_if_else_block(self):
         unparser = Unparser()
         ast = parse('if (true) {} else {}')
-        self.assertEqual([tuple(t) for t in (unparser(ast))], [
+        self.assertEqual([tuple(t[:4]) for t in (unparser(ast))], [
             ('if', 1, 1, None),
             (' ', 0, 0, None),
             ('(', 1, 4, None),
@@ -305,9 +309,12 @@ class OtherUsageTestCase(unittest.TestCase):
         ])
         unparser = Unparser()
         self.assertEqual([tuple(t) for t in (unparser(ast))], [
-            ('foo', None, None, None), ('(', None, None, None),
-            ('x', None, None, None), (')', None, None, None),
-            (';', None, None, None), ('\n', 0, 0, None),
+            ('foo', None, None, None, NotImplemented),
+            ('(', None, None, None, NotImplemented),
+            ('x', None, None, None, NotImplemented),
+            (')', None, None, None, NotImplemented),
+            (';', None, None, None, NotImplemented),
+            ('\n', 0, 0, None, None),
         ])
 
     def test_remap_function_call(self):
@@ -331,7 +338,7 @@ class OtherUsageTestCase(unittest.TestCase):
 
         # Now try to render.
         unparser = Unparser()
-        self.assertEqual([tuple(t) for t in (unparser(ast))], [
+        self.assertEqual([tuple(t[:4]) for t in (unparser(ast))], [
             ('(', 1, 1, None),
             ('function', 1, 2, None),
             ('(', 1, 10, None),
@@ -429,14 +436,14 @@ class OtherUsageTestCase(unittest.TestCase):
 
 
 def parse_to_sourcemap_tokens_pretty(text):
-    return list(Unparser(rules=(
+    return quad(Unparser(rules=(
         default_rules,
         indent(),
     ))(parse(text)))
 
 
 def parse_to_sourcemap_tokens_min(text):
-    return list(Unparser(rules=(
+    return quad(Unparser(rules=(
         minimum_rules,
     ))(parse(text)))
 
@@ -1704,7 +1711,7 @@ ES5IdentityTestCase = build_equality_testcase(
 
 
 def parse_to_sourcemap_tokens_minify(text):
-    return list(minify_printer(obfuscate=True)(parse(text)))
+    return quad(minify_printer(obfuscate=True)(parse(text)))
 
 
 ParsedNodeTypeSrcmapTokenMPTestCase = build_equality_testcase(

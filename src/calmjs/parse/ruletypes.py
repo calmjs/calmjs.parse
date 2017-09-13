@@ -17,6 +17,8 @@ LayoutChunk = namedtuple('LayoutChunk', [
     'rule', 'handler', 'node'])
 TextChunk = namedtuple('TextChunk', [
     'text', 'lineno', 'colno', 'original'])
+StreamFragment = namedtuple('StreamFragment', [
+    'text', 'lineno', 'colno', 'name', 'source'])
 
 
 def is_empty(value):

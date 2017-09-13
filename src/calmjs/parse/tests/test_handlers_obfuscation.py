@@ -541,8 +541,8 @@ class ObfuscatorTestCase(unittest.TestCase):
         # since nothing was remapped.
         self.assertEqual([
         ], [
-            (c.text, c.original) for c in walk(main_dispatcher, tree)
-            if c.original
+            (c.text, c.name) for c in walk(main_dispatcher, tree)
+            if c.name
         ])
 
         # now manually give the scope with a set of replacement names
@@ -565,7 +565,7 @@ class ObfuscatorTestCase(unittest.TestCase):
             ('b', 3, 7, 'bar'),
             ('z', 4, 3, 'baz'),
             ('f', 5, 3, 'foo'),
-        ], [c for c in walk(main_dispatcher, tree) if c.original])
+        ], [c[:4] for c in walk(main_dispatcher, tree) if c.name])
 
     def test_obfuscate_globals(self):
         node = es5(dedent("""

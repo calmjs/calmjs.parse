@@ -21,6 +21,13 @@ Changelog
 - The usage of the Python 3 ``str`` type (``unicode`` in Python 2) is
   now enforced for the parser, to avoid various failure cases where
   mismatch types occur.
+- The base Node asttype has a sourcepath attribute which is to be used
+  for tracking the original source of the node; if assigned, all its
+  subnodes without sourcepath defined should be treated as from that
+  source.
+- The sourcemap write function had its argument order modified to better
+  support the sourcepath tracking feature of input Nodes.  Its return
+  value also now match the ordering of the encode_sourcemap function.
 
 0.10.1 - 2017-08-26
 -------------------

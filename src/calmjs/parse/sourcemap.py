@@ -10,6 +10,9 @@ from calmjs.parse.vlq import encode_mappings
 
 logger = logging.getLogger(__name__)
 
+# for NotImplemented source values
+INVALID_SOURCE = 'about:invalid'
+
 
 class Names(object):
     """
@@ -185,28 +188,38 @@ def normalize_mapping_line(mapping_line, previous_source_column=0):
     return result, record[3]
 
 
-def write(source, stream, names=None, book=None, normalize=True):
+def write(
+        stream_fragments, stream, normalize=True,
+        book=None, sources=None, names=None):
     """
-    Given a source iterable, write it to the stream object by using its
-    write method.  Returns a 2-tuple, where the first element is the
-    mapping, second element is the list of original string references.
+    Given an iterable of stream fragments, write it to the stream object
+    by using its write method.  Returns a 3-tuple, where the first
+    element is the mapping, second element is the list of sources and
+    the third being the original names referenced by the given fragment.
 
     Arguments:
 
-    source
-        the source iterable
+    stream_fragments
+        an iterable that only contains StreamFragments
     stream
         an io.IOBase compatible stream object
-    names
-        an Names instance; if none is provided an instance will be
-        created for internal use
+    normalize
+        the default True setting will result in the mappings that were
+        returned be normalized to the minimum form.  This will reduce
+        the size of the generated source map at the expense of slightly
+        lower quality.
     book
         A Bookkeeper instance; if none is provided an instance will be
-        created for internal use
+        created for internal use.  The Bookkeeper instance is used for
+        tracking the positions of rows and columns of the input stream.
+    sources
+        a Names instance for tracking sources; if None is provided, an
+        instance will be created for internal use.
+    names
+        a Names instance for tracking names; if None is provided, an
+        instance will be created for internal use.
 
-    The source iterable is of this format
-
-    A fragment tuple must contain the following
+    A stream fragment tuple must contain the following
 
     - The string to write to the stream
     - Original starting line of the string; None if not present
@@ -214,23 +227,22 @@ def write(source, stream, names=None, book=None, normalize=True):
     - Original string that this fragment represents (i.e. for the case
       where this string fragment was an identifier but got mangled into
       an alternative form); use None if this was not the case.
+    - The source of the fragment.  If the first fragment is unspecified,
+      the INVALID_SOURCE url will be used (i.e. about:invalid).  After
+      that, a None value will be treated as the implicit value, and if
+      NotImplemented is encountered, the INVALID_SOURCE url will be used
+      also.
 
-    If multiple files are to be tracked, it is recommended to provide a
-    shared Names instance.
+    If a number of stream_fragments are to be provided, common instances
+    of Bookkeeper (for book) and Names (for sources and names) should be
+    provided if they are not chained together.
     """
-
-    # There was consideration to include a filename index argument, but
-    # given that the line and column are *relative*, i.e. they are
-    # global values that exists for the duration of the interpretation
-    # of the mapping, and so it is better to have this function focus on
-    # one file at a time.  A separate function can be provided to
-    # generate a new tuple to replace the first one, such that it will
-    # set the line/column numbers back to zero based on what is
-    # available in this file, plus incrementing the index for the source
-    # file itself.
 
     if names is None:
         names = Names()
+
+    if sources is None:
+        sources = Names()
 
     if book is None:
         book = default_book()
@@ -246,13 +258,9 @@ def write(source, stream, names=None, book=None, normalize=True):
     # finalize initial states; the most recent list (mappings[-1]) is
     # the current line
     push_line()
-    # if support for multiple files are to be provided by this function,
-    # this will be tracked using Names instead; setting the filename
-    # index to 0 as explained previously.
-    filename = 0
     p_line_len = 0
 
-    for chunk, lineno, colno, original_name in source:
+    for chunk, lineno, colno, original_name, source in stream_fragments:
         # note that lineno/colno are assumed to be both provided or none
         # provided.
         lines = chunk.splitlines(True)
@@ -260,6 +268,11 @@ def write(source, stream, names=None, book=None, normalize=True):
             stream.write(line)
 
             name_id = names.update(original_name)
+            # this is a bit of a trick: an unspecified value (None) will
+            # simply be treated as the implied value, hence 0.  However,
+            # a NotImplemented will be recorded and be convereted to the
+            # invalid url at the end.
+            source_id = sources.update(source) or 0
 
             # Two separate checks are done.  As per specification, if
             # either lineno or colno are unspecified, it is assumed that
@@ -295,13 +308,13 @@ def write(source, stream, names=None, book=None, normalize=True):
 
                 if original_name is not None:
                     mappings[-1].append((
-                        book.sink_column, filename,
+                        book.sink_column, source_id,
                         source_line, book.source_column,
                         name_id
                     ))
                 else:
                     mappings[-1].append((
-                        book.sink_column, filename,
+                        book.sink_column, source_id,
                         source_line, book.source_column
                     ))
 
@@ -328,7 +341,7 @@ def write(source, stream, names=None, book=None, normalize=True):
                         'in provided text fragment.', len(mappings)
                     )
                     logger.info(
-                        'text in source fragments should not have trailing '
+                        'text in stream fragments should not have trailing '
                         'characters after a new line, they should be split '
                         'off into a separate fragment.'
                     )
@@ -344,7 +357,10 @@ def write(source, stream, names=None, book=None, normalize=True):
             new_ml, column = normalize_mapping_line(ml, column)
             result.append(new_ml)
         mappings = result
-    return list(names), mappings
+    list_sources = [
+        INVALID_SOURCE if s == NotImplemented else s for s in sources
+    ] or [INVALID_SOURCE]
+    return mappings, list_sources, list(names)
 
 
 def encode_sourcemap(filename, mappings, sources, names=[]):
@@ -382,8 +398,8 @@ def encode_sourcemap(filename, mappings, sources, names=[]):
     >>> program = es5(u"var i = 'hello';")
     >>> stream = StringIO()
     >>> printer = pretty_printer()
-    >>> names, rawmap = write(printer(program), stream)
-    >>> sourcemap = encode_sourcemap('demo.min.js', rawmap, ['demo.js'], names)
+    >>> sourcemap = encode_sourcemap(
+    ...     'demo.min.js', *write(printer(program), stream))
     """
 
     return {

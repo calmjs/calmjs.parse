@@ -37,11 +37,17 @@ class NameTestCase(unittest.TestCase):
     def test_null(self):
         names = sourcemap.Names()
         self.assertIs(names.update(None), None)
+        self.assertEqual(list(names), [])
         self.assertEqual(names.update('hello'), 0)
         self.assertEqual(names.update('hello'), 0)
         self.assertIs(names.update(None), None)
         self.assertEqual(names.update('goodbye'), 1)
         self.assertEqual(names.update('goodbye'), 0)
+
+    def test_not_implemented(self):
+        names = sourcemap.Names()
+        self.assertEqual(names.update(NotImplemented), 0)
+        self.assertEqual(list(names), [NotImplemented])
 
 
 class BookkeeperTestCase(unittest.TestCase):
@@ -324,17 +330,18 @@ class SourceMapTestCase(unittest.TestCase):
         stream = StringIO()
 
         fragments = [
-            ('console', 1, 1, None),
-            ('.', 1, 8, None),
-            ('log', 1, 9, None),
-            ('(', 1, 12, None),
-            ('"hello world"', 1, 13, None),
-            (')', 1, 26, None),
-            (';', 1, 27, None),
+            ('console', 1, 1, None, 'demo.js'),
+            ('.', 1, 8, None, 'demo.js'),
+            ('log', 1, 9, None, 'demo.js'),
+            ('(', 1, 12, None, 'demo.js'),
+            ('"hello world"', 1, 13, None, 'demo.js'),
+            (')', 1, 26, None, 'demo.js'),
+            (';', 1, 27, None, 'demo.js'),
         ]
 
-        names, mapping = sourcemap.write(fragments, stream)
+        mapping, sources, names = sourcemap.write(fragments, stream)
         self.assertEqual(stream.getvalue(), 'console.log("hello world");')
+        self.assertEqual(sources, ['demo.js'])
         self.assertEqual(names, [])
         self.assertEqual(mapping, [
             [(0, 0, 0, 0)],
@@ -343,22 +350,72 @@ class SourceMapTestCase(unittest.TestCase):
     def test_source_map_inferred(self):
         stream = StringIO()
 
-        # Note the 0 values, as that signifies inferred elements.
+        # Note the 0 values, as that signifies inferred elements for the
+        # row/col, and then None for source will be replaced with an
+        # 'about:invalid' source.
         fragments = [
-            ('console', 1, 1, None),
-            ('.', 1, 8, None),
-            ('log', 1, 9, None),
-            ('(', 0, 0, None),
-            ('"hello world"', 1, 13, None),
-            (')', 0, 0, None),
-            (';', 0, 0, None),
+            ('console', 1, 1, None, None),
+            ('.', 1, 8, None, None),
+            ('log', 1, 9, None, None),
+            ('(', 0, 0, None, None),
+            ('"hello world"', 1, 13, None, None),
+            (')', 0, 0, None, None),
+            (';', 0, 0, None, None),
         ]
 
-        names, mapping = sourcemap.write(fragments, stream)
+        mapping, sources, names = sourcemap.write(fragments, stream)
         self.assertEqual(stream.getvalue(), 'console.log("hello world");')
+        self.assertEqual(sources, ['about:invalid'])
         self.assertEqual(names, [])
         self.assertEqual(mapping, [
             [(0, 0, 0, 0)],
+        ])
+
+    def test_source_map_source_not_implemented(self):
+        stream = StringIO()
+
+        fragments = [
+            ('console', 1, 1, None, NotImplemented),
+            ('.', 1, 8, None, None),
+            ('log', 1, 9, None, None),
+            ('(', 0, 0, None, None),
+            ('"hello world"', 1, 13, None, None),
+            (')', 0, 0, None, None),
+            (';', 0, 0, None, None),
+        ]
+
+        mapping, sources, names = sourcemap.write(fragments, stream)
+        self.assertEqual(stream.getvalue(), 'console.log("hello world");')
+        self.assertEqual(sources, ['about:invalid'])
+        self.assertEqual(names, [])
+        self.assertEqual(mapping, [
+            [(0, 0, 0, 0)],
+        ])
+
+    def test_source_map_source_none_then_not_implemented_then_named(self):
+        stream = StringIO()
+
+        fragments = [
+            ('console', 1, 1, None, None),
+            ('.', 1, 8, None, NotImplemented),
+            ('log', 1, 9, None, 'named.js'),
+            ('(', 0, 0, None, None),
+            ('"hello world"', 1, 13, None, None),
+            (')', 0, 0, None, None),
+            (';', 0, 0, None, NotImplemented),
+        ]
+
+        mapping, sources, names = sourcemap.write(fragments, stream)
+        self.assertEqual(stream.getvalue(), 'console.log("hello world");')
+        self.assertEqual(sources, ['about:invalid', 'named.js'])
+        self.assertEqual(names, [])
+        self.assertEqual(mapping, [
+            # the first None implied value converted to invalid, then
+            # the named.js bumps it up 1, then backtracked back to 0 at
+            # the end.
+            # Yes, the example is a bit contrived, due to how the
+            # positions are interweaved between the two files.
+            [(0, 0, 0, 0), (8, 1, 0, 8), (18, -1, 0, 18)],
         ])
 
     def test_source_map_inferred_row_offset(self):
@@ -366,15 +423,17 @@ class SourceMapTestCase(unittest.TestCase):
 
         # Note that the first row is 3.
         fragments = [
-            ('var', 3, 1, None),
-            (' ', 0, 0, None),
-            ('main', 3, 5, None),
-            (';', 0, 0, None),
+            ('var', 3, 1, None, None),
+            (' ', 0, 0, None, None),
+            ('main', 3, 5, None, None),
+            (';', 0, 0, None, None),
         ]
 
-        names, mapping = sourcemap.write(fragments, stream, normalize=False)
+        mapping, sources, names = sourcemap.write(
+            fragments, stream, normalize=False)
         self.assertEqual(stream.getvalue(), 'var main;')
         self.assertEqual(names, [])
+        self.assertEqual(sources, ['about:invalid'])
         self.assertEqual(mapping, [
             [(0, 0, 2, 0), (3, 0, 0, 3), (1, 0, 0, 1), (4, 0, 0, 4)],
         ])
@@ -386,28 +445,28 @@ class SourceMapTestCase(unittest.TestCase):
         err = setup_logger(self, sourcemap.logger)
         stream = StringIO()
         fragments = [
-            ('(', 1, 1, None),
-            ('function', 1, 2, None),
-            ('(', 1, 10, None),
-            (') ', 1, 11, None),
-            ('{\n', 1, 13, None),
+            ('(', 1, 1, None, None),
+            ('function', 1, 2, None, None),
+            ('(', 1, 10, None, None),
+            (') ', 1, 11, None, None),
+            ('{\n', 1, 13, None, None),
             # may be another special case here, to normalize the _first_
             # fragment
-            ('  ', None, None, None),
-            ('console', 1, 15, None),
-            ('.', 1, 22, None),
-            ('log', 1, 23, None),
-            ('(', 1, 26, None),
-            ('"hello world"', 1, 27, None),
-            (')', 1, 40, None),
-            (';\n', 1, 41, None),
-            ('}', 1, 43, None),
-            (')', 1, 44, None),
-            ('(', 1, 45, None),
-            (')', 1, 46, None),
-            (';', 1, 47, None),
+            ('  ', None, None, None, None),
+            ('console', 1, 15, None, None),
+            ('.', 1, 22, None, None),
+            ('log', 1, 23, None, None),
+            ('(', 1, 26, None, None),
+            ('"hello world"', 1, 27, None, None),
+            (')', 1, 40, None, None),
+            (';\n', 1, 41, None, None),
+            ('}', 1, 43, None, None),
+            (')', 1, 44, None, None),
+            ('(', 1, 45, None, None),
+            (')', 1, 46, None, None),
+            (';', 1, 47, None, None),
         ]
-        names, mapping = sourcemap.write(fragments, stream, normalize=False)
+        mapping, _, names = sourcemap.write(fragments, stream, normalize=False)
         self.assertEqual(stream.getvalue(), textwrap.dedent("""
         (function() {
           console.log("hello world");
@@ -426,7 +485,7 @@ class SourceMapTestCase(unittest.TestCase):
         ]], mapping)
         self.assertNotIn("WARNING", err.getvalue())
         # the normalized version should also have the correct offsets
-        names, mapping = sourcemap.write(fragments, stream)
+        mapping, _, names = sourcemap.write(fragments, stream)
         self.assertEqual(
             [[(0, 0, 0, 0)], [(2, 0, 0, 14)], [(0, 0, 0, 28)]], mapping)
 
@@ -436,21 +495,21 @@ class SourceMapTestCase(unittest.TestCase):
         err = setup_logger(self, sourcemap.logger)
         stream = StringIO()
         fragments = [
-            ('(', 1, 1, None),
-            ('function', 1, 2, None),
-            ('(', 1, 10, None),
-            (') ', 1, 11, None),
-            ('{\n', 1, 13, None),
+            ('(', 1, 1, None, None),
+            ('function', 1, 2, None, None),
+            ('(', 1, 10, None, None),
+            (') ', 1, 11, None, None),
+            ('{\n', 1, 13, None, None),
             # may be another special case here, to normalize the _first_
             # fragment
-            ('  ', None, None, None),
-            ('console', 1, 15, None),
-            ('.', 1, 22, None),
-            ('log', 1, 23, None),
-            ('(', 0, 0, None),
-            ('"hello world"', 1, 27, None),
-            (')', 0, 0, None),
-            (';\n', 0, 0, None),
+            ('  ', None, None, None, None),
+            ('console', 1, 15, None, 'demo.js'),
+            ('.', 1, 22, None, None),
+            ('log', 1, 23, None, None),
+            ('(', 0, 0, None, None),
+            ('"hello world"', 1, 27, None, None),
+            (')', 0, 0, None, None),
+            (';\n', 0, 0, None, None),
             # note that the AST will need to record/provide the ending
             # value to this if the usage on a newline is to be supported
             # like so, otherwise all unmarked symbols will be clobbered
@@ -461,13 +520,13 @@ class SourceMapTestCase(unittest.TestCase):
             # position that it was from, the generated source map will
             # guaranteed to be wrong as the starting column cannot be
             # correctly inferred without the original text.
-            ('}', 1, 43, None),    # this one cannot be inferred.
-            (')', 0, 0, None),  # this one can be.
-            ('(', 1, 45, None),    # next starting symbol
-            (')', 1, 46, None),
-            (';', 0, 0, None),
+            ('}', 1, 43, None, None),  # this one cannot be inferred.
+            (')', 0, 0, None, None),   # this one can be.
+            ('(', 1, 45, None, None),  # next starting symbol
+            (')', 1, 46, None, None),
+            (';', 0, 0, None, None),
         ]
-        names, mapping = sourcemap.write(fragments, stream, normalize=False)
+        mapping, _, names = sourcemap.write(fragments, stream, normalize=False)
         self.assertEqual(stream.getvalue(), textwrap.dedent("""
         (function() {
           console.log("hello world");
@@ -485,20 +544,20 @@ class SourceMapTestCase(unittest.TestCase):
             (1, 0, 0, 1)
         ]], mapping)
         self.assertNotIn("WARNING", err.getvalue())
-        names, mapping = sourcemap.write(fragments, stream)
         # the normalized version should also have the correct offsets
-        names, mapping = sourcemap.write(fragments, stream)
+        mapping, sources, names = sourcemap.write(fragments, stream)
         self.assertEqual(
             [[(0, 0, 0, 0)], [(2, 0, 0, 14)], [(0, 0, 0, 28)]], mapping)
+        self.assertEqual(sources, ['demo.js'])
 
     def test_source_map_inferred_trailing_newline(self):
         err = setup_logger(self, sourcemap.logger)
         stream = StringIO()
         # Note the None values, as that signifies inferred elements.
         fragments = [
-            ('console.log(\n  "hello world");', 1, 1, None),
+            ('console.log(\n  "hello world");', 1, 1, None, None),
         ]
-        names, mapping = sourcemap.write(fragments, stream)
+        mapping, _, names = sourcemap.write(fragments, stream)
         self.assertEqual(stream.getvalue(), 'console.log(\n  "hello world");')
         self.assertEqual(names, [])
         self.assertEqual([
@@ -512,16 +571,16 @@ class SourceMapTestCase(unittest.TestCase):
         stream = StringIO()
 
         fragments = [
-            ('a', 1, 1, 'console'),
-            ('.', 1, 8, None),
-            ('b', 1, 9, 'log'),
-            ('(', 1, 12, None),
-            ('"hello world"', 1, 13, None),
-            (')', 1, 26, None),
-            (';', 1, 27, None),
+            ('a', 1, 1, 'console', None),
+            ('.', 1, 8, None, None),
+            ('b', 1, 9, 'log', None),
+            ('(', 1, 12, None, None),
+            ('"hello world"', 1, 13, None, None),
+            (')', 1, 26, None, None),
+            (';', 1, 27, None, None),
         ]
 
-        names, mapping = sourcemap.write(fragments, stream)
+        mapping, _, names = sourcemap.write(fragments, stream)
         self.assertEqual(stream.getvalue(), 'a.b("hello world");')
         self.assertEqual(names, ['console', 'log'])
         self.assertEqual(mapping, [
@@ -534,20 +593,20 @@ class SourceMapTestCase(unittest.TestCase):
         # both the line/col counter to None
         stream = StringIO()
         fragments = [
-            (' ', 0, 0, None),  # was two spaces, now single space.
-            (' ', 0, 0, None),
-            ('console', 1, 5, None),
-            ('.', 1, 12, None),
-            ('log', 1, 13, None),
-            ('(', 0, 0, None),
-            ('(', 0, 0, None),
-            ('"hello world"', 1, 18, None),
-            (')', 0, 0, None),
-            (')', 0, 0, None),
-            (';', 0, 0, None),
+            (' ', 0, 0, None, None),  # was two spaces, now single space.
+            (' ', 0, 0, None, None),
+            ('console', 1, 5, None, None),
+            ('.', 1, 12, None, None),
+            ('log', 1, 13, None, None),
+            ('(', 0, 0, None, None),
+            ('(', 0, 0, None, None),
+            ('"hello world"', 1, 18, None, None),
+            (')', 0, 0, None, None),
+            (')', 0, 0, None, None),
+            (';', 0, 0, None, None),
         ]
 
-        names, mapping = sourcemap.write(fragments, stream, normalize=False)
+        mapping, _, names = sourcemap.write(fragments, stream, normalize=False)
         self.assertEqual(stream.getvalue(), '  console.log(("hello world"));')
         self.assertEqual(names, [])
         self.assertEqual(mapping, [[
@@ -557,7 +616,7 @@ class SourceMapTestCase(unittest.TestCase):
             (1, 0, 0, 1),
         ]])
 
-        names, mapping = sourcemap.write(fragments, stream)
+        mapping, _, names = sourcemap.write(fragments, stream)
         self.assertEqual(mapping, [
             [(0, 0, 0, 0), (2, 0, 0, 4)],
         ])
@@ -566,17 +625,17 @@ class SourceMapTestCase(unittest.TestCase):
         stream = StringIO()
 
         fragments = [
-            ('  ', None, None, None),
-            ('console', 1, 1, None),
-            ('.', 1, 8, None),
-            ('log', 1, 9, None),
-            ('(', 0, 0, None),
-            ('"hello world"', 1, 13, None),
-            (')', 0, 0, None),
-            (';', 0, 0, None),
+            ('  ', None, None, None, None),
+            ('console', 1, 1, None, None),
+            ('.', 1, 8, None, None),
+            ('log', 1, 9, None, None),
+            ('(', 0, 0, None, None),
+            ('"hello world"', 1, 13, None, None),
+            (')', 0, 0, None, None),
+            (';', 0, 0, None, None),
         ]
 
-        names, mapping = sourcemap.write(fragments, stream)
+        mapping, _, names = sourcemap.write(fragments, stream)
         self.assertEqual(stream.getvalue(), '  console.log("hello world");')
         self.assertEqual(names, [])
         self.assertEqual(mapping, [
@@ -587,17 +646,17 @@ class SourceMapTestCase(unittest.TestCase):
         stream = StringIO()
 
         fragments = [
-            ('  ', 1, 1, None),
-            ('console', 1, 3, None),
-            ('.', 1, 10, None),
-            ('log', 1, 11, None),
-            ('(', 0, 0, None),
-            ('"hello world"', 1, 15, None),
-            (')', 0, 0, None),
-            (';', 0, 0, None),
+            ('  ', 1, 1, None, None),
+            ('console', 1, 3, None, None),
+            ('.', 1, 10, None, None),
+            ('log', 1, 11, None, None),
+            ('(', 0, 0, None, None),
+            ('"hello world"', 1, 15, None, None),
+            (')', 0, 0, None, None),
+            (';', 0, 0, None, None),
         ]
 
-        names, mapping = sourcemap.write(fragments, stream)
+        mapping, _, names = sourcemap.write(fragments, stream)
         self.assertEqual(stream.getvalue(), '  console.log("hello world");')
         self.assertEqual(names, [])
         self.assertEqual(mapping, [
@@ -608,21 +667,21 @@ class SourceMapTestCase(unittest.TestCase):
         stream = StringIO()
 
         fragments = [
-            (' ', None, None, None),
-            (' ', None, None, None),
-            (' ', None, None, None),
-            ('x', 1, 1, None),
-            ('x', 1, 1, None),
-            ('x', 1, 1, None),
-            (' ', None, None, None),
-            (' ', None, None, None),
-            (' ', None, None, None),
-            ('y', 1, 3, None),
-            ('y', 1, 3, None),
-            ('y', 1, 3, None),
+            (' ', None, None, None, None),
+            (' ', None, None, None, None),
+            (' ', None, None, None, None),
+            ('x', 1, 1, None, None),
+            ('x', 1, 1, None, None),
+            ('x', 1, 1, None, None),
+            (' ', None, None, None, None),
+            (' ', None, None, None, None),
+            (' ', None, None, None, None),
+            ('y', 1, 3, None, None),
+            ('y', 1, 3, None, None),
+            ('y', 1, 3, None, None),
         ]
 
-        names, mapping = sourcemap.write(fragments, stream)
+        mapping, _, names = sourcemap.write(fragments, stream)
         self.assertEqual(stream.getvalue(), '   xxx   yyy')
         self.assertEqual(names, [])
         self.assertEqual(mapping, [[
@@ -641,29 +700,29 @@ class SourceMapTestCase(unittest.TestCase):
         # using: console log "hello world"
         stream = StringIO()
         fragments = [
-            ('(', None, None, None),
-            ('function', None, None, None),
-            ('(', None, None, None),
-            (') ', None, None, None),
-            ('{\n', None, None, None),
+            ('(', None, None, None, None),
+            ('function', None, None, None, None),
+            ('(', None, None, None, None),
+            (') ', None, None, None, None),
+            ('{\n', None, None, None, None),
             # may be another special case here, to normalize the _first_
             # fragment
-            ('  ', None, None, None),
-            ('console', 1, 1, None),
-            ('.', None, None, None),
-            ('log', 1, 9, None),
-            ('(', None, None, None),
-            ('"hello world"', 1, 13, None),
-            (')', None, None, None),
-            (';', None, None, None),
-            ('\n', None, None, None),
-            ('}', None, None, None),
-            (')', None, None, None),
-            ('(', 0, None, None),  # testing for alternative conds.
-            (')', None, 0, None),
-            (';', None, None, None),
+            ('  ', None, None, None, None),
+            ('console', 1, 1, None, None),
+            ('.', None, None, None, None),
+            ('log', 1, 9, None, None),
+            ('(', None, None, None, None),
+            ('"hello world"', 1, 13, None, None),
+            (')', None, None, None, None),
+            (';', None, None, None, None),
+            ('\n', None, None, None, None),
+            ('}', None, None, None, None),
+            (')', None, None, None, None),
+            ('(', 0, None, None, None),  # testing for alternative conds.
+            (')', None, 0, None, None),
+            (';', None, None, None, None),
         ]
-        names, mapping = sourcemap.write(fragments, stream, normalize=False)
+        mapping, _, names = sourcemap.write(fragments, stream, normalize=False)
         self.assertEqual(stream.getvalue(), textwrap.dedent("""
         (function() {
           console.log("hello world");
@@ -681,7 +740,7 @@ class SourceMapTestCase(unittest.TestCase):
         ]], mapping)
 
         # the normalized version should also have the correct offsets
-        names, mapping = sourcemap.write(fragments, stream)
+        mapping, _, names = sourcemap.write(fragments, stream)
         self.assertEqual([[], [
             (2, 0, 0, 0), (7,), (1, 0, 0, 8), (3,), (1, 0, 0, 4), (13,),
         ], []], mapping)
