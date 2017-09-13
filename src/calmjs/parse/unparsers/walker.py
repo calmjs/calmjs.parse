@@ -276,21 +276,27 @@ def walk(dispatcher, node, definition=None):
                 yield chunk_from_layout
                 prev_text = chunk_from_layout.text
 
-    last_chunk = None
-    layout_rule_chunks = []
+    # The top level walker implementation
+    def walk():
+        last_chunk = None
+        layout_rule_chunks = []
 
-    for chunk in _walk(dispatcher, node, definition):
-        if isinstance(chunk, LayoutChunk):
-            layout_rule_chunks.append(chunk)
-        else:
-            # process layout rule chunks that had been cached.
-            for layout in process_layouts(
-                    layout_rule_chunks, last_chunk, chunk):
-                yield layout
-            layout_rule_chunks[:] = []
-            yield chunk
-            last_chunk = chunk
+        for chunk in _walk(dispatcher, node, definition):
+            if isinstance(chunk, LayoutChunk):
+                layout_rule_chunks.append(chunk)
+            else:
+                # process layout rule chunks that had been cached.
+                for chunk_from_layout in process_layouts(
+                        layout_rule_chunks, last_chunk, chunk):
+                    yield chunk_from_layout
+                layout_rule_chunks[:] = []
+                yield chunk
+                last_chunk = chunk
 
-    # process the remaining layout rule chunks.
-    for layout in process_layouts(layout_rule_chunks, last_chunk, None):
-        yield layout
+        # process the remaining layout rule chunks.
+        for chunk_from_layout in process_layouts(
+                layout_rule_chunks, last_chunk, None):
+            yield chunk_from_layout
+
+    for chunk in walk():
+        yield chunk
