@@ -3,10 +3,13 @@
 Source map helpers
 """
 
-from __future__ import unicode_literals
+from __future__ import unicode_literals, absolute_import
+import json
 import logging
+from os.path import sep
 
 from calmjs.parse.vlq import encode_mappings
+from calmjs.parse.utils import normrelpath
 
 logger = logging.getLogger(__name__)
 
@@ -411,3 +414,66 @@ def encode_sourcemap(filename, mappings, sources, names=[]):
         "mappings": encode_mappings(mappings),
         "file": filename,
     }
+
+
+def write_sourcemap(
+        mappings, sources, names, output_stream, sourcemap_stream,
+        normalize_paths=True):
+    """
+    Write out the mappings, sources and names (generally produced by
+    the write function) to the provided sourcemap_stream, and write the
+    sourceMappingURL to the output_stream.
+
+    Arguments
+
+    mappings, sources, names
+        These should be values produced by write function from this
+        module.
+    output_stream
+        The stream object to write to; its 'write' method will be
+        invoked.
+    sourcemap_stream
+        If one is provided, the sourcemap will be written out to it.
+    normalize_paths
+        If set to True, absolute paths found will be turned into
+        relative paths with relation from the stream being written
+        to, and the path separator used will become a '/' (forward
+        slash).
+    """
+
+    def validate_path(path, name):
+        # yes, rather than equality, this token is imported from
+        # the sourcemap module is the identity of all invalid
+        # sources.
+        if path is INVALID_SOURCE:
+            # well, this was preemptively replaced, still need to
+            # report this fact as a warning.
+            logger.warning(
+                "%s is either undefine or invalid - it is replaced "
+                "with '%s'", name, INVALID_SOURCE)
+
+    output_js = getattr(output_stream, 'name', INVALID_SOURCE)
+    output_js_map = getattr(sourcemap_stream, 'name', INVALID_SOURCE)
+
+    validate_path(output_js, 'sourcemap.file')
+    validate_path(output_js_map, 'sourceMappingURL')
+    for idx, source in enumerate(sources):
+        validate_path(source, 'sourcemap.sources[%d]' % idx)
+
+    if normalize_paths:
+        # Caveat: macpath.pardir ignored.
+        sources = [
+            '/'.join(normrelpath(output_js_map, src).split(sep))
+            for src in sources
+        ]
+        output_js, output_js_map = (
+            '/'.join(normrelpath(output_js_map, output_js).split(sep)),
+            '/'.join(normrelpath(output_js, output_js_map).split(sep)),
+        )
+
+    sourcemap_stream.write(json.dumps(
+        encode_sourcemap(output_js, mappings, sources, names),
+        sort_keys=True, ensure_ascii=False,
+    ))
+    output_stream.writelines(
+        ['\n//# sourceMappingURL=', output_js_map, '\n'])

@@ -2,8 +2,12 @@
 from __future__ import unicode_literals
 
 import unittest
+import json
+import logging
 import textwrap
+from os.path import join
 from io import StringIO
+from tempfile import mktemp
 
 from calmjs.parse import sourcemap
 from calmjs.parse.testing.util import setup_logger
@@ -822,3 +826,125 @@ class SourceMapTestCase(unittest.TestCase):
             "mappings": "AAAA,MAAM,MAAM;",
             "file": "hello.min.js"
         })
+
+    def test_write_sourcemap_standard(self):
+        logs = setup_logger(self, sourcemap.logger, logging.WARNING)
+        root = mktemp()
+        output_stream = StringIO()
+        output_stream.name = join(root, 'srcfinal.js')
+        sourcemap_stream = StringIO()
+        sourcemap_stream.name = join(root, 'srcfinal.js.map')
+        mappings = [[(0, 0, 0, 0, 0)]]
+        sources = [join(root, 'src1.js'), join(root, 'src2.js')]
+        names = ['foo']
+
+        sourcemap.write_sourcemap(
+            mappings, sources, names, output_stream, sourcemap_stream)
+
+        self.assertEqual({
+            "version": 3,
+            "sources": ["src1.js", "src2.js"],
+            "names": ["foo"],
+            "mappings": "AAAAA",
+            "file": "srcfinal.js"
+        }, json.loads(sourcemap_stream.getvalue()))
+        self.assertEqual(
+            '\n//# sourceMappingURL=srcfinal.js.map\n',
+            output_stream.getvalue())
+
+        # ensure no warnings have been logged
+        self.assertEqual('', logs.getvalue())
+
+    def test_write_sourcemap_various_issues(self):
+        logs = setup_logger(self, sourcemap.logger, logging.WARNING)
+        root = mktemp()
+        output_stream = StringIO()
+        output_stream.name = join(root, 'build', 'srcfinal.js')
+        sourcemap_stream = StringIO()
+        sourcemap_stream.name = join(root, 'maps', 'srcfinal.js.map')
+        mappings = [[(0, 0, 0, 0, 0)]]
+        sources = [
+            join(root, 'src', 'src1.js'), 'hmm/src2.js',
+            sourcemap.INVALID_SOURCE]
+        names = ['foo']
+
+        sourcemap.write_sourcemap(
+            mappings, sources, names, output_stream, sourcemap_stream)
+
+        self.assertEqual({
+            "version": 3,
+            "sources": ["../src/src1.js", "hmm/src2.js", 'about:invalid'],
+            "names": ["foo"],
+            "mappings": "AAAAA",
+            "file": "../build/srcfinal.js",
+        }, json.loads(sourcemap_stream.getvalue()))
+        self.assertEqual(
+            '\n//# sourceMappingURL=../maps/srcfinal.js.map\n',
+            output_stream.getvalue())
+
+        # warning about the about:invalid token is applied.
+        self.assertIn(
+            "sourcemap.sources[2] is either undefine or invalid - "
+            "it is replaced with 'about:invalid'", logs.getvalue())
+
+    def test_write_sourcemap_no_paths(self):
+        logs = setup_logger(self, sourcemap.logger, logging.WARNING)
+        output_stream = StringIO()
+        sourcemap_stream = StringIO()
+        mappings = [[(0, 0, 0, 0, 0)]]
+        sources = [sourcemap.INVALID_SOURCE]
+        names = ['foo']
+
+        sourcemap.write_sourcemap(
+            mappings, sources, names, output_stream, sourcemap_stream)
+
+        self.assertEqual({
+            "version": 3,
+            "sources": ['about:invalid'],
+            "names": ["foo"],
+            "mappings": "AAAAA",
+            "file": "about:invalid",
+        }, json.loads(sourcemap_stream.getvalue()))
+        self.assertEqual(
+            '\n//# sourceMappingURL=about:invalid\n',
+            output_stream.getvalue())
+
+        # warnings about the about:invalid.
+        self.assertIn(
+            "sourcemap.file is either undefine or invalid - "
+            "it is replaced with 'about:invalid'", logs.getvalue())
+        self.assertIn(
+            "sourcemap.sources[0] is either undefine or invalid - "
+            "it is replaced with 'about:invalid'", logs.getvalue())
+        self.assertIn(
+            "sourceMappingURL is either undefine or invalid - "
+            "it is replaced with 'about:invalid'", logs.getvalue())
+
+    def test_write_sourcemap_no_normalize(self):
+        logs = setup_logger(self, sourcemap.logger, logging.WARNING)
+        root = mktemp()
+        output_stream = StringIO()
+        output_stream.name = join(root, 'srcfinal.js')
+        sourcemap_stream = StringIO()
+        sourcemap_stream.name = join(root, 'srcfinal.js.map')
+        mappings = [[(0, 0, 0, 0, 0)]]
+        sources = [join(root, 'src1.js'), join(root, 'src2.js')]
+        names = ['foo']
+
+        sourcemap.write_sourcemap(
+            mappings, sources, names, output_stream, sourcemap_stream,
+            normalize_paths=False)
+
+        self.assertEqual({
+            "version": 3,
+            "sources": sources,
+            "names": ["foo"],
+            "mappings": "AAAAA",
+            "file": output_stream.name,
+        }, json.loads(sourcemap_stream.getvalue()))
+        self.assertEqual(
+            '\n//# sourceMappingURL=%s\n' % sourcemap_stream.name,
+            output_stream.getvalue())
+
+        # ensure no warnings have been logged
+        self.assertEqual('', logs.getvalue())
