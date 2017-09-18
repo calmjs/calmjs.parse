@@ -98,20 +98,33 @@ class Bookkeeper(object):
         self._prev[attr] = self._curr[attr] = 0
 
 
+class Book(object):
+    """
+    For storing calculated offsets, if required.
+    """
+
+    def __init__(self, bookkeeper):
+        # length of previously written chunk.text.
+        self.written_len = 0
+        # length of original text for previously written chunk.text
+        self.original_len = 0
+        self.keeper = bookkeeper
+
+
 def default_book():
-    book = Bookkeeper()
+    bk = Bookkeeper()
     # index of the current file can be implemented/tracked with the
     # Names class.
 
     # position of the current line that is being written; 0-indexed as
     # there are no existing requirements, and that it maps directly to
     # the length of the string written (usually).
-    book.sink_column = 0
+    bk.sink_column = 0
     # since the source line/col positions have been implemented as
     # 1-indexed values, so the offset is pre-applied like so.
-    book.source_line = 1
-    book.source_column = 1
-    return book
+    bk.source_line = 1
+    bk.source_column = 1
+    return Book(bk)
 
 
 def normalize_mapping_line(mapping_line, previous_source_column=0):
@@ -193,7 +206,7 @@ def normalize_mapping_line(mapping_line, previous_source_column=0):
 
 def write(
         stream_fragments, stream, normalize=True,
-        book=None, sources=None, names=None):
+        book=None, sources=None, names=None, mappings=None):
     """
     Given an iterable of stream fragments, write it to the stream object
     by using its write method.  Returns a 3-tuple, where the first
@@ -212,9 +225,10 @@ def write(
         the size of the generated source map at the expense of slightly
         lower quality.
     book
-        A Bookkeeper instance; if none is provided an instance will be
-        created for internal use.  The Bookkeeper instance is used for
-        tracking the positions of rows and columns of the input stream.
+        A Book instance; if none is provided an instance will be created
+        from the default_book constructor.  The Bookkeeper instance is
+        used for tracking the positions of rows and columns of the input
+        stream.
     sources
         a Names instance for tracking sources; if None is provided, an
         instance will be created for internal use.
@@ -237,9 +251,13 @@ def write(
       also.
 
     If a number of stream_fragments are to be provided, common instances
-    of Bookkeeper (for book) and Names (for sources and names) should be
-    provided if they are not chained together.
+    of Book (constructed via default_book) and Names (for sources and
+    names) should be provided if they are not chained together.
     """
+
+    def push_line():
+        mappings.append([])
+        book.keeper._sink_column = 0
 
     if names is None:
         names = Names()
@@ -250,18 +268,11 @@ def write(
     if book is None:
         book = default_book()
 
-    # declare state variables and local helpers
-    mappings = []
-
-    def push_line():
-        # should normalize the current line if possible.
-        mappings.append([])
-        book._sink_column = 0
-
-    # finalize initial states; the most recent list (mappings[-1]) is
-    # the current line
-    push_line()
-    p_line_len = p_source_offset = 0
+    if not isinstance(mappings, list):
+        mappings = []
+        # finalize initial states; the most recent list (mappings[-1])
+        # is the current line
+        push_line()
 
     for chunk, lineno, colno, original_name, source in stream_fragments:
         # note that lineno/colno are assumed to be both provided or none
@@ -281,7 +292,7 @@ def write(
             # unmapped indentation
 
             if lineno is None or colno is None:
-                mappings[-1].append((book.sink_column,))
+                mappings[-1].append((book.keeper.sink_column,))
             else:
                 name_id = names.update(original_name)
                 # this is a bit of a trick: an unspecified value (None)
@@ -293,32 +304,41 @@ def write(
                 if lineno:
                     # a new lineno is provided, apply it to the book and
                     # use the result as the written value.
-                    book.source_line = lineno
-                    source_line = book.source_line
+                    book.keeper.source_line = lineno
+                    source_line = book.keeper.source_line
                 else:
                     # no change in offset, do not calculate and assume
                     # the value to be written is unchanged.
                     source_line = 0
 
-                # if the provided colno is to be implied, calculate it
+                # if the provided colno is to be inferred, calculate it
                 # based on the previous line length plus the previous
                 # real source column value, otherwise standard value
                 # for tracking.
+
+                # the reason for using the previous lengths is simply
+                # due to how the bookkeeper class does the calculation
+                # on-demand, and that the starting column for the
+                # _current_ text fragment can only be calculated using
+                # what was written previously, hence the original length
+                # value being added if the current colno is to be
+                # inferred.
                 if colno:
-                    book.source_column = colno
+                    book.keeper.source_column = colno
                 else:
-                    book.source_column = book._source_column + p_source_offset
+                    book.keeper.source_column = (
+                        book.keeper._source_column + book.original_len)
 
                 if original_name is not None:
                     mappings[-1].append((
-                        book.sink_column, source_id,
-                        source_line, book.source_column,
+                        book.keeper.sink_column, source_id,
+                        source_line, book.keeper.source_column,
                         name_id
                     ))
                 else:
                     mappings[-1].append((
-                        book.sink_column, source_id,
-                        source_line, book.source_column
+                        book.keeper.sink_column, source_id,
+                        source_line, book.keeper.source_column
                     ))
 
             # doing this last to update the position for the next line
@@ -334,7 +354,7 @@ def write(
                 colno = (
                     colno if colno in (0, None) else
                     colno + len(line.rstrip()))
-                p_source_offset = p_line_len = 0
+                book.original_len = book.written_len = 0
                 push_line()
 
                 if line is not lines[-1]:
@@ -349,10 +369,11 @@ def write(
                         'off into a separate fragment.'
                     )
             else:
-                p_line_len = len(line)
-                p_source_offset = (
-                    len(original_name) if original_name else p_line_len)
-                book.sink_column = book._sink_column + p_line_len
+                book.written_len = len(line)
+                book.original_len = (
+                    len(original_name) if original_name else book.written_len)
+                book.keeper.sink_column = (
+                    book.keeper._sink_column + book.written_len)
 
     # normalize everything
     if normalize:

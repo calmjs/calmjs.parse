@@ -122,15 +122,15 @@ class BookkeeperTestCase(unittest.TestCase):
 
     def test_default_book(self):
         book = sourcemap.default_book()
-        self.assertEqual(book.sink_column, 0)
-        self.assertEqual(book.source_line, 0)
-        self.assertEqual(book.source_column, 0)
-        book.sink_sink_column = 0
-        book.source_line = 1
-        book.source_column = 1
-        self.assertEqual(book.sink_column, 0)
-        self.assertEqual(book.source_line, 0)
-        self.assertEqual(book.source_column, 0)
+        self.assertEqual(book.keeper.sink_column, 0)
+        self.assertEqual(book.keeper.source_line, 0)
+        self.assertEqual(book.keeper.source_column, 0)
+        book.keeper.sink_sink_column = 0
+        book.keeper.source_line = 1
+        book.keeper.source_column = 1
+        self.assertEqual(book.keeper.sink_column, 0)
+        self.assertEqual(book.keeper.source_line, 0)
+        self.assertEqual(book.keeper.source_column, 0)
 
 
 class NormalizeRunningTestCase(unittest.TestCase):
