@@ -28,6 +28,12 @@ Changelog
 - The sourcemap write function had its argument order modified to better
   support the sourcepath tracking feature of input Nodes.  Its return
   value also now match the ordering of the encode_sourcemap function.
+- The chunk types in ruletypes have been renamed, and also a new type
+  called StreamFragment is introduced, so that multiple sources output
+  to a single stream can be properly tracked by the source mapping
+  processes.
+- Also provide an even higher level function for usage with streams
+  through the ``calmjs.parse.io`` module.
 
 0.10.1 - 2017-08-26
 -------------------
