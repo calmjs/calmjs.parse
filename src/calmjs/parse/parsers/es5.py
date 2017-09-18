@@ -24,6 +24,8 @@
 
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
+from functools import partial
+
 import ply.yacc
 
 from calmjs.parse.exceptions import ECMASyntaxError
@@ -34,6 +36,7 @@ from calmjs.parse.walkers import ReprWalker
 from calmjs.parse.utils import generate_tab_names
 from calmjs.parse.utils import format_lex_token
 from calmjs.parse.utils import str
+from calmjs.parse.io import read as io_read
 
 asttypes = AstTypesFactory(pretty_print, ReprWalker())
 
@@ -49,6 +52,9 @@ class Parser(object):
     a relational expression with the `in` operator in a `for` statement.
 
     '*nobf' stands for 'no brace or function'
+
+    This is a stateful, low level parser.  Please use the parse function
+    instead for general, higher level usage.
     """
 
     def __init__(self, lex_optimize=True, lextab=lextab,
@@ -1479,3 +1485,6 @@ def parse(source):
 
     parser = Parser()
     return parser.parse(source)
+
+
+read = partial(io_read, parse)

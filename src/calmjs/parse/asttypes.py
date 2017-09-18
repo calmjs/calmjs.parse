@@ -35,6 +35,7 @@ from calmjs.parse.utils import str
 
 class Node(object):
     lexpos = lineno = colno = None
+    sourcepath = None
 
     def __init__(self, children=None):
         self._children_list = [] if children is None else children

@@ -3,12 +3,18 @@
 Source map helpers
 """
 
-from __future__ import unicode_literals
+from __future__ import unicode_literals, absolute_import
+import json
 import logging
+from os.path import sep
 
 from calmjs.parse.vlq import encode_mappings
+from calmjs.parse.utils import normrelpath
 
 logger = logging.getLogger(__name__)
+
+# for NotImplemented source values
+INVALID_SOURCE = 'about:invalid'
 
 
 class Names(object):
@@ -92,20 +98,33 @@ class Bookkeeper(object):
         self._prev[attr] = self._curr[attr] = 0
 
 
+class Book(object):
+    """
+    For storing calculated offsets, if required.
+    """
+
+    def __init__(self, bookkeeper):
+        # length of previously written chunk.text.
+        self.written_len = 0
+        # length of original text for previously written chunk.text
+        self.original_len = 0
+        self.keeper = bookkeeper
+
+
 def default_book():
-    book = Bookkeeper()
+    bk = Bookkeeper()
     # index of the current file can be implemented/tracked with the
     # Names class.
 
     # position of the current line that is being written; 0-indexed as
     # there are no existing requirements, and that it maps directly to
     # the length of the string written (usually).
-    book.sink_column = 0
+    bk.sink_column = 0
     # since the source line/col positions have been implemented as
     # 1-indexed values, so the offset is pre-applied like so.
-    book.source_line = 1
-    book.source_column = 1
-    return book
+    bk.source_line = 1
+    bk.source_column = 1
+    return Book(bk)
 
 
 def normalize_mapping_line(mapping_line, previous_source_column=0):
@@ -185,28 +204,60 @@ def normalize_mapping_line(mapping_line, previous_source_column=0):
     return result, record[3]
 
 
-def write(source, stream, names=None, book=None, normalize=True):
+def normalize_mappings(mappings, column=0):
+    result = []
+    for ml in mappings:
+        new_ml, column = normalize_mapping_line(ml, column)
+        result.append(new_ml)
+    return result
+
+
+def write(
+        stream_fragments, stream, normalize=True,
+        book=None, sources=None, names=None, mappings=None):
     """
-    Given a source iterable, write it to the stream object by using its
-    write method.  Returns a 2-tuple, where the first element is the
-    mapping, second element is the list of original string references.
+    Given an iterable of stream fragments, write it to the stream object
+    by using its write method.  Returns a 3-tuple, where the first
+    element is the mapping, second element is the list of sources and
+    the third being the original names referenced by the given fragment.
 
     Arguments:
 
-    source
-        the source iterable
+    stream_fragments
+        an iterable that only contains StreamFragments
     stream
         an io.IOBase compatible stream object
-    names
-        an Names instance; if none is provided an instance will be
-        created for internal use
+    normalize
+        the default True setting will result in the mappings that were
+        returned be normalized to the minimum form.  This will reduce
+        the size of the generated source map at the expense of slightly
+        lower quality.
+
+        Also, if any of the subsequent arguments are provided (for
+        instance, for the multiple calls to this function), the usage of
+        the normalize flag is currently NOT supported.
+
+        If multiple sets of outputs are to be produced, the recommended
+        method is to chain all the stream fragments together before
+        passing in.
+
+    Advanced usage arguments
+
     book
-        A Bookkeeper instance; if none is provided an instance will be
-        created for internal use
+        A Book instance; if none is provided an instance will be created
+        from the default_book constructor.  The Bookkeeper instance is
+        used for tracking the positions of rows and columns of the input
+        stream.
+    sources
+        a Names instance for tracking sources; if None is provided, an
+        instance will be created for internal use.
+    names
+        a Names instance for tracking names; if None is provided, an
+        instance will be created for internal use.
+    mappings
+        a previously produced mappings.
 
-    The source iterable is of this format
-
-    A fragment tuple must contain the following
+    A stream fragment tuple must contain the following
 
     - The string to write to the stream
     - Original starting line of the string; None if not present
@@ -214,52 +265,43 @@ def write(source, stream, names=None, book=None, normalize=True):
     - Original string that this fragment represents (i.e. for the case
       where this string fragment was an identifier but got mangled into
       an alternative form); use None if this was not the case.
+    - The source of the fragment.  If the first fragment is unspecified,
+      the INVALID_SOURCE url will be used (i.e. about:invalid).  After
+      that, a None value will be treated as the implicit value, and if
+      NotImplemented is encountered, the INVALID_SOURCE url will be used
+      also.
 
-    If multiple files are to be tracked, it is recommended to provide a
-    shared Names instance.
+    If a number of stream_fragments are to be provided, common instances
+    of Book (constructed via default_book) and Names (for sources and
+    names) should be provided if they are not chained together.
     """
 
-    # There was consideration to include a filename index argument, but
-    # given that the line and column are *relative*, i.e. they are
-    # global values that exists for the duration of the interpretation
-    # of the mapping, and so it is better to have this function focus on
-    # one file at a time.  A separate function can be provided to
-    # generate a new tuple to replace the first one, such that it will
-    # set the line/column numbers back to zero based on what is
-    # available in this file, plus incrementing the index for the source
-    # file itself.
+    def push_line():
+        mappings.append([])
+        book.keeper._sink_column = 0
 
     if names is None:
         names = Names()
 
+    if sources is None:
+        sources = Names()
+
     if book is None:
         book = default_book()
 
-    # declare state variables and local helpers
-    mappings = []
+    if not isinstance(mappings, list):
+        # note that
+        mappings = []
+        # finalize initial states; the most recent list (mappings[-1])
+        # is the current line
+        push_line()
 
-    def push_line():
-        # should normalize the current line if possible.
-        mappings.append([])
-        book._sink_column = 0
-
-    # finalize initial states; the most recent list (mappings[-1]) is
-    # the current line
-    push_line()
-    # if support for multiple files are to be provided by this function,
-    # this will be tracked using Names instead; setting the filename
-    # index to 0 as explained previously.
-    filename = 0
-    p_line_len = 0
-
-    for chunk, lineno, colno, original_name in source:
+    for chunk, lineno, colno, original_name, source in stream_fragments:
         # note that lineno/colno are assumed to be both provided or none
         # provided.
         lines = chunk.splitlines(True)
         for line in lines:
             stream.write(line)
-
-            name_id = names.update(original_name)
 
             # Two separate checks are done.  As per specification, if
             # either lineno or colno are unspecified, it is assumed that
@@ -272,37 +314,53 @@ def write(source, stream, names=None, book=None, normalize=True):
             # unmapped indentation
 
             if lineno is None or colno is None:
-                mappings[-1].append((book.sink_column,))
+                mappings[-1].append((book.keeper.sink_column,))
             else:
+                name_id = names.update(original_name)
+                # this is a bit of a trick: an unspecified value (None)
+                # will simply be treated as the implied value, hence 0.
+                # However, a NotImplemented will be recorded and be
+                # convereted to the invalid url at the end.
+                source_id = sources.update(source) or 0
+
                 if lineno:
                     # a new lineno is provided, apply it to the book and
                     # use the result as the written value.
-                    book.source_line = lineno
-                    source_line = book.source_line
+                    book.keeper.source_line = lineno
+                    source_line = book.keeper.source_line
                 else:
                     # no change in offset, do not calculate and assume
                     # the value to be written is unchanged.
                     source_line = 0
 
-                # if the provided colno is to be implied, calculate it
+                # if the provided colno is to be inferred, calculate it
                 # based on the previous line length plus the previous
                 # real source column value, otherwise standard value
                 # for tracking.
+
+                # the reason for using the previous lengths is simply
+                # due to how the bookkeeper class does the calculation
+                # on-demand, and that the starting column for the
+                # _current_ text fragment can only be calculated using
+                # what was written previously, hence the original length
+                # value being added if the current colno is to be
+                # inferred.
                 if colno:
-                    book.source_column = colno
+                    book.keeper.source_column = colno
                 else:
-                    book.source_column = book._source_column + p_line_len
+                    book.keeper.source_column = (
+                        book.keeper._source_column + book.original_len)
 
                 if original_name is not None:
                     mappings[-1].append((
-                        book.sink_column, filename,
-                        source_line, book.source_column,
+                        book.keeper.sink_column, source_id,
+                        source_line, book.keeper.source_column,
                         name_id
                     ))
                 else:
                     mappings[-1].append((
-                        book.sink_column, filename,
-                        source_line, book.source_column
+                        book.keeper.sink_column, source_id,
+                        source_line, book.keeper.source_column
                     ))
 
             # doing this last to update the position for the next line
@@ -318,7 +376,7 @@ def write(source, stream, names=None, book=None, normalize=True):
                 colno = (
                     colno if colno in (0, None) else
                     colno + len(line.rstrip()))
-                p_line_len = 0
+                book.original_len = book.written_len = 0
                 push_line()
 
                 if line is not lines[-1]:
@@ -328,23 +386,32 @@ def write(source, stream, names=None, book=None, normalize=True):
                         'in provided text fragment.', len(mappings)
                     )
                     logger.info(
-                        'text in source fragments should not have trailing '
+                        'text in stream fragments should not have trailing '
                         'characters after a new line, they should be split '
                         'off into a separate fragment.'
                     )
             else:
-                p_line_len = len(line)
-                book.sink_column = book._sink_column + p_line_len
+                book.written_len = len(line)
+                book.original_len = (
+                    len(original_name) if original_name else book.written_len)
+                book.keeper.sink_column = (
+                    book.keeper._sink_column + book.written_len)
 
     # normalize everything
     if normalize:
-        column = 0
-        result = []
-        for ml in mappings:
-            new_ml, column = normalize_mapping_line(ml, column)
-            result.append(new_ml)
-        mappings = result
-    return list(names), mappings
+        # if this _ever_ supports the multiple usage using existence
+        # instances of names and book and mappings, it needs to deal
+        # with NOT normalizing the existing mappings and somehow reuse
+        # the previously stored value, probably in the book.  It is
+        # most certainly a bad idea to support that use case while also
+        # supporting the default normalize flag due to the complex
+        # tracking of all the existing values...
+        mappings = normalize_mappings(mappings)
+
+    list_sources = [
+        INVALID_SOURCE if s == NotImplemented else s for s in sources
+    ] or [INVALID_SOURCE]
+    return mappings, list_sources, list(names)
 
 
 def encode_sourcemap(filename, mappings, sources, names=[]):
@@ -382,8 +449,8 @@ def encode_sourcemap(filename, mappings, sources, names=[]):
     >>> program = es5(u"var i = 'hello';")
     >>> stream = StringIO()
     >>> printer = pretty_printer()
-    >>> names, rawmap = write(printer(program), stream)
-    >>> sourcemap = encode_sourcemap('demo.min.js', rawmap, ['demo.js'], names)
+    >>> sourcemap = encode_sourcemap(
+    ...     'demo.min.js', *write(printer(program), stream))
     """
 
     return {
@@ -393,3 +460,75 @@ def encode_sourcemap(filename, mappings, sources, names=[]):
         "mappings": encode_mappings(mappings),
         "file": filename,
     }
+
+
+def write_sourcemap(
+        mappings, sources, names, output_stream, sourcemap_stream,
+        normalize_paths=True, source_mapping_url=NotImplemented):
+    """
+    Write out the mappings, sources and names (generally produced by
+    the write function) to the provided sourcemap_stream, and write the
+    sourceMappingURL to the output_stream.
+
+    Arguments
+
+    mappings, sources, names
+        These should be values produced by write function from this
+        module.
+    output_stream
+        The stream object to write to; its 'write' method will be
+        invoked.
+    sourcemap_stream
+        If one is provided, the sourcemap will be written out to it.
+    normalize_paths
+        If set to True, absolute paths found will be turned into
+        relative paths with relation from the stream being written
+        to, and the path separator used will become a '/' (forward
+        slash).
+    source_mapping_url
+        If an explicit value is set, this will be written as the
+        sourceMappingURL into the output_stream.  Note that the path
+        normalization will NOT use this value, so if paths have been
+        manually provided, ensure that normalize_paths is set to False
+        if the behavior is unwanted.
+    """
+
+    def validate_path(path, name):
+        # yes, rather than equality, this token is imported from
+        # the sourcemap module is the identity of all invalid
+        # sources.
+        if path is INVALID_SOURCE:
+            # well, this was preemptively replaced, still need to
+            # report this fact as a warning.
+            logger.warning(
+                "%s is either undefine or invalid - it is replaced "
+                "with '%s'", name, INVALID_SOURCE)
+
+    output_js = getattr(output_stream, 'name', INVALID_SOURCE)
+    output_js_map = getattr(sourcemap_stream, 'name', INVALID_SOURCE)
+
+    validate_path(output_js, 'sourcemap.file')
+    validate_path(output_js_map, 'sourceMappingURL')
+    for idx, source in enumerate(sources):
+        validate_path(source, 'sourcemap.sources[%d]' % idx)
+
+    if normalize_paths:
+        # Caveat: macpath.pardir ignored.
+        sources = [
+            '/'.join(normrelpath(output_js_map, src).split(sep))
+            for src in sources
+        ]
+        output_js, output_js_map = (
+            '/'.join(normrelpath(output_js_map, output_js).split(sep)),
+            '/'.join(normrelpath(output_js, output_js_map).split(sep)),
+        )
+
+    sourcemap_stream.write(json.dumps(
+        encode_sourcemap(output_js, mappings, sources, names),
+        sort_keys=True, ensure_ascii=False,
+    ))
+    if source_mapping_url is not None:
+        output_stream.writelines(['\n//# sourceMappingURL=', (
+            output_js_map if source_mapping_url is NotImplemented
+            else source_mapping_url
+        ), '\n'])

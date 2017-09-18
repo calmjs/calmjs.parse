@@ -20,7 +20,7 @@ from calmjs.parse.asttypes import (
     While,
 )
 from calmjs.parse.ruletypes import (
-    SourceChunk,
+    TextChunk,
 
     Space,
     OptionalSpace,
@@ -51,7 +51,7 @@ def token_handler_str_default(token, dispatcher, node, subnode):
         _, lineno, colno = node.getpos(subnode, token.pos)
     else:
         lineno, colno = None, None
-    yield SourceChunk(subnode, lineno, colno, None)
+    yield TextChunk(subnode, lineno, colno, None)
 
 
 def token_handler_unobfuscate(token, dispatcher, node, subnode):
@@ -71,24 +71,24 @@ def token_handler_unobfuscate(token, dispatcher, node, subnode):
     else:
         lineno, colno = None, None
 
-    yield SourceChunk(subnode, lineno, colno, original)
+    yield TextChunk(subnode, lineno, colno, original)
 
 
 def layout_handler_space_imply(dispatcher, node, before, after, prev):
     # default layout handler where the space will be rendered, with the
     # line/column set to 0 for sourcemap to generate the implicit value.
-    yield SourceChunk(' ', 0, 0, None)
+    yield TextChunk(' ', 0, 0, None)
 
 
 def layout_handler_space_drop(dispatcher, node, before, after, prev):
     # default layout handler where the space will be rendered, with the
     # line/column set to None for sourcemap to terminate the position.
-    yield SourceChunk(' ', None, None, None)
+    yield TextChunk(' ', None, None, None)
 
 
 def layout_handler_newline_simple(dispatcher, node, before, after, prev):
     # simply render the newline with an implicit sourcemap line/col
-    yield SourceChunk(dispatcher.newline_str, 0, 0, None)
+    yield TextChunk(dispatcher.newline_str, 0, 0, None)
 
 
 def layout_handler_newline_optional_pretty(
@@ -112,14 +112,14 @@ def layout_handler_newline_optional_pretty(
         return
     # if no new lines in any of the checked characters
     if not newline_strs & {lc(before), fc(after), lc(prev)}:
-        yield SourceChunk(dispatcher.newline_str, 0, 0, None)
+        yield TextChunk(dispatcher.newline_str, 0, 0, None)
 
 
 def layout_handler_space_optional_pretty(
         dispatcher, node, before, after, prev):
     if isinstance(node, (If, For, ForIn, While)):
         if after not in optional_rhs_space_tokens:
-            yield SourceChunk(' ', 0, 0, None)
+            yield TextChunk(' ', 0, 0, None)
             return
 
     if before is None or after is None:
@@ -128,7 +128,7 @@ def layout_handler_space_optional_pretty(
     s = before[-1:] + after[:1]
 
     if required_space.match(s) or after in assignment_tokens:
-        yield SourceChunk(' ', 0, 0, None)
+        yield TextChunk(' ', 0, 0, None)
         return
 
 
@@ -138,7 +138,7 @@ def layout_handler_space_minimum(dispatcher, node, before, after, prev):
         return
     s = before[-1:] + after[:1]
     if required_space.match(s):
-        yield SourceChunk(' ', 0, 0, None)
+        yield TextChunk(' ', 0, 0, None)
 
 
 def default_rules():

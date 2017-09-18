@@ -269,16 +269,16 @@ results into a sourcemap file.  An example:
     >>> from calmjs.parse.sourcemap import encode_sourcemap, write
     >>> stream_p = StringIO()
     >>> print_p = pretty_printer()
-    >>> names_p, rawmap_p = write(print_p(program), stream_p)
+    >>> rawmap_p, _, names_p = write(print_p(program), stream_p)
     >>> sourcemap_p = encode_sourcemap(
-    ...     'demo.min.js', rawmap_p, ['demo.js'], names_p)
+    ...     'demo.min.js', rawmap_p, ['custom_name.js'], names_p)
     >>> print(json.dumps(sourcemap_p, indent=2, sort_keys=True))
     {
       "file": "demo.min.js",
       "mappings": "AAEA;IACI;IACA;AACJ;AACA;",
       "names": [],
       "sources": [
-        "demo.js"
+        "custom_name.js"
       ],
       "version": 3
     }
@@ -287,15 +287,25 @@ results into a sourcemap file.  An example:
     ...
 
 Likewise, this works similarly for the minify printer, which provides
+the ability to create out a minified output with unneeded whitespaces
+removed and identifiers obfuscated with the shortest possible value.
+
+Note that in previous example, the second return value in the write
+method was not used and that a custom value was passed in.  This is
+simply due to how the ``program`` was generated from a string and thus
+the ``sourcepath`` attribute was not assigned with a usable value for
+populating the ``"sources"`` list in the resulting source map.  For the
+following example, assign a value to that attribute on the program
+directly.
 
 .. code:: python
 
     >>> from calmjs.parse.unparsers.es5 import minify_printer
+    >>> program.sourcepath = 'demo.js'  # say this was opened there
     >>> stream_m = StringIO()
     >>> print_m = minify_printer(obfuscate=True, obfuscate_globals=True)
-    >>> names_m, rawmap_m = write(print_m(program), stream_m)
     >>> sourcemap_m = encode_sourcemap(
-    ...     'demo.min.js', rawmap_m, ['demo.js'], names_m)
+    ...     'demo.min.js', *write(print_m(program), stream_m))
     >>> print(json.dumps(sourcemap_m, indent=2, sort_keys=True))
     {
       "file": "demo.min.js",
@@ -312,6 +322,64 @@ Likewise, this works similarly for the minify printer, which provides
     }
     >>> print(stream_m.getvalue())
     var a=function(b){var a="hello "+b;return a;};console.log(a('world'));
+
+A high level API for working with named streams (i.e. opened files, or
+stream objects like ``io.StringIO`` assigned with a name attribute) is
+provided by the ``read`` and ``write`` functions from ``io`` module.
+The following example shows how to use the function to read from a
+stream and write out the relevant items back out to the write only
+streams:
+
+.. code:: python
+
+    >>> from calmjs.parse import io
+    >>> h4_program_src = open('/tmp/html4.js')
+    >>> h4_program_min = open('/tmp/html4.min.js', 'w+')
+    >>> h4_program_map = open('/tmp/html4.min.js.map', 'w+')
+    >>> h4_program = io.read(es5, h4_program_src)
+    >>> print(h4_program)
+    var bold = function(s) {
+      return '<b>' + s + '</b>';
+    };
+    var italics = function(s) {
+      return '<i>' + s + '</i>';
+    };
+    >>> io.write(print_m, h4_program, h4_program_min, h4_program_map)
+    >>> pos = h4_program_map.seek(0)
+    >>> print(h4_program_map.read())
+    {"file": "html4.min.js", "mappings": ..., "version": 3}
+    >>> pos = h4_program_min.seek(0)
+    >>> print(h4_program_min.read())
+    var b=function(a){return'<b>'+a+'</b>';};var a=function(a){...};
+    //# sourceMappingURL=html4.min.js.map
+
+For a simple concatenation of multiple sources into one file, the
+following may be done:
+
+.. code:: python
+
+    >>> files = [open('/tmp/html4.js'), open('/tmp/legacy.js')]
+    >>> combined = open('/tmp/combined.js', 'w+')
+    >>> io.write(print_p, (io.read(es5, f) for f in files), combined)
+    >>> pos = combined.seek(0)
+    >>> print(combined.read())
+    var bold = function(s) {
+        return '<b>' + s + '</b>';
+    };
+    var italics = function(s) {
+        return '<i>' + s + '</i>';
+    };
+    var marquee = function(s) {
+        return '<marquee>' + s + '</marquee>';
+    };
+    var blink = function(s) {
+        return '<blink>' + s + '</blink>';
+    };
+
+Naturally, if a minifying printer with globals being obfuscated, the
+resulting script will have the earlier obfuscated global names mangled
+by later ones, as the unparsing is done separately by the ``io.write``
+function.
 
 
 Advanced usage

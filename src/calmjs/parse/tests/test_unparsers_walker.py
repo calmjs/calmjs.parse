@@ -60,6 +60,10 @@ def setup_handlers(testcase):
     )
 
 
+def identity(f):
+    return f
+
+
 class DispatcherWalkTestCase(unittest.TestCase):
 
     def setUp(self):
@@ -105,7 +109,7 @@ class DispatcherWalkTestCase(unittest.TestCase):
         original = 'var a = 1;'
         tree = es5(original)
         recreated = ''.join(c.text for c in walk(
-            self.dispatcher, tree, self.dispatcher[tree]))
+            self.dispatcher, tree, self.dispatcher[tree], identity, identity))
         # see that this at least works as expected
         self.assertEqual(original, recreated)
         # ensure that the 3 spaces have been handled as expected
@@ -122,7 +126,7 @@ class DispatcherWalkTestCase(unittest.TestCase):
         self.replacement['$'] = 'jq'
         tree = es5('var w = $(window).width();')
         recreated = ''.join(c.text for c in walk(
-            self.dispatcher, tree, self.dispatcher[tree]))
+            self.dispatcher, tree, self.dispatcher[tree], identity, identity))
         self.assertEqual('var w = jq(window).width();', recreated)
 
 

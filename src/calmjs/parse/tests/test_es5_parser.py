@@ -26,6 +26,7 @@ from __future__ import unicode_literals
 
 import textwrap
 import unittest
+from io import StringIO
 
 from calmjs.parse import asttypes
 from calmjs.parse import es5
@@ -33,6 +34,7 @@ from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.exceptions import ECMARegexSyntaxError
 from calmjs.parse.parsers.es5 import Parser
 from calmjs.parse.parsers.es5 import parse
+from calmjs.parse.parsers.es5 import read
 from calmjs.parse.unparsers.es5 import pretty_print
 from calmjs.parse.walkers import ReprWalker
 from calmjs.parse.walkers import walk
@@ -162,6 +164,16 @@ class ParserTestCase(unittest.TestCase):
         };
         '''
         self.assertTrue(bool(Parser().parse(text).children()))
+
+    def test_read(self):
+        stream = StringIO('var foo = "bar";')
+        node = read(stream)
+        self.assertTrue(isinstance(node, asttypes.ES5Program))
+        self.assertIsNone(node.sourcepath)
+
+        stream.name = 'somefile.js'
+        node = read(stream)
+        self.assertEqual(node.sourcepath, 'somefile.js')
 
 
 repr_walker = ReprWalker()

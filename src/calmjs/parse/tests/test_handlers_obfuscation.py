@@ -444,6 +444,24 @@ class ObfuscatorTestCase(unittest.TestCase):
             ''.join(c.text for c in obfuscator_unparser(tree)),
         )
 
+    def test_multiple_reuse(self):
+        tree = es5(dedent("""
+        (function() {
+          var foo = 1;
+          var bar = 2;
+          bar = 3;
+        })(this);
+        """).strip())
+        obfuscator_unparser = Unparser(rules=(
+            minimum_rules,
+            obfuscate(),
+        ))
+
+        self.assertEqual(
+            ''.join(c.text for c in obfuscator_unparser(tree)),
+            ''.join(c.text for c in obfuscator_unparser(tree)),
+        )
+
     def test_no_resolve(self):
         # a simple test to show that an obfuscator without the initial
         # loading run executed (i.e. the one with the required handlers)
@@ -541,8 +559,8 @@ class ObfuscatorTestCase(unittest.TestCase):
         # since nothing was remapped.
         self.assertEqual([
         ], [
-            (c.text, c.original) for c in walk(main_dispatcher, tree)
-            if c.original
+            (c.text, c.name) for c in walk(main_dispatcher, tree)
+            if c.name
         ])
 
         # now manually give the scope with a set of replacement names
@@ -565,7 +583,7 @@ class ObfuscatorTestCase(unittest.TestCase):
             ('b', 3, 7, 'bar'),
             ('z', 4, 3, 'baz'),
             ('f', 5, 3, 'foo'),
-        ], [c for c in walk(main_dispatcher, tree) if c.original])
+        ], [c[:4] for c in walk(main_dispatcher, tree) if c.name])
 
     def test_obfuscate_globals(self):
         node = es5(dedent("""

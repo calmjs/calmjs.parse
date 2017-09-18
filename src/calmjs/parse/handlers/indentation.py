@@ -7,7 +7,7 @@ from calmjs.parse.ruletypes import Dedent
 from calmjs.parse.ruletypes import Indent
 from calmjs.parse.ruletypes import Newline
 from calmjs.parse.ruletypes import OptionalNewline
-from calmjs.parse.ruletypes import SourceChunk
+from calmjs.parse.ruletypes import TextChunk
 
 
 class Indentator(object):
@@ -36,11 +36,11 @@ class Indentator(object):
         s = self.indent_str if self.indent_str else dispatcher.indent_str
         indents = s * self._level
         if indents:
-            yield SourceChunk(indents, None, None, None)
+            yield TextChunk(indents, None, None, None)
 
     def layout_handler_newline(self, dispatcher, node, before, after, prev):
         # simply render the newline with an implicit sourcemap line/col
-        yield SourceChunk(dispatcher.newline_str, 0, 0, None)
+        yield TextChunk(dispatcher.newline_str, 0, 0, None)
         for chunk in self._generate_indents(dispatcher):
             yield chunk
 
@@ -65,7 +65,7 @@ class Indentator(object):
             return
         # if no new lines in any of the checked characters
         if not newline_strs & {lc(before), fc(after), lc(prev)}:
-            yield SourceChunk(dispatcher.newline_str, 0, 0, None)
+            yield TextChunk(dispatcher.newline_str, 0, 0, None)
 
         for chunk in self._generate_indents(dispatcher):
             yield chunk

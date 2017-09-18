@@ -4,6 +4,10 @@ Various utilities and helpers
 """
 
 import sys
+from os.path import dirname
+from os.path import isabs
+from os.path import normpath
+from os.path import relpath
 
 try:
     from pkg_resources import working_set
@@ -51,3 +55,16 @@ def generate_tab_names(name):
 def format_lex_token(token):
     return '%s at %s:%s' % (
         repr_compat(token.value), token.lineno, getattr(token, 'colno', '?'))
+
+
+def normrelpath(base, target):
+    """
+    This function takes the base and target arguments as paths, and
+    returns an equivalent relative path from base to the target, if both
+    provided paths are absolute.
+    """
+
+    if not all(map(isabs, [base, target])):
+        return target
+
+    return relpath(normpath(target), dirname(normpath(base)))

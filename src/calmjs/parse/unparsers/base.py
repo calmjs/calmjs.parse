@@ -63,76 +63,91 @@ class BaseUnparser(object):
             walker module
         """
 
-        self.layout_handlers = {}
-        self.deferrable_handlers = {}
-        self.prewalk_hooks = []
-        self.token_handler = None
+        # the base items.
+        self.definitions = {}
+        self.definitions.update(definitions)
+        self.walk = walk
+        self.dispatcher_cls = dispatcher_cls
 
-        for rule in rules:
+        self.rules = rules
+
+        self.layout_handlers = layout_handlers
+        self.deferrable_handlers = deferrable_handlers
+        self.prewalk_hooks = prewalk_hooks
+        self.token_handler = token_handler
+
+    def setup(self):
+        layout_handlers = {}
+        deferrable_handlers = {}
+        prewalk_hooks = []
+        token_handler = None
+
+        for rule in self.rules:
             r = rule()
             if r.get('token_handler'):
-                if self.token_handler:
+                if token_handler:
                     logger.warning(
                         "rule '%s' specified a new token_handler '%s', "
                         "overriding previously assigned token_handler '%s'",
                         rule.__name__, r['token_handler'].__name__,
-                        self.token_handler.__name__,
+                        token_handler.__name__,
                     )
                 else:
                     logger.debug(
                         "rule '%s' specified a token_handler '%s'",
                         rule.__name__, r['token_handler'].__name__,
                     )
-                self.token_handler = r['token_handler']
-            self.layout_handlers.update(r.get('layout_handlers', {}))
-            self.deferrable_handlers.update(r.get('deferrable_handlers', {}))
-            self.prewalk_hooks.extend(r.get('prewalk_hooks', []))
+                token_handler = r['token_handler']
+            layout_handlers.update(r.get('layout_handlers', {}))
+            deferrable_handlers.update(r.get('deferrable_handlers', {}))
+            prewalk_hooks.extend(r.get('prewalk_hooks', []))
 
-        if token_handler:
-            if self.token_handler and self.token_handler is not token_handler:
+        if self.token_handler:
+            if token_handler and token_handler is not self.token_handler:
                 logger.info(
-                    "provided token_handler '%s' to the '%s' instance "
-                    "will override rule derived token_handler '%s'",
-                    token_handler.__name__, self.__class__.__name__,
-                    self.token_handler.__name__
+                    "manually specified token_handler '%s' to the '%s' "
+                    "instance will override rule derived token_handler '%s'",
+                    self.token_handler.__name__, self.__class__.__name__,
+                    token_handler.__name__
                 )
             else:
                 logger.debug(
-                    "'%s' using provided token_handler '%s'; ",
-                    self.__class__.__name__, token_handler.__name__
+                    "'%s' instance using manually specified token_handler "
+                    "'%s'; ",
+                    self.__class__.__name__, self.token_handler.__name__
                 )
-            self.token_handler = token_handler
-        elif token_handler is None and self.token_handler is None:
-            self.token_handler = token_handler_str_default
+            token_handler = self.token_handler
+        elif self.token_handler is None and token_handler is None:
+            token_handler = token_handler_str_default
             logger.debug(
                 "'%s' instance has no token_handler specified; "
                 "default handler '%s' activated",
-                self.__class__.__name__, self.token_handler.__name__
+                self.__class__.__name__, token_handler.__name__
             )
 
-        if layout_handlers:
-            self.layout_handlers.update(layout_handlers)
+        if self.layout_handlers:
+            layout_handlers.update(self.layout_handlers)
 
-        if deferrable_handlers:
-            self.deferrable_handlers.update(deferrable_handlers)
+        if self.deferrable_handlers:
+            deferrable_handlers.update(self.deferrable_handlers)
 
-        if prewalk_hooks:
-            self.prewalk_hooks.extend(prewalk_hooks)
+        if self.prewalk_hooks:
+            prewalk_hooks.extend(self.prewalk_hooks)
 
-        self.definitions = {}
-        self.definitions.update(definitions)
-        self.walk = walk
-        self.dispatcher_cls = dispatcher_cls
+        return (
+            token_handler, layout_handlers, deferrable_handlers, prewalk_hooks)
 
     def __call__(self, node):
+        (token_handler, layout_handlers, deferrable_handlers,
+            prewalk_hooks) = self.setup()
         dispatcher = self.dispatcher_cls(
             self.definitions,
-            self.token_handler,
-            self.layout_handlers,
-            self.deferrable_handlers,
+            token_handler,
+            layout_handlers,
+            deferrable_handlers,
         )
 
-        for prewalk_hook in self.prewalk_hooks:
+        for prewalk_hook in prewalk_hooks:
             node = prewalk_hook(dispatcher, node)
 
         for chunk in self.walk(dispatcher, node):
