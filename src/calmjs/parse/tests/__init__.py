@@ -1,16 +1,35 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+from textwrap import dedent
+from io import StringIO
 import unittest
 import doctest
 from os.path import dirname
 from pkg_resources import get_distribution
+
+examples = {
+    '/tmp/html4.js': dedent("""
+    var bold = function(s) {
+        return '<b>' + s + '</b>';
+    };
+
+    var italics = function(s) {
+        return '<i>' + s + '</i>';
+    };
+    """).lstrip()
+}
 
 
 def make_suite():  # pragma: no cover
     from calmjs.parse.lexers import es5 as es5lexer
     from calmjs.parse import walkers
     from calmjs.parse import sourcemap
+
+    def open(p, flag='r'):
+        result = StringIO(examples[p] if flag == 'r' else '')
+        result.name = p
+        return result
 
     parser = doctest.DocTestParser()
     optflags = doctest.NORMALIZE_WHITESPACE | doctest.ELLIPSIS
@@ -33,8 +52,8 @@ def make_suite():  # pragma: no cover
         # more failure examples are added.
         # also note that line number is unknown, as PKG_INFO has headers
         # and also the counter is somehow inaccurate in this case.
-        doctest.DocTest(
-            pkgdesc_tests[:-1], {}, 'PKG_INFO', 'README.rst', None, pkgdesc),
+        doctest.DocTest(pkgdesc_tests[:-1], {
+            'open': open}, 'PKG_INFO', 'README.rst', None, pkgdesc),
         optionflags=optflags,
     ))
 
