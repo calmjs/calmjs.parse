@@ -15,8 +15,6 @@ from calmjs.parse.unparsers.walker import (
 )
 from calmjs.parse.handlers.core import default_rules
 from calmjs.parse.handlers.core import token_handler_str_default
-from calmjs.parse.sourcemap import write
-from calmjs.parse.sourcemap import write_sourcemap
 
 logger = logging.getLogger(__name__)
 
@@ -70,6 +68,7 @@ class BaseUnparser(object):
         self.prewalk_hooks = []
         self.token_handler = None
 
+        # TODO should probably invoke these at the __call__
         for rule in rules:
             r = rule()
             if r.get('token_handler'):
@@ -125,57 +124,6 @@ class BaseUnparser(object):
         self.definitions.update(definitions)
         self.walk = walk
         self.dispatcher_cls = dispatcher_cls
-
-    def write(
-            self, node, output_stream, sourcemap_stream=None,
-            sourcemap_normalize_mappings=True,
-            sourcemap_normalize_paths=True):
-        """
-        Write out the node into the output stream.  If file objects are
-        passed in as the *_stream arguments and if sources and target
-        arguments are unspecified, the names of those file objects will
-        be used to derive the sources and target.  If they are opened
-        using absolute paths, the sourcemap generated will have its
-        paths normalized to relative paths.
-
-        If the provided streams are not anchored on the filesystem, or
-        that the provide node was generated from a string or in-memory
-        stream, the generation of the sourcemap should be done using the
-        lower level `write` function provided by the sourcemap module,
-        which this method wraps.  Alternatively, the top level node
-        should have its sourcepath set to path that this node originated
-        from.
-
-        Arguments
-
-        node
-            The Node to write with.
-        output_stream
-            The stream object to write to; its 'write' method will be
-            invoked.
-        sourcemap_stream
-            If one is provided, the sourcemap will be written out to it.
-        sourcemap_normalize_mappings
-            Flag for the normalization of the sourcemap mappings;
-            Defaults to True to enable a reduction in output size.
-        sourcemap_normalize_paths
-            If set to true, all absolute paths will be converted to the
-            relative form when the sourcemap is generated, if all paths
-            provided are in the absolute form.
-
-            Defaults to True to enable a reduction in output size.
-        """
-
-        # TODO if there is a custom instance of bookkeeping class,
-        # check that multiple input nodes from different source files
-        # can be merged into one.
-        mappings, sources, names = write(
-            self(node), output_stream, normalize=sourcemap_normalize_mappings)
-        if sourcemap_stream:
-            write_sourcemap(
-                mappings, sources, names, output_stream, sourcemap_stream,
-                normalize_paths=sourcemap_normalize_paths,
-            )
 
     def __call__(self, node):
         dispatcher = self.dispatcher_cls(

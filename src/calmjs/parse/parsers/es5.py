@@ -24,6 +24,8 @@
 
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
+from functools import partial
+
 import ply.yacc
 
 from calmjs.parse.exceptions import ECMASyntaxError
@@ -34,6 +36,7 @@ from calmjs.parse.walkers import ReprWalker
 from calmjs.parse.utils import generate_tab_names
 from calmjs.parse.utils import format_lex_token
 from calmjs.parse.utils import str
+from calmjs.parse.io import read as io_read
 
 asttypes = AstTypesFactory(pretty_print, ReprWalker())
 
@@ -1484,12 +1487,4 @@ def parse(source):
     return parser.parse(source)
 
 
-def read(stream):
-    """
-    Return an AST from the input ES5 stream.
-    """
-
-    text = stream.read()
-    result = parse(text)
-    result.sourcepath = getattr(stream, 'name', None)
-    return result
+read = partial(io_read, parse)
