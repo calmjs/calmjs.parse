@@ -3,6 +3,9 @@
 Generic io functions for use with parsers.
 """
 
+from itertools import chain
+from collections import Iterable
+from calmjs.parse.asttypes import Node
 from calmjs.parse import sourcemap
 
 
@@ -18,7 +21,7 @@ def read(parser, stream):
 
 
 def write(
-        unparser, node, output_stream, sourcemap_stream=None,
+        unparser, nodes, output_stream, sourcemap_stream=None,
         sourcemap_normalize_mappings=True,
         sourcemap_normalize_paths=True,
         source_mapping_url=NotImplemented):
@@ -43,8 +46,9 @@ def write(
 
     unparser
         An unparser instance.
-    node
-        The Node to write with.
+    nodes
+        The Node or list of Nodes to stream to the output stream with
+        the unparser.
     output_stream
         The stream object to write to; its 'write' method will be
         invoked.
@@ -66,11 +70,19 @@ def write(
         None to disable this.
     """
 
-    # TODO if there is a custom instance of bookkeeping class,
-    # check that multiple input nodes from different source files
-    # can be merged into one.
+    chunks = None
+    if isinstance(nodes, Node):
+        chunks = unparser(nodes)
+    elif isinstance(nodes, Iterable):
+        raw = [unparser(node) for node in nodes if isinstance(node, Node)]
+        if raw:
+            chunks = chain(*raw)
+
+    if not chunks:
+        raise TypeError('must either provide a Node or list containing Nodes')
+
     mappings, sources, names = sourcemap.write(
-        unparser(node), output_stream, normalize=sourcemap_normalize_mappings)
+        chunks, output_stream, normalize=sourcemap_normalize_mappings)
     if sourcemap_stream:
         sourcemap.write_sourcemap(
             mappings, sources, names, output_stream, sourcemap_stream,
