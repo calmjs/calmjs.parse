@@ -204,6 +204,14 @@ def normalize_mapping_line(mapping_line, previous_source_column=0):
     return result, record[3]
 
 
+def normalize_mappings(mappings, column=0):
+    result = []
+    for ml in mappings:
+        new_ml, column = normalize_mapping_line(ml, column)
+        result.append(new_ml)
+    return result
+
+
 def write(
         stream_fragments, stream, normalize=True,
         book=None, sources=None, names=None, mappings=None):
@@ -224,6 +232,17 @@ def write(
         returned be normalized to the minimum form.  This will reduce
         the size of the generated source map at the expense of slightly
         lower quality.
+
+        Also, if any of the subsequent arguments are provided (for
+        instance, for the multiple calls to this function), the usage of
+        the normalize flag is currently NOT supported.
+
+        If multiple sets of outputs are to be produced, the recommended
+        method is to chain all the stream fragments together before
+        passing in.
+
+    Advanced usage arguments
+
     book
         A Book instance; if none is provided an instance will be created
         from the default_book constructor.  The Bookkeeper instance is
@@ -235,6 +254,8 @@ def write(
     names
         a Names instance for tracking names; if None is provided, an
         instance will be created for internal use.
+    mappings
+        a previously produced mappings.
 
     A stream fragment tuple must contain the following
 
@@ -269,6 +290,7 @@ def write(
         book = default_book()
 
     if not isinstance(mappings, list):
+        # note that
         mappings = []
         # finalize initial states; the most recent list (mappings[-1])
         # is the current line
@@ -377,12 +399,15 @@ def write(
 
     # normalize everything
     if normalize:
-        column = 0
-        result = []
-        for ml in mappings:
-            new_ml, column = normalize_mapping_line(ml, column)
-            result.append(new_ml)
-        mappings = result
+        # if this _ever_ supports the multiple usage using existence
+        # instances of names and book and mappings, it needs to deal
+        # with NOT normalizing the existing mappings and somehow reuse
+        # the previously stored value, probably in the book.  It is
+        # most certainly a bad idea to support that use case while also
+        # supporting the default normalize flag due to the complex
+        # tracking of all the existing values...
+        mappings = normalize_mappings(mappings)
+
     list_sources = [
         INVALID_SOURCE if s == NotImplemented else s for s in sources
     ] or [INVALID_SOURCE]

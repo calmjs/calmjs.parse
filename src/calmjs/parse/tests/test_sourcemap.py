@@ -327,6 +327,27 @@ class NormalizeRunningTestCase(unittest.TestCase):
         ], remapped)
         self.assertEqual(15, column)
 
+    def test_negative_offset(self):
+        remapped, column = sourcemap.normalize_mapping_line([
+            (0, 0, 0, 0),
+            (1, 0, 0, 7),
+            (1, 0, 0, 1),
+            (3, 0, 0, 3),
+            (1, 0, 0, 1),
+            (13, 0, 0, 13),
+            (1, 0, 0, 1),
+            (1, 0, 0, -26),
+            (1, 0, 0, 7),
+            (1, 0, 0, 1),
+            (3, 0, 0, 3),
+        ])
+        self.assertEqual([
+            (0, 0, 0, 0),
+            (1, 0, 0, 7),
+            (20, 0, 0, -7),
+            (1, 0, 0, 7),
+        ], remapped)
+
 
 class SourceMapTestCase(unittest.TestCase):
 
@@ -811,6 +832,51 @@ class SourceMapTestCase(unittest.TestCase):
         self.assertEqual([[], [
             (2, 0, 0, 0), (7,), (1, 0, 0, 8), (3,), (1, 0, 0, 4), (13,),
         ], []], mapping)
+
+    def test_multiple_call(self):
+        stream = StringIO()
+
+        fragments1 = [
+            ('a', 1, 1, 'console', 'demo1.js'),
+            ('.', 1, 8, None, 'demo1.js'),
+            ('log', 1, 9, None, 'demo1.js'),
+            ('(', 1, 12, None, 'demo1.js'),
+            ('"hello world"', 1, 13, None, 'demo1.js'),
+            (')', 1, 26, None, 'demo1.js'),
+            (';', 1, 27, None, 'demo1.js'),
+        ]
+
+        fragments2 = [
+            ('a', 1, 1, 'console', 'demo2.js'),
+            ('.', 1, 8, None, 'demo2.js'),
+            ('log', 1, 9, None, 'demo2.js'),
+            ('(', 1, 12, None, 'demo2.js'),
+            ('"hello world"', 1, 13, None, 'demo2.js'),
+            (')', 1, 26, None, 'demo2.js'),
+            (';', 1, 27, None, 'demo2.js'),
+        ]
+
+        book = sourcemap.default_book()
+        sources = sourcemap.Names()
+        names = sourcemap.Names()
+
+        mappings, _, _ = sourcemap.write(
+            fragments1, stream, book=book, sources=sources, names=names,
+            # Note that normalization is NOT supported until the last
+            # step.
+            normalize=False,
+        )
+        mappings, sources, namelist = sourcemap.write(
+            fragments2, stream, book=book, sources=sources, names=names,
+            mappings=mappings)
+
+        self.assertEqual(
+            stream.getvalue(), 'a.log("hello world");a.log("hello world");')
+        self.assertEqual(namelist, ['console'])
+        self.assertEqual(sources, ['demo1.js', 'demo2.js'])
+        self.assertEqual(mappings, [
+            [(0, 0, 0, 0, 0), (1, 0, 0, 7), (20, 1, 0, -7, 0), (1, 0, 0, 7)],
+        ])
 
     def test_encode_sourcemap(self):
         sm = sourcemap.encode_sourcemap(
