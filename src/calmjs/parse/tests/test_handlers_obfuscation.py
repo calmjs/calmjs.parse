@@ -444,6 +444,24 @@ class ObfuscatorTestCase(unittest.TestCase):
             ''.join(c.text for c in obfuscator_unparser(tree)),
         )
 
+    def test_multiple_reuse(self):
+        tree = es5(dedent("""
+        (function() {
+          var foo = 1;
+          var bar = 2;
+          bar = 3;
+        })(this);
+        """).strip())
+        obfuscator_unparser = Unparser(rules=(
+            minimum_rules,
+            obfuscate(),
+        ))
+
+        self.assertEqual(
+            ''.join(c.text for c in obfuscator_unparser(tree)),
+            ''.join(c.text for c in obfuscator_unparser(tree)),
+        )
+
     def test_no_resolve(self):
         # a simple test to show that an obfuscator without the initial
         # loading run executed (i.e. the one with the required handlers)

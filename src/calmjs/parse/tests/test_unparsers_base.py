@@ -60,27 +60,48 @@ class BaseUnparserTestCase(unittest.TestCase):
         self.assertTrue(isinstance(results['dispatcher'], Dispatcher))
         self.assertTrue(results['node'], root)
 
+    def test_called_prewalk_multicall(self):
+        prewalk = []
+
+        def rule():
+            prewalk.append(True)
+            return {}
+
+        root = Node()
+        definitions = {'Node': ()}
+        unparser = BaseUnparser(definitions, rules=(rule,))
+        # invoke complete run to trigger prewalk hook.
+        self.assertEqual(len(prewalk), 0)
+        self.assertEqual([], list(unparser(root)))
+        self.assertEqual(len(prewalk), 1)
+        self.assertEqual([], list(unparser(root)))
+        self.assertEqual(len(prewalk), 2)
+
     def test_token_handler_default(self):
         stream = setup_logger(self, logger)
         definitions = {}
         unparser = BaseUnparser(definitions)
-        self.assertIs(unparser.token_handler, token_handler_str_default)
+        token_handler, layout_handlers, deferrable_handlers, prewalk_hooks = (
+            unparser.setup())
+        self.assertIs(token_handler, token_handler_str_default)
         self.assertIn(
             "DEBUG 'BaseUnparser' instance has no token_handler specified; "
             "default handler 'token_handler_str_default' activate",
             stream.getvalue())
 
-    def test_token_handler_manual(self):
+    def test_token_handler_setup_manual(self):
         stream = setup_logger(self, logger)
         definitions = {}
         unparser = BaseUnparser(definitions, token_handler_str_default)
-        self.assertIs(unparser.token_handler, token_handler_str_default)
+        token_handler, layout_handlers, deferrable_handlers, prewalk_hooks = (
+            unparser.setup())
+        self.assertIs(token_handler, token_handler_str_default)
         self.assertIn(
-            "DEBUG 'BaseUnparser' using provided token_handler "
-            "'token_handler_str_default'", stream.getvalue()
+            "DEBUG 'BaseUnparser' instance using manually specified "
+            "token_handler 'token_handler_str_default'", stream.getvalue()
         )
 
-    def test_token_handler_rule(self):
+    def test_token_handler_setup_with_rules(self):
         def rule1():
             def handler1():
                 "handler1"
@@ -97,7 +118,9 @@ class BaseUnparserTestCase(unittest.TestCase):
         stream = setup_logger(self, logger)
         definitions = {}
         unparser = BaseUnparser(definitions, rules=(rule1, rule2))
-        self.assertEqual(unparser.token_handler.__name__, 'handler2')
+        token_handler, layout_handlers, deferrable_handlers, prewalk_hooks = (
+            unparser.setup())
+        self.assertEqual(token_handler.__name__, 'handler2')
 
         self.assertIn(
             "DEBUG rule 'rule1' specified a token_handler 'handler1'",
@@ -111,9 +134,11 @@ class BaseUnparserTestCase(unittest.TestCase):
 
         unparser = BaseUnparser(
             definitions, token_handler=custom_handler, rules=(rule1, rule2))
-        self.assertIs(unparser.token_handler, custom_handler)
+        token_handler, layout_handlers, deferrable_handlers, prewalk_hooks = (
+            unparser.setup())
+        self.assertIs(token_handler, custom_handler)
         self.assertIn(
-            "INFO provided token_handler 'custom_handler' to the "
+            "INFO manually specified token_handler 'custom_handler' to the "
             "'BaseUnparser' instance will override rule derived token_handler "
             "'handler2'",
             stream.getvalue()

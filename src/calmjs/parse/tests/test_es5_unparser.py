@@ -91,12 +91,11 @@ class BaseVisitorTestCase(unittest.TestCase):
         ])
 
     def test_force_handler_drop(self):
-        unparser = Unparser()
+        # if there are no rules provided, there will also be no layout
+        # handlers - not very useful as note that there is now no
+        # separation between `var` and `x`.
+        unparser = Unparser(rules=())
         ast = parse('var x = 0;')
-        unparser.layout_handlers.clear()
-        # if there are no layout handlers, the layout nodes will just
-        # simply be skipped - not very useful as note that there is now
-        # no separation between `var` and `x`.
         self.assertEqual(quad(unparser(ast)), [
             ('var', 1, 1, None), ('x', 1, 5, None), ('=', 1, 7, None),
             ('0', 1, 9, None), (';', 1, 10, None),
