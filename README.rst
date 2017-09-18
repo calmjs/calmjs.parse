@@ -353,6 +353,34 @@ streams:
     var b=function(a){return'<b>'+a+'</b>';};var a=function(a){...};
     //# sourceMappingURL=html4.min.js.map
 
+For a simple concatenation of multiple sources into one file, the
+following may be done:
+
+.. code:: python
+
+    >>> files = [open('/tmp/html4.js'), open('/tmp/legacy.js')]
+    >>> combined = open('/tmp/combined.js', 'w+')
+    >>> io.write(print_p, (io.read(es5, f) for f in files), combined)
+    >>> pos = combined.seek(0)
+    >>> print(combined.read())
+    var bold = function(s) {
+        return '<b>' + s + '</b>';
+    };
+    var italics = function(s) {
+        return '<i>' + s + '</i>';
+    };
+    var marquee = function(s) {
+        return '<marquee>' + s + '</marquee>';
+    };
+    var blink = function(s) {
+        return '<blink>' + s + '</blink>';
+    };
+
+Naturally, if a minifying printer with globals being obfuscated, the
+resulting script will have the earlier obfuscated global names mangled
+by later ones, as the unparsing is done separately by the ``io.write``
+function.
+
 
 Advanced usage
 --------------

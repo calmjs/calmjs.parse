@@ -17,7 +17,16 @@ examples = {
     var italics = function(s) {
         return '<i>' + s + '</i>';
     };
-    """).lstrip()
+    """).lstrip(),
+    '/tmp/legacy.js': dedent("""
+    var marquee = function(s) {
+        return '<marquee>' + s + '</marquee>';
+    };
+
+    var blink = function(s) {
+        return '<blink>' + s + '</blink>';
+    };
+    """).lstrip(),
 }
 
 
