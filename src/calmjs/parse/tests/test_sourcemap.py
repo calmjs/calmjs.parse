@@ -948,3 +948,50 @@ class SourceMapTestCase(unittest.TestCase):
 
         # ensure no warnings have been logged
         self.assertEqual('', logs.getvalue())
+
+    def test_write_sourcemap_source_mapping_url_manual(self):
+        root = mktemp()
+        output_stream = StringIO()
+        output_stream.name = join(root, 'srcfinal.js')
+        sourcemap_stream = StringIO()
+        sourcemap_stream.name = join(root, 'srcfinal.js.map')
+        mappings = [[(0, 0, 0, 0, 0)]]
+        sources = [join(root, 'src', 'src1.js'), join(root, 'src', 'src2.js')]
+        names = ['foo']
+
+        sourcemap.write_sourcemap(
+            mappings, sources, names, output_stream, sourcemap_stream,
+            source_mapping_url='src.map')
+
+        self.assertEqual({
+            "version": 3,
+            "sources": ['src/src1.js', 'src/src2.js'],
+            "names": ["foo"],
+            "mappings": "AAAAA",
+            "file": 'srcfinal.js',
+        }, json.loads(sourcemap_stream.getvalue()))
+        self.assertEqual(
+            '\n//# sourceMappingURL=src.map\n', output_stream.getvalue())
+
+    def test_write_sourcemap_source_mapping_url_none(self):
+        root = mktemp()
+        output_stream = StringIO()
+        output_stream.name = join(root, 'srcfinal.js')
+        sourcemap_stream = StringIO()
+        sourcemap_stream.name = join(root, 'srcfinal.js.map')
+        mappings = [[(0, 0, 0, 0, 0)]]
+        sources = [join(root, 'src', 'src1.js'), join(root, 'src', 'src2.js')]
+        names = ['foo']
+
+        sourcemap.write_sourcemap(
+            mappings, sources, names, output_stream, sourcemap_stream,
+            source_mapping_url=None)
+
+        self.assertEqual({
+            "version": 3,
+            "sources": ['src/src1.js', 'src/src2.js'],
+            "names": ["foo"],
+            "mappings": "AAAAA",
+            "file": 'srcfinal.js',
+        }, json.loads(sourcemap_stream.getvalue()))
+        self.assertEqual('', output_stream.getvalue())

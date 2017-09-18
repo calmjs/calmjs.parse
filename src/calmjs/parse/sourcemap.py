@@ -418,7 +418,7 @@ def encode_sourcemap(filename, mappings, sources, names=[]):
 
 def write_sourcemap(
         mappings, sources, names, output_stream, sourcemap_stream,
-        normalize_paths=True):
+        normalize_paths=True, source_mapping_url=NotImplemented):
     """
     Write out the mappings, sources and names (generally produced by
     the write function) to the provided sourcemap_stream, and write the
@@ -439,6 +439,12 @@ def write_sourcemap(
         relative paths with relation from the stream being written
         to, and the path separator used will become a '/' (forward
         slash).
+    source_mapping_url
+        If an explicit value is set, this will be written as the
+        sourceMappingURL into the output_stream.  Note that the path
+        normalization will NOT use this value, so if paths have been
+        manually provided, ensure that normalize_paths is set to False
+        if the behavior is unwanted.
     """
 
     def validate_path(path, name):
@@ -475,5 +481,8 @@ def write_sourcemap(
         encode_sourcemap(output_js, mappings, sources, names),
         sort_keys=True, ensure_ascii=False,
     ))
-    output_stream.writelines(
-        ['\n//# sourceMappingURL=', output_js_map, '\n'])
+    if source_mapping_url is not None:
+        output_stream.writelines(['\n//# sourceMappingURL=', (
+            output_js_map if source_mapping_url is NotImplemented
+            else source_mapping_url
+        ), '\n'])

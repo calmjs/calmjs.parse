@@ -20,7 +20,8 @@ def read(parser, stream):
 def write(
         unparser, node, output_stream, sourcemap_stream=None,
         sourcemap_normalize_mappings=True,
-        sourcemap_normalize_paths=True):
+        sourcemap_normalize_paths=True,
+        source_mapping_url=NotImplemented):
     """
     Write out the node using the unparser into an output stream, and
     optionally the sourcemap using the sourcemap stream.
@@ -58,6 +59,11 @@ def write(
         provided are in the absolute form.
 
         Defaults to True to enable a reduction in output size.
+    source_mapping_url
+        If unspecified, the default derived path will be written as a
+        sourceMappingURL comment into the output stream.  If explicitly
+        specified with a value, that will be written instead.  Set to
+        None to disable this.
     """
 
     # TODO if there is a custom instance of bookkeeping class,
@@ -69,4 +75,5 @@ def write(
         sourcemap.write_sourcemap(
             mappings, sources, names, output_stream, sourcemap_stream,
             normalize_paths=sourcemap_normalize_paths,
+            source_mapping_url=source_mapping_url,
         )

@@ -87,3 +87,41 @@ class IOTestCase(unittest.TestCase):
         self.assertEqual(
             'foo=true\n//# sourceMappingURL=processed.js.map\n',
             output_stream.getvalue())
+
+    def test_write_sourcemap_omitted(self):
+        root = mktemp()
+        definitions = {'Node': (
+            Attr(attr='left'), Attr(attr='op'), Attr(attr='right'),)}
+
+        # the program node; attributes are assigned to mimic a real one
+        program = Node()
+        program.left, program.op, program.right = ('foo', '=', 'true')
+        program.sourcepath = join(root, 'original.js')
+        program._token_map = {
+            'foo': [(0, 1, 1)],
+            '=': [(4, 1, 5)],
+            'true': [(6, 1, 7)],
+        }
+
+        # streams
+        output_stream = StringIO()
+        output_stream.name = join(root, 'processed.js')
+        sourcemap_stream = StringIO()
+        sourcemap_stream.name = join(root, 'processed.js.map')
+
+        unparser = BaseUnparser(definitions)
+        io.write(
+            unparser, program, output_stream, sourcemap_stream,
+            source_mapping_url=None)
+
+        sourcemap = json.loads(sourcemap_stream.getvalue())
+        self.assertEqual({
+            "version": 3,
+            "sources": ["original.js"],
+            "names": [],
+            "mappings": "AAAA,GAAI,CAAE",
+            "file": "processed.js"
+        }, sourcemap)
+        self.assertEqual(
+            'foo=true',
+            output_stream.getvalue())
