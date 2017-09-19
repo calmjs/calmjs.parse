@@ -50,12 +50,11 @@ noted and formalized into test cases where applicable.  Finally, grammar
 rules were updated to ensure better conformance with the ECMA-262 (ES5)
 specification.
 
-The goal of |calmjs.parse| is to provide a similar parser API as the
-parser that |slimit| had provided.  The mangling and minification
-functionalities as provided by the original has been omitted as they are
-not relevant to code parsing.  A separate package containing those
-mangling and minifying features as provided by |slimit| may be released
-in the future.
+The goal of |calmjs.parse| is to provide a similar API that |slimit| had
+provided, except done in a much more extensible manner with more
+correctness checks in place.  This however resulted in some operations
+that might take longer than what |slimit| had achieved, such as the
+pretty printing of output.
 
 
 Installation
