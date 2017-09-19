@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 import unittest
 
+from calmjs.parse.asttypes import Arguments
 from calmjs.parse.asttypes import Identifier
+from calmjs.parse.asttypes import FuncBase
 from calmjs.parse.ruletypes import Declare
 from calmjs.parse.ruletypes import Resolve
+from calmjs.parse.ruletypes import ResolveFuncName
 
 
 def not_implemented(thing):
@@ -114,3 +117,27 @@ class DeferrableTestCase(unittest.TestCase):
         identifier = Identifier('value')
         self.assertEqual('value', rslv(not_implemented, identifier))
         self.assertEqual('VALUE', rslv(fake_dispatcher, identifier))
+
+    def test_resolve_func_name(self):
+        dispatched = []
+
+        def fake_dispatcher(thing):
+            def handler(dispatcher, node):
+                dispatched.append(node)
+            return handler
+
+        node = Node()
+
+        rule = ResolveFuncName()
+        with self.assertRaises(TypeError) as e:
+            rule(fake_dispatcher, node)
+        self.assertEqual(
+            e.exception.args[0],
+            'the ResolveFuncName Deferrable type only works with FuncBase',
+        )
+
+        func = FuncBase(Identifier('value'), Arguments([]), [])
+        self.assertIsNone(rule(not_implemented, func))
+        self.assertEqual([], dispatched)
+        self.assertIsNone(rule(fake_dispatcher, func))
+        self.assertEqual([func.identifier], dispatched)
