@@ -6,10 +6,12 @@ possible.
 
 from __future__ import unicode_literals
 
+from collections import Iterable
 from itertools import chain
 from calmjs.parse.ruletypes import Token
 from calmjs.parse.ruletypes import Deferrable
 from calmjs.parse.ruletypes import Structure
+from calmjs.parse.ruletypes import Layout
 from calmjs.parse.ruletypes import LayoutChunk
 from calmjs.parse.ruletypes import StreamFragment
 from calmjs.parse.ruletypes import TextChunk
@@ -260,6 +262,16 @@ def walk(
         if definition is None:
             definition = dispatcher[node]
 
+        if not isinstance(definition, Iterable):
+            if definition is dispatcher[node]:
+                raise TypeError(
+                    "definition for '%s' is not an iterable" % (
+                        node.__class__.__name__))
+            else:
+                raise TypeError(
+                    "custom definition %r provided with '%r' is not an "
+                    "iterable" % (node.__class__.__name__, node))
+
         for rule in definition:
             if isinstance(rule, Token):
                 # tokens are callables that will generate the chunks
@@ -267,6 +279,7 @@ def walk(
                 # that with this function, the dispatcher and the node.
                 for chunk in rule(_walk, dispatcher, node):
                     yield chunk
+                continue
             elif isinstance(rule, Deferrable):
                 # a naked deferrable will simply be called.
                 # while it is tempting to treat it like a Structure
@@ -274,26 +287,38 @@ def walk(
                 # and it may have more complex handling before deferring
                 # to the handler provided by the dispatcher.
                 rule(dispatcher, node)
-            elif issubclass(rule, Structure):
-                # A stucture layout marker; these will be actioned
-                # immediately as it relates to the handling of the
-                # structural description of the asttype at the current
-                # point.
-                handler = dispatcher(rule)
-                if handler is not NotImplemented:
-                    handler(dispatcher, node)
-            else:
-                # Otherwise, it's assumed to be a format layout marker.
-                # in the definition.  Since there will be further
-                # processing required later, defer by yielding a
-                # LayoutChunk as a marker, and resolve any rules that
-                # haven't had a handler registered with the noop rule
-                # handler.
-                handler = dispatcher(rule)
-                if handler is NotImplemented:
-                    yield LayoutChunk(rule, rule_handler_noop, node)
-                else:
-                    yield LayoutChunk(rule, handler, node)
+                continue
+            elif isinstance(rule, type):
+                if issubclass(rule, Structure):
+                    # A stucture layout marker; these will be actioned
+                    # immediately as it relates to the handling of the
+                    # structural description of the asttype at the
+                    # current point.
+                    handler = dispatcher(rule)
+                    if handler is not NotImplemented:
+                        handler(dispatcher, node)
+                    continue
+                elif issubclass(rule, Layout):
+                    # Since Layouts can be batch processed, defer action
+                    # by yielding a LayoutChunk as a marker so that the
+                    # option to batch process a sequence of Layouts as
+                    # a single step can be done.  If the handler is not
+                    # registered to the dispatcher, also yield the rule
+                    # attached to a noop handler so that it won't be
+                    # omitted in the batch handling.
+                    handler = dispatcher(rule)
+                    if handler is NotImplemented:
+                        yield LayoutChunk(rule, rule_handler_noop, node)
+                    else:
+                        yield LayoutChunk(rule, handler, node)
+                    continue
+
+            raise TypeError(
+                '%r is not a supported Rule subclass or instance; '
+                'the cause was node %r and definition %r ' % (
+                    rule, node, definition,
+                )
+            )
 
     # Format layout markers are not handled immediately in the walk -
     # they will simply be buffered so that a collection of them can be

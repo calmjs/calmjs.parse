@@ -150,6 +150,48 @@ class DispatcherWalkTestCase(unittest.TestCase):
         self.assertEqual('done', recreated)
         self.assertEqual(['foo'], self.declared_vars)
 
+    def test_bad_definition(self):
+        (token_handler, layout_handlers, deferrable_handlers,
+            self.declared_vars) = setup_handlers(self)
+        node = Node()
+        dispatcher = Dispatcher(
+            definitions={'Node': (object())},
+            token_handler=token_handler,
+            layout_handlers=layout_handlers,
+            deferrable_handlers=deferrable_handlers,
+        )
+        with self.assertRaises(TypeError) as e:
+            list(c.text for c in walk(dispatcher, node, dispatcher[node]))
+
+        self.assertEqual(
+            "definition for 'Node' is not an iterable", e.exception.args[0])
+
+        with self.assertRaises(TypeError) as e:
+            list(c.text for c in walk(dispatcher, node))
+
+        self.assertEqual(
+            "definition for 'Node' is not an iterable", e.exception.args[0])
+
+        with self.assertRaises(TypeError) as e:
+            list(c.text for c in walk(dispatcher, node, object()))
+
+        self.assertIn("custom definition", e.exception.args[0])
+
+    def test_bad_definition_rule(self):
+        (token_handler, layout_handlers, deferrable_handlers,
+            self.declared_vars) = setup_handlers(self)
+        node = Node()
+        dispatcher = Dispatcher(
+            definitions={'Node': (object(),)},
+            token_handler=token_handler,
+            layout_handlers=layout_handlers,
+            deferrable_handlers=deferrable_handlers,
+        )
+        with self.assertRaises(TypeError) as e:
+            list(c.text for c in walk(dispatcher, node, dispatcher[node]))
+
+        self.assertIn('not a supported Rule', e.exception.args[0])
+
 
 class DispatcherTestcase(unittest.TestCase):
 
