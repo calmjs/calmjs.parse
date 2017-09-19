@@ -694,6 +694,36 @@ class ObfuscatorTestCase(unittest.TestCase):
             obfuscate(obfuscate_globals=False, shadow_funcname=False),
         ))(node)))
 
+    def test_obfuscate_shadow_funcname_not_mapped(self):
+        node = es5(dedent("""
+        function a(arg) {
+        }
+        """).strip())
+
+        self.assertEqual(dedent("""
+        function a(a) {
+        }
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_rules,
+            indent(indent_str='  '),
+            obfuscate(obfuscate_globals=False, shadow_funcname=True),
+        ))(node)))
+
+    def test_obfuscate_no_shadow_funcname_not_mapped(self):
+        node = es5(dedent("""
+        function a(arg) {
+        }
+        """).strip())
+
+        self.assertEqual(dedent("""
+        function a(b) {
+        }
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_rules,
+            indent(indent_str='  '),
+            obfuscate(obfuscate_globals=False, shadow_funcname=False),
+        ))(node)))
+
     def test_obfuscate_skip(self):
         node = es5(dedent("""
         (function(a_param) {

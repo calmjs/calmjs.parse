@@ -57,7 +57,7 @@ def indent(indent_str=None):
     """
     A complete, standalone indent ruleset.
 
-    Arguments
+    Arguments:
 
     indent_str
         The string used for indentation.  Defaults to None, which will
@@ -86,12 +86,14 @@ def obfuscate(
     """
     The name obfuscation ruleset.
 
+    Arguments:
+
     obfuscate_globals
         If true, identifier names on the global scope will also be
         obfuscated.  Default is False.
     shadow_funcname
-        If True, obfuscated function names will be shadowed.  Default is
-        False.
+        If True, permit the shadowing of the name of named functions by
+        names within the scope it defines.  Default is False.
     reserved_keywords
         A tuple of strings that should not be generated as obfuscated
         identifiers.
