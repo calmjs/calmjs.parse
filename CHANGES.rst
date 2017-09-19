@@ -4,6 +4,34 @@ Changelog
 1.0.0 - Unreleased
 ------------------
 
+Full support for sourcemaps; changes that make it possible follows:
+
+- High level read/write functionality provided by a new ``io`` module.
+- There is now a ``Deferrable`` rule type for marking certain Tokens
+  that need extra handling.  The support for this has changed the
+  various API that deals with setting up of this.
+- For support of the sourcemap generation, a number of new ruletypes
+  have been added.
+- The sourcemap write function had its argument order modified to
+  better support the sourcepath tracking feature of input Nodes.  Its
+  return value also now match the ordering of the encode_sourcemap
+  function.
+- The chunk types in ruletypes have been renamed, and also a new type
+  called StreamFragment is introduced, so that multiple sources output
+  to a single stream can be properly tracked by the source mapping
+  processes.
+- `rspivak/slimit#66 <https://github.com/rspivak/slimit/issues/66>`_
+  should be fully supported now.
+
+Minify printer now has ability to shorten/obfuscate identifiers:
+
+- Provide a name obfuscation function for shortening identifiers, to
+  further achieve minified output.  Note that this does not yet fully
+  achieve the level of minification ``slimit`` had; future versions
+  may implement this functionality as various AST transformations.
+
+Other significant changes:
+
 - Various changes to internal class and function names for the 1.0.0
   release.  A non exhaustive listing of changes to modules relative to
   the root of this package name as compared to previous major release
@@ -42,16 +70,6 @@ Changelog
   were also renamed to better reflect their implementation and purpose.
 - Many slimit compatibility modules, classes and incorrectly implemented
   functionalities removed.
-- Renamed and moved the source map generation function from vlq to
-  sourcemap.
-- There is now a ``Deferrable`` rule type for marking certain Tokens
-  that need extra handling.  The support for this has changed the
-  various API that deals with setting up of this.
-- For support of the sourcemap generation, a number of new ruletypes
-  have been added.
-- Provide a name obfuscation function for shortening identifiers, to
-  further achieve minified output.  Note that this does not fully
-  achieve the level of minification ``slimit`` had.
 - The usage of the Python 3 ``str`` type (``unicode`` in Python 2) is
   now enforced for the parser, to avoid various failure cases where
   mismatch types occur.
@@ -59,13 +77,6 @@ Changelog
   for tracking the original source of the node; if assigned, all its
   subnodes without sourcepath defined should be treated as from that
   source.
-- The sourcemap write function had its argument order modified to better
-  support the sourcepath tracking feature of input Nodes.  Its return
-  value also now match the ordering of the encode_sourcemap function.
-- The chunk types in ruletypes have been renamed, and also a new type
-  called StreamFragment is introduced, so that multiple sources output
-  to a single stream can be properly tracked by the source mapping
-  processes.
 - Also provide an even higher level function for usage with streams
   through the ``calmjs.parse.io`` module.
 
