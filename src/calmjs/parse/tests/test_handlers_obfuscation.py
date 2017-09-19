@@ -621,6 +621,56 @@ class ObfuscatorTestCase(unittest.TestCase):
             obfuscate(obfuscate_globals=True),
         ))(node)))
 
+    def test_obfuscate_no_global_recursive(self):
+        node = es5(dedent("""
+        (function named(param1, param2) {
+          param1 = param1 * param2 - param2;
+          param2--;
+          if (param2 < 0) {
+            return named(param1, param2);
+          }
+          return param1;
+        })();
+        """).strip())
+
+        self.assertEqual(dedent("""
+        (function named(b, a) {
+          b = b * a - a;
+          a--;
+          if (a < 0) {
+            return named(b, a);
+          }
+          return b;
+        })();
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_rules,
+            indent(indent_str='  '),
+            obfuscate(obfuscate_globals=False),
+        ))(node)))
+
+    def test_obfuscate_no_global_recursive_redeclared(self):
+        node = es5(dedent("""
+        (function $() {
+          $();
+          (function $() {
+            var foo = 1;
+          })();
+        })();
+        """).strip())
+
+        self.assertEqual(dedent("""
+        (function $() {
+          a();
+          (function a() {
+            var a = 1;
+          })();
+        })();
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_rules,
+            indent(indent_str='  '),
+            obfuscate(obfuscate_globals=False),
+        ))(node)))
+
     def test_obfuscate_skip(self):
         node = es5(dedent("""
         (function(a_param) {
