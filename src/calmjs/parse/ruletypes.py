@@ -11,7 +11,6 @@ from functools import partial
 
 from calmjs.parse.asttypes import Node
 from calmjs.parse.asttypes import Elision
-from calmjs.parse.asttypes import FuncBase
 from calmjs.parse.asttypes import Identifier
 
 LayoutChunk = namedtuple('LayoutChunk', [
@@ -233,6 +232,16 @@ class PushCatch(Structure):
 class PopCatch(Structure):
     """
     Pops catch context.
+    """
+
+
+class ResolveFuncName(Structure):
+    """
+    This special token is used for resolving the name of the function
+    from inside the scope.
+
+    This permits the handling the incorrectly implemented strict mode
+    for the Safari browser in the use case of name mangling.
     """
 
 
@@ -460,26 +469,6 @@ class Resolve(Deferrable):
             # the handler will return the value
             return handler(dispatcher, node)
         return node.value
-
-
-class ResolveFuncName(Deferrable):
-    """
-    This subclass of Resolve that is used for resolving the name of the
-    function from inside the scope.
-
-    This is done so handle the incorrectly implemented strict mode for
-    the Safari browser in the use case of name mangling.
-    """
-
-    def __call__(self, dispatcher, node):
-        if not isinstance(node, FuncBase):
-            raise TypeError(
-                "the ResolveFuncName Deferrable type only works with FuncBase")
-
-        handler = dispatcher(self)
-        if handler is not NotImplemented:
-            # the handler will return the value
-            return handler(dispatcher, node.identifier)
 
 
 children_newline = JoinAttr(Iter(), value=(Newline,))

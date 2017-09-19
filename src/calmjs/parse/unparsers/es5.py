@@ -224,7 +224,7 @@ definitions = {
     'FuncDecl': (
         Text(value='function'), Optional('identifier', (RequiredSpace,)),
         Attr(Declare('identifier')), Text(value='('),
-        PushScope, Optional('identifier', (ResolveFuncName(),)),
+        PushScope, Optional('identifier', (ResolveFuncName,)),
         JoinAttr(Declare('parameters'), value=(Text(value=','), Space)),
         Text(value=')'), Space,
         Text(value='{'),
@@ -237,7 +237,7 @@ definitions = {
     'FuncExpr': (
         Text(value='function'), Optional('identifier', (RequiredSpace,)),
         Attr(Declare('identifier')), Text(value='('),
-        PushScope, Optional('identifier', (ResolveFuncName(),)),
+        PushScope, Optional('identifier', (ResolveFuncName,)),
         JoinAttr(Declare('parameters'), value=(Text(value=','), Space,)),
         Text(value=')'), Space,
         Text(value='{'),

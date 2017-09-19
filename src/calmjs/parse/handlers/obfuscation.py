@@ -452,12 +452,13 @@ class Obfuscator(object):
 
     def shadow_reference(self, dispatcher, node):
         """
-        Only simply make a reference to the value in the current scope.
+        Only simply make a reference to the value in the current scope,
+        specifically for the FuncBase type.
         """
 
         # as opposed to the previous one, only add the value of the
         # identifier itself to the scope so that it becomes reserved.
-        self.current_scope.reference(node.value)
+        self.current_scope.reference(node.identifier.value)
 
     def resolve(self, dispatcher, node):
         """
@@ -480,22 +481,24 @@ class Obfuscator(object):
             Declare: self.declare,
             Resolve: self.register_reference,
         }
+        layout_handlers = {
+            PushScope: self.push_scope,
+            PopScope: self.pop_scope,
+            PushCatch: self.push_catch,
+            # should really be different, but given that the
+            # mechanism is within the same tree, the only difference
+            # would be sanity check which should have been tested in
+            # the first place in the primitives anyway.
+            PopCatch: self.pop_scope,
+        }
+
         if not self.shadow_funcname:
-            deferrable_handlers[ResolveFuncName] = self.shadow_reference
+            layout_handlers[ResolveFuncName] = self.shadow_reference
 
         local_dispatcher = Dispatcher(
             definitions=dict(dispatcher),
             token_handler=rule_handler_noop,
-            layout_handlers={
-                PushScope: self.push_scope,
-                PopScope: self.pop_scope,
-                PushCatch: self.push_catch,
-                # should really be different, but given that the
-                # mechanism is within the same tree, the only difference
-                # would be sanity check which should have been tested in
-                # the first place in the primitives anyway.
-                PopCatch: self.pop_scope,
-            },
+            layout_handlers=layout_handlers,
             deferrable_handlers=deferrable_handlers,
         )
         return list(walk(local_dispatcher, node))
