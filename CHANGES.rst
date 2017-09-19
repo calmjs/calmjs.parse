@@ -79,6 +79,14 @@ Bug fixes:
 - Lexer will only report real lexer tokens on errors (ASI generated
   tokens are now dropped as they don't exist in the original source
   which results in confusing rowcol reporting).
+- `rspivak/slimit#57 <https://github.com/rspivak/slimit/issues/57>`_,
+  as it turns out ``'\0'`` is not considered to be octal, but is a <NUL>
+  character, which the rule to parse was not actually included in the
+  lexer patches that were pulled in previous to this version.
+- `rspivak/slimit#75 <https://github.com/rspivak/slimit/issues/75>`_,
+  Option for shadowing of names of named closures, which is now disabled
+  by default (obfuscated named closures will not be shadowed by other
+  obfuscated names in children).
 
 0.10.1 - 2017-08-26
 -------------------

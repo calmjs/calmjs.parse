@@ -470,6 +470,10 @@ indentation for the output of an ES5 AST can be constructed like so:
     var value = window.factorial(5) / window.fibonacci(5);
     console.log('the value is ' + value);
 
+Each of the rules (functions) have specific options that are set using
+specific keyword arguments, details are documented in their respective
+docstrings.
+
 Tree walking
 ~~~~~~~~~~~~
 
