@@ -2040,7 +2040,8 @@ ParsedNodeTypeSrcmapTokenMPTestCase = build_equality_testcase(
 
 
 MinifyPrintTestCase = build_equality_testcase(
-    'MinifyPrintTestCase', partial(minify_print, obfuscate=True), ((
+    'MinifyPrintTestCase',
+    partial(minify_print, obfuscate=True), ((
         label,
         parse(textwrap.dedent(source).strip()),
         answer,

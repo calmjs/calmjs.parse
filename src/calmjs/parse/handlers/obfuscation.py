@@ -365,7 +365,10 @@ class Obfuscator(object):
     The name obfuscator.
     """
 
-    def __init__(self, obfuscate_globals=False, reserved_keywords=()):
+    def __init__(
+            self,
+            obfuscate_globals=False,
+            reserved_keywords=()):
         """
         Arguments
 
@@ -423,13 +426,16 @@ class Obfuscator(object):
 
         self.current_scope.declare(node.value)
 
-    def reference(self, dispatcher, node):
+    def register_reference(self, dispatcher, node):
         """
-        Register this identifier to the current scope.
+        Register this identifier to the current scope, and mark it as
+        referenced in the current scope.
         """
 
         # the identifier node itself will be mapped to the current scope
         # for the resolve to work
+        # This should probably WARN about the node object being already
+        # assigned to an existing scope that isn't current_scope.
         self.identifiers[node] = self.current_scope
         self.current_scope.reference(node.value)
 
@@ -450,6 +456,11 @@ class Obfuscator(object):
         details that are required.
         """
 
+        deferrable_handlers = {
+            Declare: self.declare,
+            Resolve: self.register_reference,
+        }
+
         local_dispatcher = Dispatcher(
             definitions=dict(dispatcher),
             token_handler=rule_handler_noop,
@@ -463,10 +474,7 @@ class Obfuscator(object):
                 # the first place in the primitives anyway.
                 PopCatch: self.pop_scope,
             },
-            deferrable_handlers={
-                Declare: self.declare,
-                Resolve: self.reference,
-            },
+            deferrable_handlers=deferrable_handlers,
         )
         return list(walk(local_dispatcher, node))
 
@@ -493,9 +501,17 @@ class Obfuscator(object):
         return node
 
 
-def obfuscate(obfuscate_globals=False, reserved_keywords=()):
+def obfuscate(
+        obfuscate_globals=False, reserved_keywords=()):
     """
-    An example obfuscate ruleset.
+    An example, barebone name obfuscation ruleset
+
+    obfuscate_globals
+        If true, identifier names on the global scope will also be
+        obfuscated.  Default is False.
+    reserved_keywords
+        A tuple of strings that should not be generated as obfuscated
+        identifiers.
     """
 
     def name_obfuscation_rules():

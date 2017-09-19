@@ -79,9 +79,18 @@ def indent(indent_str=None):
     return indentation_rule
 
 
-def obfuscate(obfuscate_globals=False, reserved_keywords=()):
+def obfuscate(
+        obfuscate_globals=False,
+        reserved_keywords=()):
     """
-    An example obfuscate ruleset.
+    The name obfuscation ruleset.
+
+    obfuscate_globals
+        If true, identifier names on the global scope will also be
+        obfuscated.  Default is False.
+    reserved_keywords
+        A tuple of strings that should not be generated as obfuscated
+        identifiers.
     """
 
     def name_obfuscation_rules():

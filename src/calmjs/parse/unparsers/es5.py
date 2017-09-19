@@ -337,18 +337,22 @@ def pretty_print(ast, indent_str='  '):
     return ''.join(chunk.text for chunk in pretty_printer(indent_str)(ast))
 
 
-def minify_printer(obfuscate=False, obfuscate_globals=False):
+def minify_printer(
+        obfuscate=False, obfuscate_globals=False):
     """
     Construct a minimum printer.
     """
 
     return Unparser(rules=(
-        rules.obfuscate(obfuscate_globals, reserved_keywords=(
-            Lexer.keywords_dict.keys())),)
-        if obfuscate else (rules.minimum(),))
+        rules.obfuscate(
+            obfuscate_globals=obfuscate_globals,
+            reserved_keywords=(Lexer.keywords_dict.keys())
+        ),
+    ) if obfuscate else (rules.minimum(),))
 
 
-def minify_print(ast, obfuscate=False, obfuscate_globals=False):
+def minify_print(
+        ast, obfuscate=False, obfuscate_globals=False):
     """
     Simple minify print function; returns a string rendering of an input
     AST of an ES5 program

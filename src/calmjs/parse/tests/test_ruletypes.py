@@ -104,10 +104,13 @@ class DeferrableTestCase(unittest.TestCase):
         node = Node()
 
         rslv = Resolve()
-        with self.assertRaises(TypeError):
+        with self.assertRaises(TypeError) as e:
             rslv(fake_dispatcher, node)
+        self.assertEqual(
+            e.exception.args[0],
+            'the Resolve Deferrable type only works with Identifier',
+        )
 
         identifier = Identifier('value')
-
         self.assertEqual('value', rslv(not_implemented, identifier))
         self.assertEqual('VALUE', rslv(fake_dispatcher, identifier))
