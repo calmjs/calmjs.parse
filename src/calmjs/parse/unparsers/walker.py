@@ -267,6 +267,13 @@ def walk(
                 # that with this function, the dispatcher and the node.
                 for chunk in rule(_walk, dispatcher, node):
                     yield chunk
+            elif isinstance(rule, Deferrable):
+                # a naked deferrable will simply be called.
+                # while it is tempting to treat it like a Structure
+                # layout marker like below, this rule type is a callable
+                # and it may have more complex handling before deferring
+                # to the handler provided by the dispatcher.
+                rule(dispatcher, node)
             elif issubclass(rule, Structure):
                 # A stucture layout marker; these will be actioned
                 # immediately as it relates to the handling of the

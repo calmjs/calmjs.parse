@@ -5,6 +5,8 @@ import unittest
 from collections import namedtuple
 
 from calmjs.parse.parsers.es5 import parse as es5
+from calmjs.parse.asttypes import Identifier
+from calmjs.parse.asttypes import Node
 from calmjs.parse.asttypes import VarStatement
 from calmjs.parse.asttypes import VarDecl
 from calmjs.parse.unparsers.walker import Dispatcher
@@ -66,7 +68,7 @@ def identity(f):
 
 class DispatcherWalkTestCase(unittest.TestCase):
 
-    def setUp(self):
+    def setup_defaults(self):
         # provide just enough of the everything that is required.
         token_handler, layout_handlers, deferrable_handlers, declared_vars = (
             setup_handlers(self))
@@ -103,6 +105,7 @@ class DispatcherWalkTestCase(unittest.TestCase):
         self.declared_vars = declared_vars
 
     def test_layouts_buffering(self):
+        self.setup_defaults()
         # The buffered layout rule handler should be invoked with the
         # Node that originally queued the LayoutRuleChunk (rather, the
         # walk should have done that for the Node).
@@ -122,12 +125,30 @@ class DispatcherWalkTestCase(unittest.TestCase):
         self.assertEqual(['a'], self.declared_vars)
 
     def test_deferrable_resolve(self):
+        self.setup_defaults()
         # define the replacement in the map that was set up.
         self.replacement['$'] = 'jq'
         tree = es5('var w = $(window).width();')
         recreated = ''.join(c.text for c in walk(
             self.dispatcher, tree, self.dispatcher[tree], identity, identity))
         self.assertEqual('var w = jq(window).width();', recreated)
+        self.assertEqual(['w'], self.declared_vars)
+
+    def test_top_level_deferable(self):
+        (token_handler, layout_handlers, deferrable_handlers,
+            self.declared_vars) = setup_handlers(self)
+        node = Node()
+        node.foo = Identifier('foo')
+        dispatcher = Dispatcher(
+            definitions={'Node': (Declare('foo'), Text(value='done'),)},
+            token_handler=token_handler,
+            layout_handlers=layout_handlers,
+            deferrable_handlers=deferrable_handlers,
+        )
+        recreated = ''.join(c.text for c in walk(
+            dispatcher, node, dispatcher[node], identity, identity))
+        self.assertEqual('done', recreated)
+        self.assertEqual(['foo'], self.declared_vars)
 
 
 class DispatcherTestcase(unittest.TestCase):
