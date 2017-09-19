@@ -1292,6 +1292,39 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
 
     ), (
+        'new_keyword_in_object_slimit_78',
+        """
+        var foo = {
+          key: {
+            old: new new mod.Item(),
+            new: new mod.Item()
+          }
+        };
+        """,
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='foo'>,
+            initializer=<Object @1:11 properties=[
+              <Assign @2:6 left=<PropIdentifier @2:3 value='key'>,
+                op=':', right=<Object @2:8 properties=[
+                  <Assign @3:8 left=<PropIdentifier @3:5 value='old'>,
+                    op=':', right=<NewExpr @3:10 args=None,
+                      identifier=<NewExpr @3:14 args=<Arguments @3:26 items=[
+                      ]>,
+                      identifier=<DotAccessor @3:21 identifier=<
+                        PropIdentifier @3:22 value='Item'>,
+                        node=<Identifier @3:18 value='mod'>>>>>,
+                  <Assign @4:8 left=<PropIdentifier @4:5 value='new'>,
+                    op=':', right=<NewExpr @4:10 args=<Arguments @4:22 items=[
+                    ]>,
+                    identifier=<DotAccessor @4:17 identifier=<
+                      PropIdentifier @4:18 value='Item'>,
+                      node=<Identifier @4:14 value='mod'>>>>
+                ]>>
+            ]>>
+        ]>]>
+        """,
+    ), (
         # object literal
         'object_literal_literal_keys',
         """
@@ -2458,6 +2491,38 @@ ParserToECMAASITestCase = build_equality_testcase(
         'use strict';
         'use strict';
         'use strict';
+        """,
+    ), (
+        'new_keyword_in_object_slimit_78',
+        """
+        var foo = {
+          key: {
+            old: new new mod.Item(),
+            new: new mod.Item()
+          }
+        }
+        """,
+        """
+        var foo = {
+          key: {
+            old: new new mod.Item(),
+            new: new mod.Item()
+          }
+        };
+        """,
+    ), (
+        'slimit_78',
+        """
+        $$thing('set', 'thing', {
+          true: '-1',
+          false: '0'
+        })
+        """,
+        """
+        $$thing('set', 'thing', {
+          true: '-1',
+          false: '0'
+        });
         """,
     )])
 )
