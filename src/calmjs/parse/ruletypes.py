@@ -144,7 +144,7 @@ class Deferrable(Rule):
     instance can make use of to achieve that by acquiring a possible
     handler like so in the __call__ implementation:
 
-        handler = dispatcher(self)
+        handler = dispatcher.deferrable(self)
 
     If a callable was returned, it should be invoked with the same
     arguments that were passed into that context, which should be
@@ -440,7 +440,7 @@ class Declare(Deferrable):
             return target
 
         # look up the layout handler for this deferrable type
-        handler = dispatcher(self)
+        handler = dispatcher.deferrable(self)
         if handler is not NotImplemented:
             handler = partial(handler, dispatcher)
             if isinstance(target, list):
@@ -464,7 +464,7 @@ class Resolve(Deferrable):
             raise TypeError(
                 "the Resolve Deferrable type only works with Identifier")
 
-        handler = dispatcher(self)
+        handler = dispatcher.deferrable(self)
         if handler is not NotImplemented:
             # the handler will return the value
             return handler(dispatcher, node)

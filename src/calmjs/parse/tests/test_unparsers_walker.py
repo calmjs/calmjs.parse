@@ -5,7 +5,6 @@ import unittest
 from collections import namedtuple
 
 from calmjs.parse.parsers.es5 import parse as es5
-from calmjs.parse.asttypes import Identifier
 from calmjs.parse.asttypes import Node
 from calmjs.parse.asttypes import VarStatement
 from calmjs.parse.asttypes import VarDecl
@@ -133,22 +132,6 @@ class DispatcherWalkTestCase(unittest.TestCase):
             self.dispatcher, tree, self.dispatcher[tree], identity, identity))
         self.assertEqual('var w = jq(window).width();', recreated)
         self.assertEqual(['w'], self.declared_vars)
-
-    def test_top_level_deferable(self):
-        (token_handler, layout_handlers, deferrable_handlers,
-            self.declared_vars) = setup_handlers(self)
-        node = Node()
-        node.foo = Identifier('foo')
-        dispatcher = Dispatcher(
-            definitions={'Node': (Declare('foo'), Text(value='done'),)},
-            token_handler=token_handler,
-            layout_handlers=layout_handlers,
-            deferrable_handlers=deferrable_handlers,
-        )
-        recreated = ''.join(c.text for c in walk(
-            dispatcher, node, dispatcher[node], identity, identity))
-        self.assertEqual('done', recreated)
-        self.assertEqual(['foo'], self.declared_vars)
 
     def test_bad_definition(self):
         (token_handler, layout_handlers, deferrable_handlers,

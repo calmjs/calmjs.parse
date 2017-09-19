@@ -9,7 +9,6 @@ from __future__ import unicode_literals
 from collections import Iterable
 from itertools import chain
 from calmjs.parse.ruletypes import Token
-from calmjs.parse.ruletypes import Deferrable
 from calmjs.parse.ruletypes import Structure
 from calmjs.parse.ruletypes import Layout
 from calmjs.parse.ruletypes import LayoutChunk
@@ -146,6 +145,28 @@ class Dispatcher(object):
         # goal without too much issues.
         return self.__definitions[key.__class__.__name__]
 
+    def deferrable(self, rule):
+        return self.__deferrable_handlers.get(type(rule), NotImplemented)
+
+    def layout_chunk(self, rule, node):
+        handler = self.__layout_handlers.get(rule, rule_handler_noop)
+        if issubclass(rule, Structure):
+            # A stucture layout marker; these will be actioned
+            # immediately as it relates to the handling of the
+            # structural description of the asttype at the current
+            # point.
+            if handler:
+                handler(self, node)
+            return
+        elif issubclass(rule, Layout):
+            # Since Layouts can be batch processed, defer action by
+            # yielding a LayoutChunk as a marker so that the option to
+            # batch process a sequence of Layouts as a single step can
+            # be done.  If the handler is not registered to the
+            # dispatcher, also yield the rule attached to a noop handler
+            # so that it won't be omitted in the batch handling.
+            yield LayoutChunk(rule, handler, node)
+
     def __call__(self, rule):
         """
         This is to find a callable for the particular rule encountered.
@@ -157,8 +178,6 @@ class Dispatcher(object):
 
         if isinstance(rule, Token):
             return self.__token_handler
-        if isinstance(rule, Deferrable):
-            return self.__deferrable_handlers.get(type(rule), NotImplemented)
         else:
             return self.__layout_handlers.get(rule, NotImplemented)
 
@@ -280,38 +299,10 @@ def walk(
                 for chunk in rule(_walk, dispatcher, node):
                     yield chunk
                 continue
-            elif isinstance(rule, Deferrable):
-                # a naked deferrable will simply be called.
-                # while it is tempting to treat it like a Structure
-                # layout marker like below, this rule type is a callable
-                # and it may have more complex handling before deferring
-                # to the handler provided by the dispatcher.
-                rule(dispatcher, node)
-                continue
             elif isinstance(rule, type):
-                if issubclass(rule, Structure):
-                    # A stucture layout marker; these will be actioned
-                    # immediately as it relates to the handling of the
-                    # structural description of the asttype at the
-                    # current point.
-                    handler = dispatcher(rule)
-                    if handler is not NotImplemented:
-                        handler(dispatcher, node)
-                    continue
-                elif issubclass(rule, Layout):
-                    # Since Layouts can be batch processed, defer action
-                    # by yielding a LayoutChunk as a marker so that the
-                    # option to batch process a sequence of Layouts as
-                    # a single step can be done.  If the handler is not
-                    # registered to the dispatcher, also yield the rule
-                    # attached to a noop handler so that it won't be
-                    # omitted in the batch handling.
-                    handler = dispatcher(rule)
-                    if handler is NotImplemented:
-                        yield LayoutChunk(rule, rule_handler_noop, node)
-                    else:
-                        yield LayoutChunk(rule, handler, node)
-                    continue
+                for chunk in dispatcher.layout_chunk(rule, node):
+                    yield chunk
+                continue
 
             raise TypeError(
                 '%r is not a supported Rule subclass or instance; '
