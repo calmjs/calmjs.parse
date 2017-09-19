@@ -648,7 +648,7 @@ class ObfuscatorTestCase(unittest.TestCase):
             obfuscate(obfuscate_globals=False),
         ))(node)))
 
-    def test_obfuscate_no_global_recursive_redeclared(self):
+    def test_obfuscate_no_global_recursive_redeclared_shadow_funcname(self):
         node = es5(dedent("""
         (function $() {
           $();
@@ -668,7 +668,30 @@ class ObfuscatorTestCase(unittest.TestCase):
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
             default_rules,
             indent(indent_str='  '),
-            obfuscate(obfuscate_globals=False),
+            obfuscate(obfuscate_globals=False, shadow_funcname=True),
+        ))(node)))
+
+    def test_obfuscate_no_global_recursive_redeclared_no_shadow_funcname(self):
+        node = es5(dedent("""
+        (function $() {
+          $();
+          (function $() {
+            var foo = 1;
+          })();
+        })();
+        """).strip())
+
+        self.assertEqual(dedent("""
+        (function $() {
+          a();
+          (function a() {
+            var b = 1;
+          })();
+        })();
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_rules,
+            indent(indent_str='  '),
+            obfuscate(obfuscate_globals=False, shadow_funcname=False),
         ))(node)))
 
     def test_obfuscate_skip(self):

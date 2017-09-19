@@ -31,6 +31,7 @@ from calmjs.parse.ruletypes import (
 from calmjs.parse.ruletypes import (
     Declare,
     Resolve,
+    ResolveFuncName,
 )
 from calmjs.parse.ruletypes import (
     children_newline,
@@ -223,7 +224,7 @@ definitions = {
     'FuncDecl': (
         Text(value='function'), Optional('identifier', (RequiredSpace,)),
         Attr(Declare('identifier')), Text(value='('),
-        PushScope,
+        PushScope, Optional('identifier', (ResolveFuncName(),)),
         JoinAttr(Declare('parameters'), value=(Text(value=','), Space)),
         Text(value=')'), Space,
         Text(value='{'),
@@ -236,7 +237,7 @@ definitions = {
     'FuncExpr': (
         Text(value='function'), Optional('identifier', (RequiredSpace,)),
         Attr(Declare('identifier')), Text(value='('),
-        PushScope,
+        PushScope, Optional('identifier', (ResolveFuncName(),)),
         JoinAttr(Declare('parameters'), value=(Text(value=','), Space,)),
         Text(value=')'), Space,
         Text(value='{'),
@@ -338,7 +339,7 @@ def pretty_print(ast, indent_str='  '):
 
 
 def minify_printer(
-        obfuscate=False, obfuscate_globals=False):
+        obfuscate=False, obfuscate_globals=False, shadow_funcname=False):
     """
     Construct a minimum printer.
     """
@@ -346,13 +347,14 @@ def minify_printer(
     return Unparser(rules=(
         rules.obfuscate(
             obfuscate_globals=obfuscate_globals,
+            shadow_funcname=shadow_funcname,
             reserved_keywords=(Lexer.keywords_dict.keys())
         ),
     ) if obfuscate else (rules.minimum(),))
 
 
 def minify_print(
-        ast, obfuscate=False, obfuscate_globals=False):
+        ast, obfuscate=False, obfuscate_globals=False, shadow_funcname=False):
     """
     Simple minify print function; returns a string rendering of an input
     AST of an ES5 program
@@ -377,4 +379,4 @@ def minify_print(
     """
 
     return ''.join(chunk.text for chunk in minify_printer(
-        obfuscate, obfuscate_globals)(ast))
+        obfuscate, obfuscate_globals, shadow_funcname)(ast))

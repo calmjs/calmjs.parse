@@ -16,6 +16,7 @@ from calmjs.parse.ruletypes import PushCatch
 from calmjs.parse.ruletypes import PopCatch
 from calmjs.parse.ruletypes import Declare
 from calmjs.parse.ruletypes import Resolve
+from calmjs.parse.ruletypes import ResolveFuncName
 
 from calmjs.parse.unparsers.walker import Dispatcher
 from calmjs.parse.unparsers.walker import walk
@@ -368,6 +369,7 @@ class Obfuscator(object):
     def __init__(
             self,
             obfuscate_globals=False,
+            shadow_funcname=False,
             reserved_keywords=()):
         """
         Arguments
@@ -381,6 +383,14 @@ class Obfuscator(object):
 
             Defaults to False for the reason above.
 
+        shadow_funcname
+            If True, obfuscated names within a function can shadow the
+            function name that it was defined for.  In strict mode for
+            Safari, names within a function cannot shadow over the name
+            that the function was declared as.
+
+            Defaults to False.
+
         reserved_keywords
             A list of reserved keywords for the input AST that should
             not be used as an obfuscated identifier.  Defaults to an
@@ -392,6 +402,7 @@ class Obfuscator(object):
         self.scopes = {}
         self.stack = []
         self.obfuscate_globals = obfuscate_globals
+        self.shadow_funcname = shadow_funcname
         self.reserved_keywords = reserved_keywords
         # global scope is in the ether somewhere so it isn't exactly
         # bounded to any specific node that gets passed in.
@@ -439,6 +450,15 @@ class Obfuscator(object):
         self.identifiers[node] = self.current_scope
         self.current_scope.reference(node.value)
 
+    def shadow_reference(self, dispatcher, node):
+        """
+        Only simply make a reference to the value in the current scope.
+        """
+
+        # as opposed to the previous one, only add the value of the
+        # identifier itself to the scope so that it becomes reserved.
+        self.current_scope.reference(node.value)
+
     def resolve(self, dispatcher, node):
         """
         For the given node, resolve it into the scope it was declared
@@ -460,6 +480,8 @@ class Obfuscator(object):
             Declare: self.declare,
             Resolve: self.register_reference,
         }
+        if not self.shadow_funcname:
+            deferrable_handlers[ResolveFuncName] = self.shadow_reference
 
         local_dispatcher = Dispatcher(
             definitions=dict(dispatcher),
@@ -502,13 +524,16 @@ class Obfuscator(object):
 
 
 def obfuscate(
-        obfuscate_globals=False, reserved_keywords=()):
+        obfuscate_globals=False, shadow_funcname=False, reserved_keywords=()):
     """
     An example, barebone name obfuscation ruleset
 
     obfuscate_globals
         If true, identifier names on the global scope will also be
         obfuscated.  Default is False.
+    shadow_funcname
+        If True, obfuscated function names will be shadowed.  Default is
+        False.
     reserved_keywords
         A tuple of strings that should not be generated as obfuscated
         identifiers.
@@ -517,6 +542,7 @@ def obfuscate(
     def name_obfuscation_rules():
         inst = Obfuscator(
             obfuscate_globals=obfuscate_globals,
+            shadow_funcname=shadow_funcname,
             reserved_keywords=reserved_keywords,
         )
         return {
