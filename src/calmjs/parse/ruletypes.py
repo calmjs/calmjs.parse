@@ -108,7 +108,7 @@ class Token(Rule):
         if isinstance(value, Node):
             return walk(dispatcher, value)
         else:
-            return dispatcher(self)(self, dispatcher, node, value)
+            return dispatcher.token(self, node, value)
 
     def __call__(self, walk, dispatcher, node):
         """

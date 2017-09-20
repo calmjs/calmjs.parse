@@ -148,6 +148,9 @@ class Dispatcher(object):
     def deferrable(self, rule):
         return self.__deferrable_handlers.get(type(rule), NotImplemented)
 
+    def token(self, token, node, value):
+        return self.__token_handler(token, self, node, value)
+
     def layout_chunk(self, rule, node):
         handler = self.__layout_handlers.get(rule, rule_handler_noop)
         if issubclass(rule, Structure):
@@ -172,14 +175,7 @@ class Dispatcher(object):
         This is to find a callable for the particular rule encountered.
         """
 
-        # this is really starting to look like a multi-dispatcher,
-        # especially if it can accept multiple arguments to invoke the
-        # located callable in one go with the arguments supplied here.
-
-        if isinstance(rule, Token):
-            return self.__token_handler
-        else:
-            return self.__layout_handlers.get(rule, NotImplemented)
+        return self.__layout_handlers.get(rule, NotImplemented)
 
     @property
     def indent_str(self):
