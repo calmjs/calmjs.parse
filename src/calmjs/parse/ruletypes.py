@@ -101,9 +101,6 @@ class Token(Rule):
         self.value = value
         self.pos = pos
 
-    def resolve(self, walk, dispatcher, node, value):
-        return walk(dispatcher, value, token=self)
-
     def __call__(self, walk, dispatcher, node):
         """
         Arguments
@@ -254,8 +251,7 @@ class Attr(Token):
         value = self._getattr(dispatcher, node)
         if is_empty(value):
             return
-        for chunk in self.resolve(
-                walk, dispatcher, node, value):
+        for chunk in walk(dispatcher, value, token=self):
             yield chunk
 
 
@@ -266,7 +262,7 @@ class Text(Token):
     """
 
     def __call__(self, walk, dispatcher, node):
-        for chunk in self.resolve(walk, dispatcher, node, self.value):
+        for chunk in walk(dispatcher, self.value, token=self):
             yield chunk
 
 
@@ -283,7 +279,7 @@ class JoinAttr(Attr):
         except StopIteration:
             return
 
-        for chunk in self.resolve(walk, dispatcher, node, target_node):
+        for chunk in walk(dispatcher, target_node, token=self):
             yield chunk
 
         for target_node in nodes:
@@ -291,7 +287,7 @@ class JoinAttr(Attr):
             # format also.
             for value_node in walk(dispatcher, node, self.value):
                 yield value_node
-            for chunk in self.resolve(walk, dispatcher, node, target_node):
+            for chunk in walk(dispatcher, target_node, token=self):
                 yield chunk
 
 
@@ -310,8 +306,7 @@ class ElisionToken(Attr, Text):
 
     def __call__(self, walk, dispatcher, node):
         value = self._getattr(dispatcher, node)
-        for chunk in self.resolve(
-                walk, dispatcher, node, self.value * value):
+        for chunk in walk(dispatcher, self.value * value, token=self):
             yield chunk
 
 
@@ -344,7 +339,7 @@ class ElisionJoinAttr(ElisionToken):
         except StopIteration:
             return
 
-        for chunk in self.resolve(walk, dispatcher, node, previous_node):
+        for chunk in walk(dispatcher, previous_node, token=self):
             yield chunk
 
         for next_node in nodes:
@@ -357,7 +352,7 @@ class ElisionJoinAttr(ElisionToken):
             if not isinstance(next_node, Elision):
                 for value_node in walk(dispatcher, node, self.value):
                     yield value_node
-            for chunk in self.resolve(walk, dispatcher, node, next_node):
+            for chunk in walk(dispatcher, next_node, token=self):
                 yield chunk
             previous_node = next_node
 
