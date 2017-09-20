@@ -494,10 +494,10 @@ class ObfuscatorTestCase(unittest.TestCase):
         node = Identifier('dummy')
         token = Attr('value', pos=None)
         # when nothing got remapped.
-        self.assertEqual(('dummy', None, None, None), next(
+        self.assertEqual(('dummy', None, None, None, None), next(
             token_handler_unobfuscate(token, None, node, 'dummy')))
         # when the provided value differs
-        self.assertEqual(('d', None, None, 'dummy'), next(
+        self.assertEqual(('d', None, None, 'dummy', None), next(
             token_handler_unobfuscate(token, None, node, 'd')))
 
     def test_build_substitutions(self):

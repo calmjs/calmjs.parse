@@ -17,9 +17,9 @@ class IndentatorTestCase(unittest.TestCase):
         # initialise a barebone dispatcher.
         dispatcher = Dispatcher({}, None, {}, {}, indent_str='<TAB>')
         layout = indent()()['layout_handlers']
-        newline = ('\n', 0, 0, None)
-        indent1 = ('<TAB>', None, None, None)
-        indent2 = ('<TAB><TAB>', None, None, None)
+        newline = ('\n', 0, 0, None, None)
+        indent1 = ('<TAB>', None, None, None, None)
+        indent2 = ('<TAB><TAB>', None, None, None, None)
 
         def run(rule, before=None):
             return layout[rule](dispatcher, None, before, None, None)
@@ -45,6 +45,6 @@ class IndentatorTestCase(unittest.TestCase):
         layout = indent(indent_str='    ')()['layout_handlers']
         self.assertIsNone(run(Indent))
         self.assertEqual(list(run(Newline)), [
-            newline, ('    ', None, None, None)])
+            newline, ('    ', None, None, None, None)])
 
         self.assertEqual(list(run(OptionalNewline, before='\n')), [])

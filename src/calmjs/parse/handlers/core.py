@@ -20,7 +20,7 @@ from calmjs.parse.asttypes import (
     While,
 )
 from calmjs.parse.ruletypes import (
-    TextChunk,
+    StreamFragment,
 
     Space,
     OptionalSpace,
@@ -38,8 +38,8 @@ assignment_tokens = {
     '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '>>>=', '&=', '^=', '|=', '='}
 # other symbols
 optional_rhs_space_tokens = {';', ')', None}
-space_imply = TextChunk(' ', 0, 0, None)
-space_drop = TextChunk(' ', None, None, None)
+space_imply = StreamFragment(' ', 0, 0, None, None)
+space_drop = StreamFragment(' ', None, None, None, None)
 
 
 def rule_handler_noop(*a, **kw):
@@ -47,7 +47,8 @@ def rule_handler_noop(*a, **kw):
     return iter(())
 
 
-def token_handler_str_default(token, dispatcher, node, subnode):
+def token_handler_str_default(
+        token, dispatcher, node, subnode, sourcepath_stack=(None,)):
     """
     Standard token handler that will return the value, ignoring any
     tokens or strings that have been remapped.
@@ -57,10 +58,11 @@ def token_handler_str_default(token, dispatcher, node, subnode):
         _, lineno, colno = node.getpos(subnode, token.pos)
     else:
         lineno, colno = None, None
-    yield TextChunk(subnode, lineno, colno, None)
+    yield StreamFragment(subnode, lineno, colno, None, sourcepath_stack[-1])
 
 
-def token_handler_unobfuscate(token, dispatcher, node, subnode):
+def token_handler_unobfuscate(
+        token, dispatcher, node, subnode, sourcepath_stack=(None,)):
     """
     A token handler that will resolve and return the original identifier
     value.
@@ -77,7 +79,8 @@ def token_handler_unobfuscate(token, dispatcher, node, subnode):
     else:
         lineno, colno = None, None
 
-    yield TextChunk(subnode, lineno, colno, original)
+    yield StreamFragment(
+        subnode, lineno, colno, original, sourcepath_stack[-1])
 
 
 def layout_handler_space_imply(dispatcher, node, before, after, prev):
@@ -94,7 +97,7 @@ def layout_handler_space_drop(dispatcher, node, before, after, prev):
 
 def layout_handler_newline_simple(dispatcher, node, before, after, prev):
     # simply render the newline with an implicit sourcemap line/col
-    yield TextChunk(dispatcher.newline_str, 0, 0, None)
+    yield StreamFragment(dispatcher.newline_str, 0, 0, None, None)
 
 
 def layout_handler_newline_optional_pretty(
@@ -118,7 +121,7 @@ def layout_handler_newline_optional_pretty(
         return
     # if no new lines in any of the checked characters
     if not newline_strs & {lc(before), fc(after), lc(prev)}:
-        yield TextChunk(dispatcher.newline_str, 0, 0, None)
+        yield StreamFragment(dispatcher.newline_str, 0, 0, None, None)
 
 
 def layout_handler_space_optional_pretty(

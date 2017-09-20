@@ -9,14 +9,11 @@ from __future__ import unicode_literals
 from collections import namedtuple
 from functools import partial
 
-from calmjs.parse.asttypes import Node
 from calmjs.parse.asttypes import Elision
 from calmjs.parse.asttypes import Identifier
 
 LayoutChunk = namedtuple('LayoutChunk', [
     'rule', 'handler', 'node'])
-TextChunk = namedtuple('TextChunk', [
-    'text', 'lineno', 'colno', 'original'])
 StreamFragment = namedtuple('StreamFragment', [
     'text', 'lineno', 'colno', 'name', 'source'])
 
@@ -105,10 +102,7 @@ class Token(Rule):
         self.pos = pos
 
     def resolve(self, walk, dispatcher, node, value):
-        if isinstance(value, Node):
-            return walk(dispatcher, value)
-        else:
-            return dispatcher.token(self, node, value)
+        return walk(dispatcher, value, token=self)
 
     def __call__(self, walk, dispatcher, node):
         """

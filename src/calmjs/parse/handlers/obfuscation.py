@@ -21,7 +21,6 @@ from calmjs.parse.ruletypes import ResolveFuncName
 from calmjs.parse.unparsers.walker import Dispatcher
 from calmjs.parse.unparsers.walker import walk
 
-from calmjs.parse.handlers.core import rule_handler_noop
 from calmjs.parse.handlers.core import token_handler_unobfuscate
 
 logger = logging.getLogger(__name__)
@@ -497,7 +496,7 @@ class Obfuscator(object):
 
         local_dispatcher = Dispatcher(
             definitions=dict(dispatcher),
-            token_handler=rule_handler_noop,
+            token_handler=None,
             layout_handlers=layout_handlers,
             deferrable_handlers=deferrable_handlers,
         )
