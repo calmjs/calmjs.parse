@@ -208,9 +208,9 @@ class Dispatcher(object):
     def token(self, token, node, value):
         return self.__token_handler(token, self, node, value)
 
-    def __call__(self, rule):
+    def layout(self, rule):
         """
-        This is to find a callable for the particular rule encountered.
+        Get handler for this layout rule.
         """
 
         return self.__layout_handlers.get(rule, NotImplemented)
@@ -350,7 +350,7 @@ def walk(
         # first pass: generate both the normalized/finalized lrcs.
         for lrc in layout_rule_chunks:
             rule_stack.append(lrc.rule)
-            handler = dispatcher(tuple(rule_stack))
+            handler = dispatcher.layout(tuple(rule_stack))
             if handler is NotImplemented:
                 # not implemented so we keep going; also add the chunk
                 # to the stack.
