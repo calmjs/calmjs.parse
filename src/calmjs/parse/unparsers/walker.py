@@ -6,7 +6,6 @@ possible.
 
 from __future__ import unicode_literals
 
-from collections import Iterable
 from itertools import chain
 from calmjs.parse.ruletypes import Token
 from calmjs.parse.ruletypes import Structure
@@ -17,6 +16,31 @@ from calmjs.parse.ruletypes import TextChunk
 
 # the default noop.
 from calmjs.parse.handlers.core import rule_handler_noop
+
+
+def optimize_structure_handler(rule, handler):
+    """
+    Produce an "optimized" version of handler for the dispatcher to
+    limit reference lookups.
+    """
+
+    def runner(walk, dispatcher, node):
+        handler(dispatcher, node)
+        return iter([])
+
+    return runner
+
+
+def optimize_layout_handler(rule, handler):
+    """
+    Produce an "optimized" version of handler for the dispatcher to
+    limit reference lookups.
+    """
+
+    def runner(walk, dispatcher, node):
+        yield LayoutChunk(rule, handler, node)
+
+    return runner
 
 
 class Dispatcher(object):
@@ -125,50 +149,64 @@ class Dispatcher(object):
         self.__indent_str = indent_str
         self.__newline_str = newline_str
 
-    def __iter__(self):
-        for item in self.__definitions.items():
-            yield item
+        self.__optimized_definitions = self.optimize()
 
-    def __getitem__(self, key):
+    def optimize_definition(self, name, definition):
+        rules = []
+        for rule in definition:
+            if isinstance(rule, type):
+                if issubclass(rule, Structure):
+                    handler = self.__layout_handlers.get(rule)
+                    if handler:
+                        rules.append(optimize_structure_handler(rule, handler))
+                    continue
+                elif issubclass(rule, Layout):
+                    # a noop here so that the relevant chunk will be
+                    # yielded for normalization by bulk-lookup.
+                    handler = self.__layout_handlers.get(
+                        rule, rule_handler_noop)
+                    rules.append(optimize_layout_handler(rule, handler))
+                    continue
+            if isinstance(rule, Token):
+                value = (self.optimize_definition(
+                    name, rule.value
+                ) if isinstance(rule.value, tuple) else rule.value)
+                rules.append(type(rule)(rule.attr, value, rule.pos))
+                continue
+
+            raise TypeError(
+                "definition for '%s' contain unsupported rule (got: %r)" % (
+                    name, rule))
+        return rules
+
+    def optimize(self):
+        return {
+            astname: self.optimize_definition(astname, definition)
+            for astname, definition in self.__definitions.items()
+        }
+
+    def get_optimized_definition(self, node):
         """
         This is for getting at the definition for a particular asttype.
         """
 
-        # TODO figure out how to do lookup by the type itself directly,
-        # rather than this string hack.
-        # The reason why the types were not used simply because it would
-        # be a bit annoying to deal with subclasses, as resolution will
-        # have to be done for the parent class, given that asttypes are
-        # always subclassed.  While working with types directly is the
-        # correct way to handle that, it is however rather complicated
-        # for this particular goal when this naive solution achieves the
-        # goal without too much issues.
-        return self.__definitions[key.__class__.__name__]
+        # The reason why the types were not used simply performance of
+        # isisntance is bad, that the types are uniquely named, and that
+        # they are always subclassed through the factory.  While working
+        # at the type level is the correct method, the performance
+        # penalties that it attracts however make this naive approach
+        # more attractive.
+        return self.__optimized_definitions[node.__class__.__name__]
+
+    def __iter__(self):
+        for item in self.__definitions.items():
+            yield item
 
     def deferrable(self, rule):
         return self.__deferrable_handlers.get(type(rule), NotImplemented)
 
     def token(self, token, node, value):
         return self.__token_handler(token, self, node, value)
-
-    def layout_chunk(self, rule, node):
-        handler = self.__layout_handlers.get(rule, rule_handler_noop)
-        if issubclass(rule, Structure):
-            # A stucture layout marker; these will be actioned
-            # immediately as it relates to the handling of the
-            # structural description of the asttype at the current
-            # point.
-            if handler:
-                handler(self, node)
-            return
-        elif issubclass(rule, Layout):
-            # Since Layouts can be batch processed, defer action by
-            # yielding a LayoutChunk as a marker so that the option to
-            # batch process a sequence of Layouts as a single step can
-            # be done.  If the handler is not registered to the
-            # dispatcher, also yield the rule attached to a noop handler
-            # so that it won't be omitted in the batch handling.
-            yield LayoutChunk(rule, handler, node)
 
     def __call__(self, rule):
         """
@@ -275,37 +313,12 @@ def walk(
     def _walk(dispatcher, node, definition=None):
 
         if definition is None:
-            definition = dispatcher[node]
-
-        if not isinstance(definition, Iterable):
-            if definition is dispatcher[node]:
-                raise TypeError(
-                    "definition for '%s' is not an iterable" % (
-                        node.__class__.__name__))
-            else:
-                raise TypeError(
-                    "custom definition %r provided with '%r' is not an "
-                    "iterable" % (node.__class__.__name__, node))
+            # definition = dispatcher[node]
+            definition = dispatcher.get_optimized_definition(node)
 
         for rule in definition:
-            if isinstance(rule, Token):
-                # tokens are callables that will generate the chunks
-                # that will ultimately form the output, so simply invoke
-                # that with this function, the dispatcher and the node.
-                for chunk in rule(_walk, dispatcher, node):
-                    yield chunk
-                continue
-            elif isinstance(rule, type):
-                for chunk in dispatcher.layout_chunk(rule, node):
-                    yield chunk
-                continue
-
-            raise TypeError(
-                '%r is not a supported Rule subclass or instance; '
-                'the cause was node %r and definition %r ' % (
-                    rule, node, definition,
-                )
-            )
+            for chunk in rule(_walk, dispatcher, node):
+                yield chunk
 
     # Format layout markers are not handled immediately in the walk -
     # they will simply be buffered so that a collection of them can be

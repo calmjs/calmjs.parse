@@ -5,7 +5,6 @@ import unittest
 from collections import namedtuple
 
 from calmjs.parse.parsers.es5 import parse as es5
-from calmjs.parse.asttypes import Node
 from calmjs.parse.asttypes import VarStatement
 from calmjs.parse.asttypes import VarDecl
 from calmjs.parse.unparsers.walker import Dispatcher
@@ -111,7 +110,8 @@ class DispatcherWalkTestCase(unittest.TestCase):
         original = 'var a = 1;'
         tree = es5(original)
         recreated = ''.join(c.text for c in walk(
-            self.dispatcher, tree, self.dispatcher[tree], identity, identity))
+            self.dispatcher, tree,
+            walk_decorator=identity, finalize_chunk=identity))
         # see that this at least works as expected
         self.assertEqual(original, recreated)
         # ensure that the 3 spaces have been handled as expected
@@ -129,51 +129,26 @@ class DispatcherWalkTestCase(unittest.TestCase):
         self.replacement['$'] = 'jq'
         tree = es5('var w = $(window).width();')
         recreated = ''.join(c.text for c in walk(
-            self.dispatcher, tree, self.dispatcher[tree], identity, identity))
+            self.dispatcher, tree,
+            walk_decorator=identity, finalize_chunk=identity))
         self.assertEqual('var w = jq(window).width();', recreated)
         self.assertEqual(['w'], self.declared_vars)
-
-    def test_bad_definition(self):
-        (token_handler, layout_handlers, deferrable_handlers,
-            self.declared_vars) = setup_handlers(self)
-        node = Node()
-        dispatcher = Dispatcher(
-            definitions={'Node': (object())},
-            token_handler=token_handler,
-            layout_handlers=layout_handlers,
-            deferrable_handlers=deferrable_handlers,
-        )
-        with self.assertRaises(TypeError) as e:
-            list(c.text for c in walk(dispatcher, node, dispatcher[node]))
-
-        self.assertEqual(
-            "definition for 'Node' is not an iterable", e.exception.args[0])
-
-        with self.assertRaises(TypeError) as e:
-            list(c.text for c in walk(dispatcher, node))
-
-        self.assertEqual(
-            "definition for 'Node' is not an iterable", e.exception.args[0])
-
-        with self.assertRaises(TypeError) as e:
-            list(c.text for c in walk(dispatcher, node, object()))
-
-        self.assertIn("custom definition", e.exception.args[0])
 
     def test_bad_definition_rule(self):
         (token_handler, layout_handlers, deferrable_handlers,
             self.declared_vars) = setup_handlers(self)
-        node = Node()
-        dispatcher = Dispatcher(
-            definitions={'Node': (object(),)},
-            token_handler=token_handler,
-            layout_handlers=layout_handlers,
-            deferrable_handlers=deferrable_handlers,
-        )
         with self.assertRaises(TypeError) as e:
-            list(c.text for c in walk(dispatcher, node, dispatcher[node]))
+            Dispatcher(
+                definitions={'Node': (object(),)},
+                token_handler=token_handler,
+                layout_handlers=layout_handlers,
+                deferrable_handlers=deferrable_handlers,
+            )
 
-        self.assertIn('not a supported Rule', e.exception.args[0])
+        self.assertIn(
+            "definition for 'Node' contain unsupported rule (got:",
+            e.exception.args[0],
+        )
 
 
 class DispatcherTestcase(unittest.TestCase):
@@ -183,6 +158,6 @@ class DispatcherTestcase(unittest.TestCase):
         self.assertEqual(dict(dispatcher), {})
 
     def test_clone_definitions(self):
-        marker = object()
+        marker = tuple()
         dispatcher = Dispatcher({'Node': marker}, {}, {}, {})
         self.assertEqual(dict(dispatcher), {'Node': marker})
