@@ -10,7 +10,7 @@ class ECMASyntaxError(SyntaxError):
     """
 
 
-class ECMARegexSyntaxError(SyntaxError):
+class ECMARegexSyntaxError(ECMASyntaxError):
     """
     Syntax error for ECMA regex.
     """

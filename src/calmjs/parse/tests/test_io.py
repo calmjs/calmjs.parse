@@ -7,6 +7,7 @@ from io import StringIO
 from os.path import join
 from tempfile import mktemp
 
+from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.asttypes import Node
 from calmjs.parse.ruletypes import Attr
 from calmjs.parse.ruletypes import Text
@@ -30,6 +31,28 @@ class IOTestCase(unittest.TestCase):
         stream.name = 'somefile.js'
         node = io.read(parser, stream)
         self.assertEqual(node.sourcepath, 'somefile.js')
+
+    def test_read_error(self):
+        # given that there is no generic parser, emulate one like so
+        def parser(text):
+            raise ECMASyntaxError('Illegal input')
+
+        def not_a_parser(text):
+            raise Exception('Illegal input')
+
+        stream = StringIO('var foo = "bar";')
+        stream.name = 'somefile.js'
+        with self.assertRaises(Exception) as e:
+            io.read(parser, stream)
+
+        self.assertEqual("Illegal input in 'somefile.js'", e.exception.args[0])
+
+        stream = StringIO('var foo = "bar";')
+        with self.assertRaises(Exception) as e:
+            io.read(not_a_parser, stream)
+
+        self.assertNotEqual(
+            "Illegal input in 'somefile.js'", e.exception.args[0])
 
     def test_write_no_sourcemap(self):
         root = mktemp()

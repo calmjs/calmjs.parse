@@ -7,6 +7,8 @@ from itertools import chain
 from collections import Iterable
 from calmjs.parse.asttypes import Node
 from calmjs.parse import sourcemap
+from calmjs.parse.exceptions import ECMASyntaxError
+from calmjs.parse.utils import repr_compat
 
 
 def read(parser, stream):
@@ -15,8 +17,13 @@ def read(parser, stream):
     """
 
     text = stream.read()
-    result = parser(text)
-    result.sourcepath = getattr(stream, 'name', None)
+    stream_name = getattr(stream, 'name', None)
+    try:
+        result = parser(text)
+    except ECMASyntaxError as e:
+        error_name = repr_compat(stream_name or stream)
+        raise type(e)('%s in %s' % (str(e), error_name))
+    result.sourcepath = stream_name
     return result
 
 
