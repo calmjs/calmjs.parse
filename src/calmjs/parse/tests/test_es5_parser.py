@@ -2533,12 +2533,15 @@ ECMASyntaxErrorsTestCase = build_exception_testcase(
     'ECMASyntaxErrorsTestCase', parse_to_repr, ((
         label,
         textwrap.dedent(argument).strip(),
-    ) for label, argument in [(
+        msg,
+    ) for label, argument, msg in [(
         'interger_unwrapped_raw_dot_accessor',
-        '0.toString();'
+        '0.toString();',
+        "Unexpected 'toString' at 1:3 between '0.' at 1:1 and '(' at 1:11",
     ), (
         'unterminated_comment',  # looks like regex
-        's = /****/;'
+        's = /****/;',
+        "Unexpected ';' at 1:11 after '/****/' at 1:5",
     ), (
         # expression is not optional in throw statement
         # ASI at lexer level should insert ';' after throw
@@ -2546,7 +2549,8 @@ ECMASyntaxErrorsTestCase = build_exception_testcase(
         """
         throw
           'exc';
-        """
+        """,
+        "Unexpected \"'exc'\" at 1:9 after 'throw' at 1:1",
     ), (
         'setter_single_arg',
         """
@@ -2556,6 +2560,7 @@ ECMASyntaxErrorsTestCase = build_exception_testcase(
           }
         };
         """,
+        "Unexpected ',' at 2:19 between 'arg1' at 2:15 and 'arg2' at 2:21",
     )]), ECMASyntaxError
 )
 
@@ -2564,11 +2569,14 @@ ECMARegexSyntaxErrorsTestCase = build_exception_testcase(
     'ECMARegexSyntaxErrorsTestCase', parse_to_repr, ((
         label,
         textwrap.dedent(argument).strip(),
-    ) for label, argument in [(
+        msg,
+    ) for label, argument, msg in [(
         'unmatched_brackets',
-        'var x = /][/;'
+        'var x = /][/;',
+        "Error parsing regular expression '/][/;' at 1:9",
     ), (
         'unmatched_backslash',
-        r'var x = /\/;'
+        r'var x = /\/;',
+        "Error parsing regular expression '/\/;' at 1:9",
     )]), ECMARegexSyntaxError
 )
