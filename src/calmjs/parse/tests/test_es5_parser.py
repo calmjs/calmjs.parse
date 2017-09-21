@@ -2050,12 +2050,13 @@ ParsedNodeTypeTestCase = build_equality_testcase(
     ), (
         'function_expr_1',
         """
-        function(arg) {};
+        (function(arg) {});
         """,
         """
         <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<FuncExpr @1:1 elements=[],
-            identifier=None, parameters=[<Identifier @1:10 value='arg'>]>>
+          <ExprStatement @1:1 expr=<GroupingOp @1:1 expr=<
+            FuncExpr @1:2 elements=[],
+              identifier=None, parameters=[<Identifier @1:11 value='arg'>]>>>
         ]>
         """
     ), (

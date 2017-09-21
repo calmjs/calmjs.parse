@@ -131,12 +131,12 @@ class BaseVisitorTestCase(unittest.TestCase):
 
     def test_simple_function_declare(self):
         unparser = Unparser()
-        ast = parse('function(){};')
+        ast = parse('function foo(){}')
         self.assertEqual(quad(unparser(ast)), [
-            ('function', 1, 1, None),
-            ('(', 1, 9, None), (')', 1, 10, None), (' ', 0, 0, None),
-            ('{', 1, 11, None), ('\n', 0, 0, None), ('}', 1, 12, None),
-            (';', 1, 13, None), ('\n', 0, 0, None),
+            ('function', 1, 1, None), (' ', 0, 0, None), ('foo', 1, 10, None),
+            ('(', 1, 13, None), (')', 1, 14, None), (' ', 0, 0, None),
+            ('{', 1, 15, None), ('\n', 0, 0, None), ('}', 1, 16, None),
+            ('\n', 0, 0, None),
         ])
 
     def test_simple_function_invoke(self):
@@ -1517,13 +1517,13 @@ ES5IdentityTestCase = build_equality_testcase(
         ++i;
         --i;
         !i;
-        function() {
+        function foo() {
           i++;
           i--;
           ++i;
           --i;
           !i;
-        };
+        }
         """,
 
     ), (
@@ -1531,10 +1531,10 @@ ES5IdentityTestCase = build_equality_testcase(
         """
         x << y;
         y >> x;
-        function() {
+        function foo() {
           x << y;
           y >> x;
-        };
+        }
         """,
 
     ), (
@@ -1543,11 +1543,11 @@ ES5IdentityTestCase = build_equality_testcase(
         x * y;
         y / x;
         x % z;
-        function() {
+        function foo() {
           x * y;
           y / x;
           x % z;
-        };
+        }
         """,
 
     ), (
@@ -1731,8 +1731,8 @@ ES5IdentityTestCase = build_equality_testcase(
     ), (
         'function_expr_1',
         """
-        function(arg) {
-        };
+        (function(arg) {
+        });
         """,
     ), (
         'octal_slimit_issue_70',
