@@ -26,6 +26,7 @@ __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 import ply.lex
 
+from calmjs.parse.lexers.tokens import AutoLexToken
 from calmjs.parse.utils import repr_compat
 from calmjs.parse.exceptions import (
     ECMASyntaxError,
@@ -113,6 +114,7 @@ class Lexer(object):
     def __init__(self):
         self.lexer = None
         self.prev_token = None
+        self.valid_prev_token = None
         self.cur_token = None
         self.cur_token_real = None
         self.next_tokens = []
@@ -212,6 +214,8 @@ class Lexer(object):
 
     def _set_tokens(self, new_token):
         self.token_stack[-1][0] = self.prev_token = self.cur_token
+        if self.cur_token:
+            self.valid_prev_token = self.cur_token
         self.cur_token = new_token
         if (self.cur_token and
                 self.cur_token.type not in DIVISION_SYNTAX_MARKERS):
@@ -290,7 +294,7 @@ class Lexer(object):
         return lexpos - self.newline_idx[lineno - 1] + 1
 
     def _create_semi_token(self, orig_token):
-        token = ply.lex.LexToken()
+        token = AutoLexToken()
         token.type = 'SEMI'
         token.value = ';'
         if orig_token is not None:
@@ -505,6 +509,7 @@ class Lexer(object):
                 | \\x[0-9a-fA-F]{2}        # or hex_escape_sequence
                 | \\u[0-9a-fA-F]{4}        # or unicode_escape_sequence
                 | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3})  # or octal_escape_sequence
+                | \\0                      # or <NUL> (15.10.2.11)
             )*?                            # zero or many times
             (?: \\\n                       # multiline ?
               (?:
@@ -513,6 +518,7 @@ class Lexer(object):
                 | \\x[0-9a-fA-F]{2}        # or hex_escape_sequence
                 | \\u[0-9a-fA-F]{4}        # or unicode_escape_sequence
                 | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence
+                | \\0                      # or <NUL> (15.10.2.11)
               )*?                          # zero or many times
             )*
         ")                                 # closing double quote
@@ -524,6 +530,7 @@ class Lexer(object):
                 | \\x[0-9a-fA-F]{2}        # or hex_escape_sequence
                 | \\u[0-9a-fA-F]{4}        # or unicode_escape_sequence
                 | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence
+                | \\0                      # or <NUL> (15.10.2.11)
             )*?                            # zero or many times
             (?: \\\n                       # multiline ?
               (?:
@@ -532,6 +539,7 @@ class Lexer(object):
                 | \\x[0-9a-fA-F]{2}        # or hex_escape_sequence
                 | \\u[0-9a-fA-F]{4}        # or unicode_escape_sequence
                 | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence
+                | \\0                      # or <NUL> (15.10.2.11)
               )*?                          # zero or many times
             )*
         ')                                 # closing single quote

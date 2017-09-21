@@ -65,19 +65,6 @@ class ParserTestCase(unittest.TestCase):
             "Illegal character '\\x01' at 1:4 after 'var' at 1:1"
         )
 
-    # XXX: function expression ?
-    def test_function_expression(self):
-        text = """
-        if (true) {
-          function() {
-            foo;
-            location = 'http://anywhere.com';
-          }
-        }
-        """
-        parser = Parser()
-        parser.parse(text)
-
     def test_modify_tree(self):
         text = """
         for (var i = 0; i < 10; i++) {
@@ -138,11 +125,9 @@ class ParserTestCase(unittest.TestCase):
             parser.parse(text)
         self.assertEqual(
             str(e.exception),
-            "Unexpected '<' at 1:1")
+            "Unexpected end of input after '<' at 1:1")
 
     def test_previous_token(self):
-        # XXX do note that the auto-semi _looks_ like a real token and
-        # so it shouldn't be flagged if it isn't there.
         text = textwrap.dedent("""
         throw;
         """).strip()
@@ -152,6 +137,83 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual(
             str(e.exception),
             "Unexpected ';' at 1:6 after 'throw' at 1:1")
+
+    def test_skip_var_autosemi_in_function(self):
+        text = textwrap.dedent("""
+        (function() { var })()
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            "Unexpected '}' at 1:19 after 'var' at 1:15", str(e.exception),
+        )
+
+    def test_skip_throw_autosemi_in_function(self):
+        text = textwrap.dedent("""
+        (function() { throw })()
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            "Unexpected '}' at 1:21 after 'throw' at 1:15", str(e.exception),
+        )
+
+    def test_report_var_real_tokens(self):
+        text = textwrap.dedent("""
+        var;
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            "Unexpected ';' at 1:4 after 'var' at 1:1", str(e.exception),
+        )
+
+    def test_report_do_real_tokens(self):
+        text = textwrap.dedent("""
+        do;
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            "Unexpected end of input after ';' at 1:3", str(e.exception),
+        )
+
+    def test_skip_do_auto_tokens(self):
+        text = textwrap.dedent("""
+        do
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            "Unexpected end of input after 'do' at 1:1", str(e.exception),
+        )
+
+    def test_skip_if_auto_tokens(self):
+        text = textwrap.dedent("""
+        if
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            "Unexpected end of input after 'if' at 1:1", str(e.exception),
+        )
+
+    def test_skip_var_auto_tokens(self):
+        text = textwrap.dedent("""
+        var
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            "Unexpected end of input after 'var' at 1:1", str(e.exception),
+        )
 
     def test_ecma_262_whitespace_slimt_issue_84(self):
         text = u'''\uFEFF
@@ -480,7 +542,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
           <For @1:1 cond=<ExprStatement @1:14 expr=<FunctionCall @1:14 args=<
               Arguments @1:18 items=[]>,
               identifier=<Identifier @1:14 value='cond'>>>,
-            count=<UnaryOp @1:22 op='++', postfix=False,
+            count=<UnaryExpr @1:22 op='++',
               value=<Identifier @1:24 value='z'>>,
             init=<ExprStatement @1:6 expr=<Regex @1:6 value='/^.+/g'>>,
             statement=<Block @1:27 ?children=[
@@ -846,9 +908,9 @@ ParsedNodeTypeTestCase = build_equality_testcase(
             Number @1:1 value='5'>, op='+', right=<Number @1:5 value='7'>>,
               op='-', right=<BinOp @1:12 left=<Number @1:9 value='20'>, op='*',
                 right=<Number @1:14 value='10'>>>>,
-          <ExprStatement @2:1 expr=<UnaryOp @2:1 op='++', postfix=False,
+          <ExprStatement @2:1 expr=<UnaryExpr @2:1 op='++',
             value=<Identifier @2:3 value='x'>>>,
-          <ExprStatement @3:1 expr=<UnaryOp @3:1 op='--', postfix=False,
+          <ExprStatement @3:1 expr=<UnaryExpr @3:1 op='--',
             value=<Identifier @3:3 value='x'>>>,
           <ExprStatement @4:1 expr=<PostfixExpr @4:2 op='++',
             value=<Identifier @4:1 value='x'>>>,
@@ -1230,6 +1292,39 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
 
     ), (
+        'new_keyword_in_object_slimit_78',
+        """
+        var foo = {
+          key: {
+            old: new new mod.Item(),
+            new: new mod.Item()
+          }
+        };
+        """,
+        """
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='foo'>,
+            initializer=<Object @1:11 properties=[
+              <Assign @2:6 left=<PropIdentifier @2:3 value='key'>,
+                op=':', right=<Object @2:8 properties=[
+                  <Assign @3:8 left=<PropIdentifier @3:5 value='old'>,
+                    op=':', right=<NewExpr @3:10 args=None,
+                      identifier=<NewExpr @3:14 args=<Arguments @3:26 items=[
+                      ]>,
+                      identifier=<DotAccessor @3:21 identifier=<
+                        PropIdentifier @3:22 value='Item'>,
+                        node=<Identifier @3:18 value='mod'>>>>>,
+                  <Assign @4:8 left=<PropIdentifier @4:5 value='new'>,
+                    op=':', right=<NewExpr @4:10 args=<Arguments @4:22 items=[
+                    ]>,
+                    identifier=<DotAccessor @4:17 identifier=<
+                      PropIdentifier @4:18 value='Item'>,
+                      node=<Identifier @4:14 value='mod'>>>>
+                ]>>
+            ]>>
+        ]>]>
+        """,
+    ), (
         # object literal
         'object_literal_literal_keys',
         """
@@ -1288,6 +1383,20 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         ]>
         """
     ), (
+        'new_expr_args',
+        """
+        new T(arg1, arg2)
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<NewExpr @1:1 args=<Arguments @1:6 items=[
+            <Identifier @1:7 value='arg1'>,
+            <Identifier @1:13 value='arg2'>
+          ]>,
+          identifier=<Identifier @1:5 value='T'>>>
+        ]>
+        """
+    ), (
         'new_new_expr',
         # a function that returns a function, then used as a constructor
         # var T = function(){ return function (){} }
@@ -1297,12 +1406,12 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
         """
         <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<NewExpr @1:1 args=[], identifier=<
+          <ExprStatement @1:1 expr=<NewExpr @1:1 args=None, identifier=<
             NewExpr @1:5 args=<Arguments @1:10 items=[]>, identifier=<
               Identifier @1:9 value='T'>>>>,
           <VarStatement @2:1 ?children=[
             <VarDecl @2:5 identifier=<Identifier @2:5 value='x'>,
-              initializer=<NewExpr @2:9 args=[], identifier=<
+              initializer=<NewExpr @2:9 args=None, identifier=<
                 NewExpr @2:13 args=<Arguments @2:18 items=[]>,
                   identifier=<Identifier @2:17 value='T'>>>>
           ]>
@@ -1357,7 +1466,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
                   right=<Number @1:17 value='1'>>
                 ]>>
           ]>,
-          <ExprStatement @2:1 expr=<UnaryOp @2:1 op='delete', postfix=False,
+          <ExprStatement @2:1 expr=<UnaryExpr @2:1 op='delete',
             value=<DotAccessor @2:11 identifier=<
               PropIdentifier @2:12 value='foo'>,
               node=<Identifier @2:8 value='obj'>>>>
@@ -1370,7 +1479,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
         """
         <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<UnaryOp @1:1 op='void', postfix=False,
+          <ExprStatement @1:1 expr=<UnaryExpr @1:1 op='void',
             value=<Number @1:6 value='0'>>>
         ]>
         """,
@@ -1578,7 +1687,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
             right=<FunctionCall @1:28 args=<Arguments @1:42 items=[
                 <Identifier @1:43 value='a'>,
                 <Identifier @1:46 value='d'>,
-                <UnaryOp @1:49 op='!', postfix=False, value=<
+                <UnaryExpr @1:49 op='!', value=<
                   Number @1:50 value='0'>>
               ]>,
               identifier=<DotAccessor @1:37 identifier=<
@@ -1591,7 +1700,8 @@ ParsedNodeTypeTestCase = build_equality_testcase(
           predicate=<FunctionCall @1:1 args=<Arguments @1:4 items=[
             <Identifier @1:5 value='d'>
           ]>, identifier=<DotAccessor @1:2 identifier=<
-            PropIdentifier @1:3 value='b'>, node=<Identifier @1:1 value='e'>>>>>
+            PropIdentifier @1:3 value='b'>, node=<Identifier @1:1 value='e'>>
+          >>>
         ]>
         """,
     ), (
@@ -1618,7 +1728,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'return !(match === true || elem.getAttribute("classid") !== match);',
         """
         <ES5Program @1:1 ?children=[<Return @1:1 expr=<
-          UnaryOp @1:8 op='!', postfix=False,
+          UnaryExpr @1:8 op='!',
             value=<GroupingOp @1:9 expr=<BinOp @1:25 left=<
               BinOp @1:16 left=<Identifier @1:10 value='match'>, op='===',
                 right=<Boolean @1:20 value='true'>>, op='||', right=<
@@ -1656,8 +1766,8 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         'typeof second.length === "number";',
         """
         <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<BinOp @1:22 left=<UnaryOp @1:1 op='typeof',
-            postfix=False, value=<DotAccessor @1:14 identifier=
+          <ExprStatement @1:1 expr=<BinOp @1:22 left=<
+            UnaryExpr @1:1 op='typeof', value=<DotAccessor @1:14 identifier=
               <PropIdentifier @1:15 value='length'>, node=<
                 Identifier @1:8 value='second'>>>,
             op='===', right=<String @1:26 value='"number"'
@@ -1862,7 +1972,7 @@ ParsedNodeTypeTestCase = build_equality_testcase(
                         Number @8:23 value='1'>,
                           node=<Identifier @8:17 value='names'>>>>
                 ],
-                parameters=<Identifier @5:16 value='name'>,
+                parameter=<Identifier @5:16 value='name'>,
                 prop_name=<PropIdentifier @5:7 value='fullName'>>
           ]>>>
         ]>
@@ -1932,8 +2042,8 @@ ParsedNodeTypeTestCase = build_equality_testcase(
         """,
         """
         <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<BinOp @1:4 left=<UnaryOp @1:1 op='!',
-              postfix=False, value=<Number @1:2 value='0'>>,
+          <ExprStatement @1:1 expr=<BinOp @1:4 left=<UnaryExpr @1:1 op='!',
+              value=<Number @1:2 value='0'>>,
             op='%', right=<Number @1:6 value='1'>>>
         ]>
         """
@@ -2186,6 +2296,20 @@ ParserToECMAASITestCase = build_equality_testcase(
         }
         """
     ), (
+        'new_new_expr',
+        """
+        new new T()
+        var x = new new T()
+        new new T(a1, a2, a3)
+        var y = new new T(a1, a2, a3)
+        """,
+        """
+        new new T();
+        var x = new new T();
+        new new T(a1, a2, a3);
+        var y = new new T(a1, a2, a3);
+        """,
+    ), (
         'for_loop_first_empty',
         """
         for (; i < length; i++) {
@@ -2367,6 +2491,38 @@ ParserToECMAASITestCase = build_equality_testcase(
         'use strict';
         'use strict';
         'use strict';
+        """,
+    ), (
+        'new_keyword_in_object_slimit_78',
+        """
+        var foo = {
+          key: {
+            old: new new mod.Item(),
+            new: new mod.Item()
+          }
+        }
+        """,
+        """
+        var foo = {
+          key: {
+            old: new new mod.Item(),
+            new: new mod.Item()
+          }
+        };
+        """,
+    ), (
+        'slimit_78',
+        """
+        $$thing('set', 'thing', {
+          true: '-1',
+          false: '0'
+        })
+        """,
+        """
+        $$thing('set', 'thing', {
+          true: '-1',
+          false: '0'
+        });
         """,
     )])
 )

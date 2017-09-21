@@ -7,15 +7,39 @@ possible.
 from __future__ import unicode_literals
 
 from itertools import chain
+from calmjs.parse.asttypes import Node
 from calmjs.parse.ruletypes import Token
-from calmjs.parse.ruletypes import Deferrable
 from calmjs.parse.ruletypes import Structure
+from calmjs.parse.ruletypes import Layout
 from calmjs.parse.ruletypes import LayoutChunk
-from calmjs.parse.ruletypes import StreamFragment
-from calmjs.parse.ruletypes import TextChunk
 
 # the default noop.
 from calmjs.parse.handlers.core import rule_handler_noop
+
+
+def optimize_structure_handler(rule, handler):
+    """
+    Produce an "optimized" version of handler for the dispatcher to
+    limit reference lookups.
+    """
+
+    def runner(walk, dispatcher, node):
+        handler(dispatcher, node)
+        return iter([])
+
+    return runner
+
+
+def optimize_layout_handler(rule, handler):
+    """
+    Produce an "optimized" version of handler for the dispatcher to
+    limit reference lookups.
+    """
+
+    def runner(walk, dispatcher, node):
+        yield LayoutChunk(rule, handler, node)
+
+    return runner
 
 
 class Dispatcher(object):
@@ -124,41 +148,74 @@ class Dispatcher(object):
         self.__indent_str = indent_str
         self.__newline_str = newline_str
 
-    def __iter__(self):
-        for item in self.__definitions.items():
-            yield item
+        self.__optimized_definitions = self.optimize()
 
-    def __getitem__(self, key):
+    def optimize_definition(self, name, definition):
+        rules = []
+        for rule in definition:
+            if isinstance(rule, type):
+                if issubclass(rule, Structure):
+                    handler = self.__layout_handlers.get(rule)
+                    if handler:
+                        rules.append(optimize_structure_handler(rule, handler))
+                    continue
+                elif issubclass(rule, Layout):
+                    # a noop here so that the relevant chunk will be
+                    # yielded for normalization by bulk-lookup.
+                    handler = self.__layout_handlers.get(
+                        rule, rule_handler_noop)
+                    rules.append(optimize_layout_handler(rule, handler))
+                    continue
+            if isinstance(rule, Token):
+                value = (self.optimize_definition(
+                    name, rule.value
+                ) if isinstance(rule.value, tuple) else rule.value)
+                rules.append(type(rule)(rule.attr, value, rule.pos))
+                continue
+
+            raise TypeError(
+                "definition for '%s' contain unsupported rule (got: %r)" % (
+                    name, rule))
+        return rules
+
+    def optimize(self):
+        return {
+            astname: self.optimize_definition(astname, definition)
+            for astname, definition in self.__definitions.items()
+        }
+
+    def get_optimized_definition(self, node):
         """
         This is for getting at the definition for a particular asttype.
         """
 
-        # TODO figure out how to do lookup by the type itself directly,
-        # rather than this string hack.
-        # The reason why the types were not used simply because it would
-        # be a bit annoying to deal with subclasses, as resolution will
-        # have to be done for the parent class, given that asttypes are
-        # always subclassed.  While working with types directly is the
-        # correct way to handle that, it is however rather complicated
-        # for this particular goal when this naive solution achieves the
-        # goal without too much issues.
-        return self.__definitions[key.__class__.__name__]
+        # The reason why the types were not used simply performance of
+        # isisntance is bad, that the types are uniquely named, and that
+        # they are always subclassed through the factory.  While working
+        # at the type level is the correct method, the performance
+        # penalties that it attracts however make this naive approach
+        # more attractive.
+        return self.__optimized_definitions[node.__class__.__name__]
 
-    def __call__(self, rule):
+    def __iter__(self):
+        for item in self.__definitions.items():
+            yield item
+
+    def deferrable(self, rule):
+        return self.__deferrable_handlers.get(type(rule), NotImplemented)
+
+    def token(self, token, node, value, sourecepath_stack):
+        if self.__token_handler:
+            for fragment in self.__token_handler(
+                    token, self, node, value, sourecepath_stack):
+                yield fragment
+
+    def layout(self, rule):
         """
-        This is to find a callable for the particular rule encountered.
+        Get handler for this layout rule.
         """
 
-        # this is really starting to look like a multi-dispatcher,
-        # especially if it can accept multiple arguments to invoke the
-        # located callable in one go with the arguments supplied here.
-
-        if isinstance(rule, Token):
-            return self.__token_handler
-        if isinstance(rule, Deferrable):
-            return self.__deferrable_handlers.get(type(rule), NotImplemented)
-        else:
-            return self.__layout_handlers.get(rule, NotImplemented)
+        return self.__layout_handlers.get(rule, NotImplemented)
 
     @property
     def indent_str(self):
@@ -169,46 +226,7 @@ class Dispatcher(object):
         return self.__newline_str
 
 
-def textchunk_to_streamfragment(textchunk, source=None):
-    return StreamFragment(
-        text=textchunk.text,
-        lineno=textchunk.lineno,
-        colno=textchunk.colno,
-        name=textchunk.original,
-        source=source,
-    )
-
-
-def walk_stacktracking_streamfragment(walk):
-    sourcepath_stack = [NotImplemented]
-
-    def _walk(dispatcher, node, definition=None):
-        pushed = False
-        if node.sourcepath:
-            pushed = True
-            sourcepath_stack.append(node.sourcepath)
-
-        for chunk in walk(dispatcher, node, definition=definition):
-            if isinstance(chunk, TextChunk):
-                yield textchunk_to_streamfragment(chunk, sourcepath_stack[-1])
-            else:
-                yield chunk
-
-        if pushed:
-            sourcepath_stack.pop(-1)
-
-    return _walk
-
-
-def walk_finalize_streamfragment(chunk):
-    return chunk if isinstance(
-        chunk, StreamFragment) else textchunk_to_streamfragment(chunk)
-
-
-def walk(
-        dispatcher, node, definition=None,
-        walk_decorator=walk_stacktracking_streamfragment,
-        finalize_chunk=walk_finalize_streamfragment):
+def walk(dispatcher, node, definition=None):
     """
     The default, standalone walk function following the standard
     argument ordering for the unparsing walkers.
@@ -228,21 +246,6 @@ def walk(
         if none is provided, an initial definition will be looked up
         using the dispatcher with the node for the generation of output.
 
-    Advanced optional arguments:
-
-    walk_decorator
-        The decorator function that will be applied to the inner walk
-        function.  By default the walk_stacktracking_streamfragment
-        function will be passed in, so that the source will be filled
-        from the sourcepath attribute of the node or the most immediate
-        parent that have declared one.  Otherwise, an identity function
-        can be passed in to disable this.
-
-    finalize_chunk
-        The function that will turn chunks into their finalized form.
-        This defaults to walk_finalize_streamfragment, so the remainder
-        TextChunks will be converted into StreamFragments.
-
     While the dispatcher object is able to provide the lookup directly,
     this extra definition argument allow more flexibility in having
     Token subtypes being able to provide specific definitions also that
@@ -254,39 +257,31 @@ def walk(
     # rule objects so they can also make use of it to process the node
     # with the dispatcher.
 
-    @walk_decorator
-    def _walk(dispatcher, node, definition=None):
+    nodes = []
+    sourcepath_stack = [NotImplemented]
+
+    def _walk(dispatcher, node, definition=None, token=None):
+        if not isinstance(node, Node):
+            for fragment in dispatcher.token(
+                    token, nodes[-1], node, sourcepath_stack):
+                yield fragment
+            return
+
+        push = bool(node.sourcepath)
+        if push:
+            sourcepath_stack.append(node.sourcepath)
+        nodes.append(node)
 
         if definition is None:
-            definition = dispatcher[node]
+            definition = dispatcher.get_optimized_definition(node)
 
         for rule in definition:
-            if isinstance(rule, Token):
-                # tokens are callables that will generate the chunks
-                # that will ultimately form the output, so simply invoke
-                # that with this function, the dispatcher and the node.
-                for chunk in rule(_walk, dispatcher, node):
-                    yield chunk
-            elif issubclass(rule, Structure):
-                # A stucture layout marker; these will be actioned
-                # immediately as it relates to the handling of the
-                # structural description of the asttype at the current
-                # point.
-                handler = dispatcher(rule)
-                if handler is not NotImplemented:
-                    handler(dispatcher, node)
-            else:
-                # Otherwise, it's assumed to be a format layout marker.
-                # in the definition.  Since there will be further
-                # processing required later, defer by yielding a
-                # LayoutChunk as a marker, and resolve any rules that
-                # haven't had a handler registered with the noop rule
-                # handler.
-                handler = dispatcher(rule)
-                if handler is NotImplemented:
-                    yield LayoutChunk(rule, rule_handler_noop, node)
-                else:
-                    yield LayoutChunk(rule, handler, node)
+            for chunk in rule(_walk, dispatcher, node):
+                yield chunk
+
+        nodes.pop(-1)
+        if push:
+            sourcepath_stack.pop(-1)
 
     # Format layout markers are not handled immediately in the walk -
     # they will simply be buffered so that a collection of them can be
@@ -318,7 +313,7 @@ def walk(
         # first pass: generate both the normalized/finalized lrcs.
         for lrc in layout_rule_chunks:
             rule_stack.append(lrc.rule)
-            handler = dispatcher(tuple(rule_stack))
+            handler = dispatcher.layout(tuple(rule_stack))
             if handler is NotImplemented:
                 # not implemented so we keep going; also add the chunk
                 # to the stack.
@@ -364,4 +359,4 @@ def walk(
             yield chunk_from_layout
 
     for chunk in walk():
-        yield finalize_chunk(chunk)
+        yield chunk

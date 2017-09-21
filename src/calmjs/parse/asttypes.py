@@ -186,8 +186,7 @@ class Object(Node):
 class NewExpr(Node):
     def __init__(self, identifier, args=None):
         self.identifier = identifier
-        # TODO should simply be args
-        self.args = [] if args is None else args
+        self.args = args
 
     def children(self):
         return [self.identifier, self.args]
@@ -196,8 +195,7 @@ class NewExpr(Node):
 class FunctionCall(Node):
     def __init__(self, identifier, args=None):
         self.identifier = identifier
-        # TODO should simply be args
-        self.args = [] if args is None else args
+        self.args = args
 
     def children(self):
         return [self.identifier, self.args]
@@ -242,15 +240,14 @@ class GetPropAssign(Node):
 
 
 class SetPropAssign(Node):
-    def __init__(self, prop_name, parameters, elements):
+    def __init__(self, prop_name, parameter, elements):
         """elements - function body"""
         self.prop_name = prop_name
-        self.parameters = parameters
+        self.parameter = parameter
         self.elements = elements or []
 
     def children(self):
-        # XXX sourcemap compat has changed parameters to singular.
-        return [self.prop_name, self.parameters] + self.elements
+        return [self.prop_name, self.parameter] + self.elements
 
 
 class VarStatement(Node):
@@ -272,19 +269,16 @@ class VarDeclNoIn(VarDecl):
     """
 
 
-class UnaryOp(Node):
-    # XXX should be rennamed to UnaryExpr
+class UnaryExpr(Node):
     def __init__(self, op, value, postfix=False):
         self.op = op
         self.value = value
-        # XXX deprecated
-        self.postfix = postfix
 
     def children(self):
         return [self.value]
 
 
-class PostfixExpr(UnaryOp):
+class PostfixExpr(UnaryExpr):
     def __init__(self, op, value):
         self.op = op
         self.value = value

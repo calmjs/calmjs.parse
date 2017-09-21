@@ -494,10 +494,10 @@ class ObfuscatorTestCase(unittest.TestCase):
         node = Identifier('dummy')
         token = Attr('value', pos=None)
         # when nothing got remapped.
-        self.assertEqual(('dummy', None, None, None), next(
+        self.assertEqual(('dummy', None, None, None, None), next(
             token_handler_unobfuscate(token, None, node, 'dummy')))
         # when the provided value differs
-        self.assertEqual(('d', None, None, 'dummy'), next(
+        self.assertEqual(('d', None, None, 'dummy', None), next(
             token_handler_unobfuscate(token, None, node, 'd')))
 
     def test_build_substitutions(self):
@@ -619,6 +619,109 @@ class ObfuscatorTestCase(unittest.TestCase):
             default_rules,
             indent(indent_str='    '),
             obfuscate(obfuscate_globals=True),
+        ))(node)))
+
+    def test_obfuscate_no_global_recursive(self):
+        node = es5(dedent("""
+        (function named(param1, param2) {
+          param1 = param1 * param2 - param2;
+          param2--;
+          if (param2 < 0) {
+            return named(param1, param2);
+          }
+          return param1;
+        })();
+        """).strip())
+
+        self.assertEqual(dedent("""
+        (function named(b, a) {
+          b = b * a - a;
+          a--;
+          if (a < 0) {
+            return named(b, a);
+          }
+          return b;
+        })();
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_rules,
+            indent(indent_str='  '),
+            obfuscate(obfuscate_globals=False),
+        ))(node)))
+
+    def test_obfuscate_no_global_recursive_redeclared_shadow_funcname(self):
+        node = es5(dedent("""
+        (function $() {
+          $();
+          (function $() {
+            var foo = 1;
+          })();
+        })();
+        """).strip())
+
+        self.assertEqual(dedent("""
+        (function $() {
+          a();
+          (function a() {
+            var a = 1;
+          })();
+        })();
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_rules,
+            indent(indent_str='  '),
+            obfuscate(obfuscate_globals=False, shadow_funcname=True),
+        ))(node)))
+
+    def test_obfuscate_no_global_recursive_redeclared_no_shadow_funcname(self):
+        node = es5(dedent("""
+        (function $() {
+          $();
+          (function $() {
+            var foo = 1;
+          })();
+        })();
+        """).strip())
+
+        self.assertEqual(dedent("""
+        (function $() {
+          a();
+          (function a() {
+            var b = 1;
+          })();
+        })();
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_rules,
+            indent(indent_str='  '),
+            obfuscate(obfuscate_globals=False, shadow_funcname=False),
+        ))(node)))
+
+    def test_obfuscate_shadow_funcname_not_mapped(self):
+        node = es5(dedent("""
+        function a(arg) {
+        }
+        """).strip())
+
+        self.assertEqual(dedent("""
+        function a(a) {
+        }
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_rules,
+            indent(indent_str='  '),
+            obfuscate(obfuscate_globals=False, shadow_funcname=True),
+        ))(node)))
+
+    def test_obfuscate_no_shadow_funcname_not_mapped(self):
+        node = es5(dedent("""
+        function a(arg) {
+        }
+        """).strip())
+
+        self.assertEqual(dedent("""
+        function a(b) {
+        }
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_rules,
+            indent(indent_str='  '),
+            obfuscate(obfuscate_globals=False, shadow_funcname=False),
         ))(node)))
 
     def test_obfuscate_skip(self):
@@ -933,6 +1036,34 @@ class ObfuscatorTestCase(unittest.TestCase):
           a = 3;
         })();
         console.log(value);
+        """).lstrip(), ''.join(c.text for c in Unparser(rules=(
+            default_rules,
+            indent(indent_str='  '),
+            obfuscate(),
+        ))(node)))
+
+    def test_functions_in_lists(self):
+        node = es5(dedent("""
+        (function main(root) {
+          root.exports = [
+            (function(module, exports) {
+              module.exports = {};
+            }),
+            (function(module, exports) {
+              exports.fun = 1;
+            }),
+          ];
+        })(this);
+        """).strip())
+
+        self.assertEqual(dedent("""
+        (function main(a) {
+          a.exports = [(function(a, b) {
+            a.exports = {};
+          }), (function(b, a) {
+            a.fun = 1;
+          })];
+        })(this);
         """).lstrip(), ''.join(c.text for c in Unparser(rules=(
             default_rules,
             indent(indent_str='  '),

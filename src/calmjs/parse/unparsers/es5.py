@@ -8,6 +8,7 @@ from calmjs.parse.lexers.es5 import Lexer
 
 from calmjs.parse.ruletypes import (
     Space,
+    RequiredSpace,
     OptionalSpace,
     Newline,
     OptionalNewline,
@@ -30,6 +31,7 @@ from calmjs.parse.ruletypes import (
 from calmjs.parse.ruletypes import (
     Declare,
     Resolve,
+    ResolveFuncName,
 )
 from calmjs.parse.ruletypes import (
     children_newline,
@@ -89,7 +91,7 @@ definitions = {
     'SetPropAssign': (
         Text(value='set'), Space, Attr('prop_name'), Text(value='('),
         PushScope,
-        Attr(Declare('parameters')), Text(value=')'), Space,
+        Attr(Declare('parameter')), Text(value=')'), Space,
         Text(value='{'),
         Indent, Newline,
         JoinAttr(attr='elements', value=(Newline,)),
@@ -126,7 +128,7 @@ definitions = {
     'BinOp': (
         Attr('left'), Space, Operator(attr='op'), Space, Attr('right'),
     ),
-    'UnaryOp': (
+    'UnaryExpr': (
         Operator(attr='op'), OptionalSpace, Attr('value'),
     ),
     'PostfixExpr': (
@@ -220,9 +222,9 @@ definitions = {
         Text(value='finally'), Space, Attr('elements'),
     ),
     'FuncDecl': (
-        Text(value='function'), Optional('identifier', (Space,)),
+        Text(value='function'), Optional('identifier', (RequiredSpace,)),
         Attr(Declare('identifier')), Text(value='('),
-        PushScope,
+        PushScope, Optional('identifier', (ResolveFuncName,)),
         JoinAttr(Declare('parameters'), value=(Text(value=','), Space)),
         Text(value=')'), Space,
         Text(value='{'),
@@ -233,9 +235,9 @@ definitions = {
         PopScope,
     ),
     'FuncExpr': (
-        Text(value='function'), Optional('identifier', (Space,)),
+        Text(value='function'), Optional('identifier', (RequiredSpace,)),
         Attr(Declare('identifier')), Text(value='('),
-        PushScope,
+        PushScope, Optional('identifier', (ResolveFuncName,)),
         JoinAttr(Declare('parameters'), value=(Text(value=','), Space,)),
         Text(value=')'), Space,
         Text(value='{'),
@@ -336,18 +338,23 @@ def pretty_print(ast, indent_str='  '):
     return ''.join(chunk.text for chunk in pretty_printer(indent_str)(ast))
 
 
-def minify_printer(obfuscate=False, obfuscate_globals=False):
+def minify_printer(
+        obfuscate=False, obfuscate_globals=False, shadow_funcname=False):
     """
     Construct a minimum printer.
     """
 
     return Unparser(rules=(
-        rules.obfuscate(obfuscate_globals, reserved_keywords=(
-            Lexer.keywords_dict.keys())),)
-        if obfuscate else (rules.minimum(),))
+        rules.obfuscate(
+            obfuscate_globals=obfuscate_globals,
+            shadow_funcname=shadow_funcname,
+            reserved_keywords=(Lexer.keywords_dict.keys())
+        ),
+    ) if obfuscate else (rules.minimum(),))
 
 
-def minify_print(ast, obfuscate=False, obfuscate_globals=False):
+def minify_print(
+        ast, obfuscate=False, obfuscate_globals=False, shadow_funcname=False):
     """
     Simple minify print function; returns a string rendering of an input
     AST of an ES5 program
@@ -372,4 +379,4 @@ def minify_print(ast, obfuscate=False, obfuscate_globals=False):
     """
 
     return ''.join(chunk.text for chunk in minify_printer(
-        obfuscate, obfuscate_globals)(ast))
+        obfuscate, obfuscate_globals, shadow_funcname)(ast))

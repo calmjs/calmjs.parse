@@ -16,11 +16,11 @@ from calmjs.parse.ruletypes import PushCatch
 from calmjs.parse.ruletypes import PopCatch
 from calmjs.parse.ruletypes import Declare
 from calmjs.parse.ruletypes import Resolve
+from calmjs.parse.ruletypes import ResolveFuncName
 
 from calmjs.parse.unparsers.walker import Dispatcher
 from calmjs.parse.unparsers.walker import walk
 
-from calmjs.parse.handlers.core import rule_handler_noop
 from calmjs.parse.handlers.core import token_handler_unobfuscate
 
 logger = logging.getLogger(__name__)
@@ -365,7 +365,11 @@ class Obfuscator(object):
     The name obfuscator.
     """
 
-    def __init__(self, obfuscate_globals=False, reserved_keywords=()):
+    def __init__(
+            self,
+            obfuscate_globals=False,
+            shadow_funcname=False,
+            reserved_keywords=()):
         """
         Arguments
 
@@ -378,6 +382,14 @@ class Obfuscator(object):
 
             Defaults to False for the reason above.
 
+        shadow_funcname
+            If True, obfuscated names within a function can shadow the
+            function name that it was defined for.  In strict mode for
+            Safari, names within a function cannot shadow over the name
+            that the function was declared as.
+
+            Defaults to False.
+
         reserved_keywords
             A list of reserved keywords for the input AST that should
             not be used as an obfuscated identifier.  Defaults to an
@@ -389,6 +401,7 @@ class Obfuscator(object):
         self.scopes = {}
         self.stack = []
         self.obfuscate_globals = obfuscate_globals
+        self.shadow_funcname = shadow_funcname
         self.reserved_keywords = reserved_keywords
         # global scope is in the ether somewhere so it isn't exactly
         # bounded to any specific node that gets passed in.
@@ -423,15 +436,28 @@ class Obfuscator(object):
 
         self.current_scope.declare(node.value)
 
-    def reference(self, dispatcher, node):
+    def register_reference(self, dispatcher, node):
         """
-        Register this identifier to the current scope.
+        Register this identifier to the current scope, and mark it as
+        referenced in the current scope.
         """
 
         # the identifier node itself will be mapped to the current scope
         # for the resolve to work
+        # This should probably WARN about the node object being already
+        # assigned to an existing scope that isn't current_scope.
         self.identifiers[node] = self.current_scope
         self.current_scope.reference(node.value)
+
+    def shadow_reference(self, dispatcher, node):
+        """
+        Only simply make a reference to the value in the current scope,
+        specifically for the FuncBase type.
+        """
+
+        # as opposed to the previous one, only add the value of the
+        # identifier itself to the scope so that it becomes reserved.
+        self.current_scope.reference(node.identifier.value)
 
     def resolve(self, dispatcher, node):
         """
@@ -450,23 +476,29 @@ class Obfuscator(object):
         details that are required.
         """
 
+        deferrable_handlers = {
+            Declare: self.declare,
+            Resolve: self.register_reference,
+        }
+        layout_handlers = {
+            PushScope: self.push_scope,
+            PopScope: self.pop_scope,
+            PushCatch: self.push_catch,
+            # should really be different, but given that the
+            # mechanism is within the same tree, the only difference
+            # would be sanity check which should have been tested in
+            # the first place in the primitives anyway.
+            PopCatch: self.pop_scope,
+        }
+
+        if not self.shadow_funcname:
+            layout_handlers[ResolveFuncName] = self.shadow_reference
+
         local_dispatcher = Dispatcher(
             definitions=dict(dispatcher),
-            token_handler=rule_handler_noop,
-            layout_handlers={
-                PushScope: self.push_scope,
-                PopScope: self.pop_scope,
-                PushCatch: self.push_catch,
-                # should really be different, but given that the
-                # mechanism is within the same tree, the only difference
-                # would be sanity check which should have been tested in
-                # the first place in the primitives anyway.
-                PopCatch: self.pop_scope,
-            },
-            deferrable_handlers={
-                Declare: self.declare,
-                Resolve: self.reference,
-            },
+            token_handler=None,
+            layout_handlers=layout_handlers,
+            deferrable_handlers=deferrable_handlers,
         )
         return list(walk(local_dispatcher, node))
 
@@ -493,14 +525,26 @@ class Obfuscator(object):
         return node
 
 
-def obfuscate(obfuscate_globals=False, reserved_keywords=()):
+def obfuscate(
+        obfuscate_globals=False, shadow_funcname=False, reserved_keywords=()):
     """
-    An example obfuscate ruleset.
+    An example, barebone name obfuscation ruleset
+
+    obfuscate_globals
+        If true, identifier names on the global scope will also be
+        obfuscated.  Default is False.
+    shadow_funcname
+        If True, obfuscated function names will be shadowed.  Default is
+        False.
+    reserved_keywords
+        A tuple of strings that should not be generated as obfuscated
+        identifiers.
     """
 
     def name_obfuscation_rules():
         inst = Obfuscator(
             obfuscate_globals=obfuscate_globals,
+            shadow_funcname=shadow_funcname,
             reserved_keywords=reserved_keywords,
         )
         return {

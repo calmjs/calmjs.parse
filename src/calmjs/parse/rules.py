@@ -10,6 +10,7 @@ rules as having prescedence for any rule conflicts.
 from calmjs.parse.ruletypes import (
     Space,
     OptionalSpace,
+    RequiredSpace,
     Newline,
     OptionalNewline,
     Indent,
@@ -56,7 +57,7 @@ def indent(indent_str=None):
     """
     A complete, standalone indent ruleset.
 
-    Arguments
+    Arguments:
 
     indent_str
         The string used for indentation.  Defaults to None, which will
@@ -68,6 +69,7 @@ def indent(indent_str=None):
         return {'layout_handlers': {
             Space: layout_handler_space_imply,
             OptionalSpace: layout_handler_space_optional_pretty,
+            RequiredSpace: layout_handler_space_imply,
             Indent: inst.layout_handler_indent,
             Dedent: inst.layout_handler_dedent,
             Newline: inst.layout_handler_newline,
@@ -77,14 +79,30 @@ def indent(indent_str=None):
     return indentation_rule
 
 
-def obfuscate(obfuscate_globals=False, reserved_keywords=()):
+def obfuscate(
+        obfuscate_globals=False,
+        shadow_funcname=False,
+        reserved_keywords=()):
     """
-    An example obfuscate ruleset.
+    The name obfuscation ruleset.
+
+    Arguments:
+
+    obfuscate_globals
+        If true, identifier names on the global scope will also be
+        obfuscated.  Default is False.
+    shadow_funcname
+        If True, permit the shadowing of the name of named functions by
+        names within the scope it defines.  Default is False.
+    reserved_keywords
+        A tuple of strings that should not be generated as obfuscated
+        identifiers.
     """
 
     def name_obfuscation_rules():
         inst = Obfuscator(
             obfuscate_globals=obfuscate_globals,
+            shadow_funcname=shadow_funcname,
             reserved_keywords=reserved_keywords,
         )
         return {
@@ -92,6 +110,7 @@ def obfuscate(obfuscate_globals=False, reserved_keywords=()):
             'layout_handlers': {
                 Space: layout_handler_space_minimum,
                 OptionalSpace: layout_handler_space_minimum,
+                RequiredSpace: layout_handler_space_imply,
             },
             'deferrable_handlers': {
                 Resolve: inst.resolve,

@@ -9,7 +9,7 @@ from calmjs.parse.handlers.core import (
 from calmjs.parse.unparsers.walker import Dispatcher
 
 empty = []
-space = [(' ', 0, 0, None)]
+space = [(' ', 0, 0, None, None)]
 
 
 class SimpleHandlersTestCase(unittest.TestCase):
@@ -100,7 +100,7 @@ class SimpleHandlersTestCase(unittest.TestCase):
         # yes using the lteral <CR><LF> is pretty hilarious, but just to
         # show that this is implemented to support whatever.
         dispatcher = Dispatcher({}, None, {}, {}, newline_str='<CR><LF>')
-        newline = [('<CR><LF>', 0, 0, None)]
+        newline = [('<CR><LF>', 0, 0, None, None)]
 
         def run(before, after, prev):
             return list(layout_handler_newline_optional_pretty(

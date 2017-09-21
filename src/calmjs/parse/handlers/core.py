@@ -20,10 +20,11 @@ from calmjs.parse.asttypes import (
     While,
 )
 from calmjs.parse.ruletypes import (
-    TextChunk,
+    StreamFragment,
 
     Space,
     OptionalSpace,
+    RequiredSpace,
     Newline,
     OptionalNewline,
     Indent,
@@ -37,6 +38,8 @@ assignment_tokens = {
     '*=', '/=', '%=', '+=', '-=', '<<=', '>>=', '>>>=', '&=', '^=', '|=', '='}
 # other symbols
 optional_rhs_space_tokens = {';', ')', None}
+space_imply = StreamFragment(' ', 0, 0, None, None)
+space_drop = StreamFragment(' ', None, None, None, None)
 
 
 def rule_handler_noop(*a, **kw):
@@ -44,17 +47,22 @@ def rule_handler_noop(*a, **kw):
     return iter(())
 
 
-def token_handler_str_default(token, dispatcher, node, subnode):
-    # TODO the mangler could provide an implementation of this that will
-    # fill out the last element of the yielded tuple.
+def token_handler_str_default(
+        token, dispatcher, node, subnode, sourcepath_stack=(None,)):
+    """
+    Standard token handler that will return the value, ignoring any
+    tokens or strings that have been remapped.
+    """
+
     if isinstance(token.pos, int):
         _, lineno, colno = node.getpos(subnode, token.pos)
     else:
         lineno, colno = None, None
-    yield TextChunk(subnode, lineno, colno, None)
+    yield StreamFragment(subnode, lineno, colno, None, sourcepath_stack[-1])
 
 
-def token_handler_unobfuscate(token, dispatcher, node, subnode):
+def token_handler_unobfuscate(
+        token, dispatcher, node, subnode, sourcepath_stack=(None,)):
     """
     A token handler that will resolve and return the original identifier
     value.
@@ -71,24 +79,25 @@ def token_handler_unobfuscate(token, dispatcher, node, subnode):
     else:
         lineno, colno = None, None
 
-    yield TextChunk(subnode, lineno, colno, original)
+    yield StreamFragment(
+        subnode, lineno, colno, original, sourcepath_stack[-1])
 
 
 def layout_handler_space_imply(dispatcher, node, before, after, prev):
     # default layout handler where the space will be rendered, with the
     # line/column set to 0 for sourcemap to generate the implicit value.
-    yield TextChunk(' ', 0, 0, None)
+    yield space_imply
 
 
 def layout_handler_space_drop(dispatcher, node, before, after, prev):
     # default layout handler where the space will be rendered, with the
     # line/column set to None for sourcemap to terminate the position.
-    yield TextChunk(' ', None, None, None)
+    yield space_drop
 
 
 def layout_handler_newline_simple(dispatcher, node, before, after, prev):
     # simply render the newline with an implicit sourcemap line/col
-    yield TextChunk(dispatcher.newline_str, 0, 0, None)
+    yield StreamFragment(dispatcher.newline_str, 0, 0, None, None)
 
 
 def layout_handler_newline_optional_pretty(
@@ -112,14 +121,14 @@ def layout_handler_newline_optional_pretty(
         return
     # if no new lines in any of the checked characters
     if not newline_strs & {lc(before), fc(after), lc(prev)}:
-        yield TextChunk(dispatcher.newline_str, 0, 0, None)
+        yield StreamFragment(dispatcher.newline_str, 0, 0, None, None)
 
 
 def layout_handler_space_optional_pretty(
         dispatcher, node, before, after, prev):
     if isinstance(node, (If, For, ForIn, While)):
         if after not in optional_rhs_space_tokens:
-            yield TextChunk(' ', 0, 0, None)
+            yield space_imply
             return
 
     if before is None or after is None:
@@ -128,7 +137,7 @@ def layout_handler_space_optional_pretty(
     s = before[-1:] + after[:1]
 
     if required_space.match(s) or after in assignment_tokens:
-        yield TextChunk(' ', 0, 0, None)
+        yield space_imply
         return
 
 
@@ -138,13 +147,14 @@ def layout_handler_space_minimum(dispatcher, node, before, after, prev):
         return
     s = before[-1:] + after[:1]
     if required_space.match(s):
-        yield TextChunk(' ', 0, 0, None)
+        yield space_imply
 
 
 def default_rules():
     return {'layout_handlers': {
         Space: layout_handler_space_imply,
         OptionalSpace: layout_handler_space_optional_pretty,
+        RequiredSpace: layout_handler_space_imply,
         Newline: layout_handler_newline_simple,
         OptionalNewline: layout_handler_newline_optional_pretty,
         # if an indent is immediately followed by dedent without actual
@@ -157,4 +167,5 @@ def minimum_rules():
     return {'layout_handlers': {
         Space: layout_handler_space_minimum,
         OptionalSpace: layout_handler_space_minimum,
+        RequiredSpace: layout_handler_space_imply,
     }}

@@ -34,10 +34,7 @@ class SRFactory(object):
                 '__repr__': __repr__,
                 '__str__': __str__,
             }) for cls in (
-                # type(type(self)) creates the class "type", which works
-                # like the removed types.ClassType.
-                v for v in vars(module).values() if isinstance(
-                    v, type(type(self)))
+                v for v in vars(module).values() if isinstance(v, type)
             )
         )}
 

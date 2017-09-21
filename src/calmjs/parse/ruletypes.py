@@ -9,14 +9,11 @@ from __future__ import unicode_literals
 from collections import namedtuple
 from functools import partial
 
-from calmjs.parse.asttypes import Node
 from calmjs.parse.asttypes import Elision
 from calmjs.parse.asttypes import Identifier
 
 LayoutChunk = namedtuple('LayoutChunk', [
     'rule', 'handler', 'node'])
-TextChunk = namedtuple('TextChunk', [
-    'text', 'lineno', 'colno', 'original'])
 StreamFragment = namedtuple('StreamFragment', [
     'text', 'lineno', 'colno', 'name', 'source'])
 
@@ -104,12 +101,6 @@ class Token(Rule):
         self.value = value
         self.pos = pos
 
-    def resolve(self, walk, dispatcher, node, value):
-        if isinstance(value, Node):
-            return walk(dispatcher, value)
-        else:
-            return dispatcher(self)(self, dispatcher, node, value)
-
     def __call__(self, walk, dispatcher, node):
         """
         Arguments
@@ -144,7 +135,7 @@ class Deferrable(Rule):
     instance can make use of to achieve that by acquiring a possible
     handler like so in the __call__ implementation:
 
-        handler = dispatcher(self)
+        handler = dispatcher.deferrable(self)
 
     If a callable was returned, it should be invoked with the same
     arguments that were passed into that context, which should be
@@ -171,13 +162,19 @@ class Deferrable(Rule):
 
 class Space(Format):
     """
-    Represents a space.
+    Represents a space character with unspecified characteristics.
     """
 
 
 class OptionalSpace(Format):
     """
     Represents optional space character.
+    """
+
+
+class RequiredSpace(Format):
+    """
+    Represents a required space character.
     """
 
 
@@ -229,6 +226,16 @@ class PopCatch(Structure):
     """
 
 
+class ResolveFuncName(Structure):
+    """
+    This special token is used for resolving the name of the function
+    from inside the scope.
+
+    This permits the handling the incorrectly implemented strict mode
+    for the Safari browser in the use case of name mangling.
+    """
+
+
 class Attr(Token):
     """
     Return the value as specified in the attribute
@@ -244,8 +251,7 @@ class Attr(Token):
         value = self._getattr(dispatcher, node)
         if is_empty(value):
             return
-        for chunk in self.resolve(
-                walk, dispatcher, node, value):
+        for chunk in walk(dispatcher, value, token=self):
             yield chunk
 
 
@@ -256,7 +262,7 @@ class Text(Token):
     """
 
     def __call__(self, walk, dispatcher, node):
-        for chunk in self.resolve(walk, dispatcher, node, self.value):
+        for chunk in walk(dispatcher, self.value, token=self):
             yield chunk
 
 
@@ -273,7 +279,7 @@ class JoinAttr(Attr):
         except StopIteration:
             return
 
-        for chunk in self.resolve(walk, dispatcher, node, target_node):
+        for chunk in walk(dispatcher, target_node, token=self):
             yield chunk
 
         for target_node in nodes:
@@ -281,7 +287,7 @@ class JoinAttr(Attr):
             # format also.
             for value_node in walk(dispatcher, node, self.value):
                 yield value_node
-            for chunk in self.resolve(walk, dispatcher, node, target_node):
+            for chunk in walk(dispatcher, target_node, token=self):
                 yield chunk
 
 
@@ -300,18 +306,30 @@ class ElisionToken(Attr, Text):
 
     def __call__(self, walk, dispatcher, node):
         value = self._getattr(dispatcher, node)
-        for chunk in self.resolve(
-                walk, dispatcher, node, self.value * value):
+        for chunk in walk(dispatcher, self.value * value, token=self):
             yield chunk
 
 
 class ElisionJoinAttr(ElisionToken):
     """
     The Elision type does require a bit of special handling, given that
-    particular Node type also serve the function of the joiner.
+    particular Node type supplies the token that serves as the joiner
+    for the preceding and subsequent nodes, including other Elision
+    nodes which must also be handled separately.
 
-    Note that the ',' token will always be automatically yielded.
+    This Token implementation makes the assumption that the Elision
+    nodes with a length of 1 result in an equivalent representation of
+    separators (which typically is ',' for ES5) for the rendering of the
+    nodes provided.
+
+    Also note that the value should be a description (i.e. tuple of
+    rules) that do not contain any Text tokens for generating the
+    separator - that will be done through the Elision token.
     """
+
+    # the surrogate Elision node to be treated as a separator.
+    sep = Elision(1)
+    sep._token_map = {}  # so its getpos returns an implied position
 
     def __call__(self, walk, dispatcher, node):
         nodes = iter(self._getattr(dispatcher, node))
@@ -321,22 +339,20 @@ class ElisionJoinAttr(ElisionToken):
         except StopIteration:
             return
 
-        for chunk in self.resolve(walk, dispatcher, node, previous_node):
+        for chunk in walk(dispatcher, previous_node, token=self):
             yield chunk
 
         for next_node in nodes:
-            # note that self.value is to be defined in the definition
-            # format also.
             if not isinstance(previous_node, Elision):
-                # TODO find a better way to deal with this magic string
-                # using next_node to avoid using the Array which may
-                # provide a misleading position
-                yield next(walk(dispatcher, next_node, (Text(value=','),)))
+                # Have the walk function walk our "separator" node, as
+                # explained in the docstring for this class.
+                for c in walk(dispatcher, self.sep):
+                    yield c
 
             if not isinstance(next_node, Elision):
                 for value_node in walk(dispatcher, node, self.value):
                     yield value_node
-            for chunk in self.resolve(walk, dispatcher, node, next_node):
+            for chunk in walk(dispatcher, next_node, token=self):
                 yield chunk
             previous_node = next_node
 
@@ -366,10 +382,10 @@ class Operator(Attr):
     An operator symbol.
     """
 
-    # TODO figure out how to yield it in a way that tags this as an
-    # operator, so that it can be properly normalized by the dispatcher base
-    # tracker class. (i.e. no space before ':' but after, no space
-    # between + iff not followed by unary +/++)
+    # A nice to have feature will be the ability to have this produce
+    # something that marks the operator with rendering information, so
+    # that the heuristics that are currently being employed for dealing
+    # with things such as whitespaces be not so ad-hoc.
 
     def _getattr(self, dispatcher, node):
         if self.attr:
@@ -413,7 +429,7 @@ class Declare(Deferrable):
             return target
 
         # look up the layout handler for this deferrable type
-        handler = dispatcher(self)
+        handler = dispatcher.deferrable(self)
         if handler is not NotImplemented:
             handler = partial(handler, dispatcher)
             if isinstance(target, list):
@@ -437,7 +453,7 @@ class Resolve(Deferrable):
             raise TypeError(
                 "the Resolve Deferrable type only works with Identifier")
 
-        handler = dispatcher(self)
+        handler = dispatcher.deferrable(self)
         if handler is not NotImplemented:
             # the handler will return the value
             return handler(dispatcher, node)

@@ -401,6 +401,13 @@ world"''',
         'section_7_comments',
         ("a = b\n/** **/\n\n/hi/s",
          ['ID a', 'EQ =', 'ID b', 'DIV /', 'ID hi', 'DIV /', 'ID s'])
+    ), (
+        'slimit_issue_39_and_57',
+        (r"f(a, 'hi\01').split('\1').split('\0');",
+         ['ID f', 'LPAREN (', 'ID a', 'COMMA ,', r"STRING 'hi\01'", 'RPAREN )',
+          'PERIOD .', 'ID split', 'LPAREN (', r"STRING '\1'", 'RPAREN )',
+          'PERIOD .', 'ID split', 'LPAREN (', r"STRING '\0'", 'RPAREN )',
+          'SEMI ;'])
     )])
 )
 

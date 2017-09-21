@@ -29,6 +29,7 @@ from functools import partial
 import ply.yacc
 
 from calmjs.parse.exceptions import ECMASyntaxError
+from calmjs.parse.lexers.tokens import AutoLexToken
 from calmjs.parse.lexers.es5 import Lexer
 from calmjs.parse.factory import AstTypesFactory
 from calmjs.parse.unparsers.es5 import pretty_print
@@ -111,23 +112,18 @@ class Parser(object):
         self._error_tokens[key] = True
 
     def _raise_syntax_error(self, token):
-        prev_token = self.lexer.prev_token
-        next_token = self.lexer.token()
-        if next_token and prev_token:
-            raise ECMASyntaxError(
-                'Unexpected %s between %s and %s' % (
-                    format_lex_token(token),
-                    format_lex_token(prev_token),
-                    format_lex_token(next_token),
-                ))
-        elif prev_token:
-            raise ECMASyntaxError(
-                'Unexpected %s after %s' % (
-                    format_lex_token(token),
-                    format_lex_token(prev_token),
-                ))
-        else:
-            raise ECMASyntaxError('Unexpected %s' % format_lex_token(token))
+        tokens = [format_lex_token(t) for t in [
+            self.lexer.valid_prev_token,
+            None if isinstance(token, AutoLexToken) else token,
+            self.lexer.token()
+        ] if t is not None]
+        msg = (
+            'Unexpected end of input',
+            'Unexpected end of input after {0}',
+            'Unexpected {1} after {0}',
+            'Unexpected {1} between {0} and {2}',
+        )
+        raise ECMASyntaxError(msg[len(tokens)].format(*tokens))
 
     def parse(self, text, debug=False):
         if not isinstance(text, str):
@@ -391,7 +387,8 @@ class Parser(object):
             # increment the Elision value.
             p[1][-1].value += 1
             p[0] = p[1]
-        # TODO figure out a cleaner way to provide this lookup
+        # TODO there should be a cleaner API for the lexer and their
+        # token types for ensuring that the mappings are available.
         p[0][0]._token_map = {(',' * p[0][0].value): [
             p[0][0].findpos(p, 0)]}
         return
@@ -433,7 +430,7 @@ class Parser(object):
             p[0].setpos(p)
         else:
             p[0] = self.asttypes.SetPropAssign(
-                prop_name=p[2], parameters=p[4], elements=p[7])
+                prop_name=p[2], parameter=p[4], elements=p[7])
             p[0].setpos(p)
 
     # For the evaluation of Object Initialisere as described in 11.1.5,
@@ -639,7 +636,7 @@ class Parser(object):
                              | BNOT unary_expr
                              | NOT unary_expr
         """
-        p[0] = self.asttypes.UnaryOp(p[1], p[2])
+        p[0] = self.asttypes.UnaryExpr(p[1], p[2])
         p[0].setpos(p)
 
     # 11.5 Multiplicative Operators
