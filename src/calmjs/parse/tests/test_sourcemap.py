@@ -1061,3 +1061,29 @@ class SourceMapTestCase(unittest.TestCase):
             "file": 'srcfinal.js',
         }, json.loads(sourcemap_stream.getvalue()))
         self.assertEqual('', output_stream.getvalue())
+
+    def test_write_sourcemap_source_mapping_no_interleave(self):
+        root = mktemp()
+        output_stream = StringIO()
+        output_stream.name = join(root, 'srcfinal.js')
+        output_stream.write('//')
+        sourcemap_stream = StringIO()
+        sourcemap_stream.name = join(root, 'srcfinal.js.map')
+        mappings = [[(0, 0, 0, 0, 0)]]
+        sources = [join(root, 'src', 'src1.js'), join(root, 'src', 'src2.js')]
+        names = ['foo']
+
+        sourcemap.write_sourcemap(
+            mappings, sources, names, output_stream, output_stream,
+            source_mapping_url='src.map')
+
+        lines = output_stream.getvalue().splitlines()
+        self.assertEqual(
+            '//\n//# sourceMappingURL=src.map', '\n'.join(lines[:2]))
+        self.assertEqual({
+            "version": 3,
+            "sources": ['src/src1.js', 'src/src2.js'],
+            "names": ["foo"],
+            "mappings": "AAAAA",
+            "file": 'srcfinal.js',
+        }, json.loads(''.join(lines[2:])))

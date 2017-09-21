@@ -522,12 +522,13 @@ def write_sourcemap(
             '/'.join(normrelpath(output_js, output_js_map).split(sep)),
         )
 
-    sourcemap_stream.write(json.dumps(
-        encode_sourcemap(output_js, mappings, sources, names),
-        sort_keys=True, ensure_ascii=False,
-    ))
     if source_mapping_url is not None:
         output_stream.writelines(['\n//# sourceMappingURL=', (
             output_js_map if source_mapping_url is NotImplemented
             else source_mapping_url
         ), '\n'])
+
+    sourcemap_stream.write(json.dumps(
+        encode_sourcemap(output_js, mappings, sources, names),
+        sort_keys=True, ensure_ascii=False,
+    ))
