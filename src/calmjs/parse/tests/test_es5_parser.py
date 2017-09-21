@@ -2561,6 +2561,12 @@ ECMASyntaxErrorsTestCase = build_exception_testcase(
         };
         """,
         "Unexpected ',' at 2:19 between 'arg1' at 2:15 and 'arg2' at 2:21",
+    ), (
+        'bare_function_expr',
+        """
+        function(arg) {};
+        """,
+        "Function statement requires a name at 1:9",
     )]), ECMASyntaxError
 )
 

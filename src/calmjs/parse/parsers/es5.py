@@ -29,6 +29,7 @@ from functools import partial
 import ply.yacc
 
 from calmjs.parse.exceptions import ECMASyntaxError
+from calmjs.parse.exceptions import ProductionError
 from calmjs.parse.lexers.tokens import AutoLexToken
 from calmjs.parse.lexers.es5 import Lexer
 from calmjs.parse.factory import AstTypesFactory
@@ -130,8 +131,12 @@ class Parser(object):
             raise TypeError("'%s' argument expected, got '%s'" % (
                 str.__name__, type(text).__name__))
 
-        return self.parser.parse(
-            text, lexer=self.lexer, debug=debug, tracking=self.yacc_tracking)
+        try:
+            return self.parser.parse(
+                text, lexer=self.lexer, debug=debug,
+                tracking=self.yacc_tracking)
+        except ProductionError as e:
+            raise e.args[0]
 
     def p_empty(self, p):
         """empty :"""
@@ -1159,6 +1164,22 @@ class Parser(object):
         """expr_statement : expr_nobf SEMI
                           | expr_nobf auto_semi
         """
+        # In 12.4, expression statements cannot start with either the
+        # 'function' keyword or '{'.  However, the lexing and production
+        # of the FuncExpr nodes can be done through further rules have
+        # been done, so flag this as an exception, but must be raised
+        # like so due to avoid the SyntaxError being flagged by ply and
+        # which would result in an infinite loop in this case.
+
+        if isinstance(p[1], self.asttypes.FuncExpr):
+            _, line, col = p[1].getpos('(', 0)
+            raise ProductionError(ECMASyntaxError(
+                'Function statement requires a name at %s:%s' % (line, col)))
+
+        # The most bare 'block' rule is defined as part of 'statement'
+        # and there are no other bare rules that would result in the
+        # production of such like for 'function_expr'.
+
         p[0] = self.asttypes.ExprStatement(p[1])
         p[0].setpos(p)  # require yacc_tracking
 
