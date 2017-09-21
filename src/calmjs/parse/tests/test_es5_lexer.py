@@ -45,6 +45,14 @@ class LexerFailureTestCase(unittest.TestCase):
         self.assertEqual(token.type, 'NUMBER')
         self.assertEqual(token.value, '6')
 
+    def test_bad_initial_input(self):
+        lexer = Lexer()
+        lexer.input(u'#')
+        with self.assertRaises(ECMASyntaxError) as e:
+            lexer.token()
+
+        self.assertEqual(e.exception.args[0], "Illegal character '#' at 1:1")
+
 
 def run_lex(value):
     lexer = Lexer()

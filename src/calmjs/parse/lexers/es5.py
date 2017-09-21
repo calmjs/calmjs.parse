@@ -579,9 +579,17 @@ class Lexer(object):
         return token
 
     def t_error(self, token):
-        raise ECMASyntaxError(
-            'Illegal character %s at %s:%s after %s' % (
-                repr_compat(token.value[0]), token.lineno,
-                self._get_colno(token), format_lex_token(self.cur_token),
+        if self.cur_token:
+            raise ECMASyntaxError(
+                'Illegal character %s at %s:%s after %s' % (
+                    repr_compat(token.value[0]), token.lineno,
+                    self._get_colno(token), format_lex_token(self.cur_token),
+                )
             )
-        )
+        else:
+            raise ECMASyntaxError(
+                'Illegal character %s at %s:%s' % (
+                    repr_compat(token.value[0]), token.lineno,
+                    self._get_colno(token),
+                )
+            )
