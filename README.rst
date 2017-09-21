@@ -150,11 +150,13 @@ the built-in testsuite can be executed by the following:
 
     $ python -m unittest calmjs.parse.tests.make_suite
 
-If there are failures, please file an issue on the issue tracker with
-the full traceback, and/or the method of installation.  Please also
-remember to include platform specific information, such as Python
-version, operating system environments, the version of |ply| that was
-installed, plus other information related to the issue at hand.
+If there are failures, please file an issue on the `issue tracker
+<https://github.com/calmjs/calmjs.parse/issues>`_ with the full
+traceback, and/or the method of installation.  Please also include
+applicable information about the environment, such as the version of
+this software, Python version, operating system environments, the
+version of |ply| that was installed, plus other information related to
+the issue at hand.
 
 
 Usage
