@@ -314,16 +314,22 @@ def walk(dispatcher, node, definition=None):
         # first pass: generate both the normalized/finalized lrcs.
         for lrc in layout_rule_chunks:
             rule_stack.append(lrc.rule)
-            handler = dispatcher.layout(tuple(rule_stack))
-            if handler is NotImplemented:
-                # not implemented so we keep going; also add the chunk
-                # to the stack.
+
+            # check every single chunk from left to right...
+            for idx in range(len(rule_stack)):
+                handler = dispatcher.layout(tuple(rule_stack[idx:]))
+                if handler is not NotImplemented:
+                    break
+            else:
                 lrcs_stack.append(lrc)
                 continue
-            # so a handler is found, generate a new layout rule chunk,
-            # and junk the stack.
+
+            # So a handler is found from inside the rules; extend the
+            # chunks from the stack that didn't get normalized, and
+            # generate a new layout rule chunk.  Junk the stack after.
+            normalized_lrcs.extend(lrcs_stack[:idx])
             normalized_lrcs.append(LayoutChunk(
-                tuple(rule_stack), handler, layout_rule_chunks[0].node))
+                tuple(rule_stack[idx:]), handler, layout_rule_chunks[0].node))
             lrcs_stack[:] = []
             rule_stack[:] = []
 
