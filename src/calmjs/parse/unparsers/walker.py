@@ -25,7 +25,8 @@ def optimize_structure_handler(rule, handler):
 
     def runner(walk, dispatcher, node):
         handler(dispatcher, node)
-        return iter([])
+        return
+        yield  # pragma: no cover
 
     return runner
 

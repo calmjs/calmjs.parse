@@ -44,7 +44,8 @@ space_drop = StreamFragment(' ', None, None, None, None)
 
 def rule_handler_noop(*a, **kw):
     # a no op for layouts
-    return iter(())
+    return
+    yield  # pragma: no cover
 
 
 def token_handler_str_default(
