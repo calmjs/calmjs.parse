@@ -57,10 +57,14 @@ def write(
         The Node or list of Nodes to stream to the output stream with
         the unparser.
     output_stream
-        The stream object to write to; its 'write' method will be
-        invoked.
+        Either a stream object or a callable that produces one.  The
+        stream object to write to; its 'write' method will be invoked.
+
+        If a callable was provided, the 'close' method on its return
+        value will be called to close the stream.
     sourcemap_stream
         If one is provided, the sourcemap will be written out to it.
+        Like output_stream, it could also be a callable.
     sourcemap_normalize_mappings
         Flag for the normalization of the sourcemap mappings; Defaults
         to True to enable a reduction in output size.
@@ -88,11 +92,20 @@ def write(
     if not chunks:
         raise TypeError('must either provide a Node or list containing Nodes')
 
+    out_s = (
+        output_stream() if callable(output_stream) else output_stream)
+    sourcemap_stream = (
+        out_s if sourcemap_stream is output_stream else sourcemap_stream)
     mappings, sources, names = sourcemap.write(
-        chunks, output_stream, normalize=sourcemap_normalize_mappings)
+        chunks, out_s, normalize=sourcemap_normalize_mappings)
     if sourcemap_stream:
+        sourcemap_stream = (
+            sourcemap_stream()
+            if callable(sourcemap_stream) else
+            sourcemap_stream
+        )
         sourcemap.write_sourcemap(
-            mappings, sources, names, output_stream, sourcemap_stream,
+            mappings, sources, names, out_s, sourcemap_stream,
             normalize_paths=sourcemap_normalize_paths,
             source_mapping_url=source_mapping_url,
         )

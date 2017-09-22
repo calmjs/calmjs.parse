@@ -198,6 +198,91 @@ class IOTestCase(unittest.TestCase):
             "file": "packed.js"
         }, sourcemap)
 
+    def test_write_callables(self):
+        # streams
+        root = mktemp()
+        output_stream = StringIO()
+        output_stream.name = join(root, 'packed.js')
+        sourcemap_stream = StringIO()
+        sourcemap_stream.name = join(root, 'packed.js.map')
+
+        def f_output_stream():
+            return output_stream
+
+        def f_sourcemap_stream():
+            return sourcemap_stream
+
+        definitions = {'Node': (
+            Attr(attr='left'), Text(value=' '),
+            Attr(attr='op'), Text(value=' '),
+            Attr(attr='right'), Text(value=';'),
+        )}
+
+        # the program node; attributes are assigned to mimic a real one
+        program1 = Node()
+        program1.left, program1.op, program1.right = ('foo', '=', 'true')
+        program1.sourcepath = join(root, 'program1.js')
+        program1._token_map = {
+            'foo': [(0, 1, 1)],
+            '=': [(4, 1, 5)],
+            'true': [(6, 1, 7)],
+        }
+        program2 = Node()
+        program2.left, program2.op, program2.right = ('bar', '=', 'false')
+        program2.sourcepath = join(root, 'program2.js')
+        program2._token_map = {
+            'bar': [(0, 1, 1)],
+            '=': [(4, 1, 5)],
+            'false': [(6, 1, 7)],
+        }
+
+        unparser = BaseUnparser(definitions)
+        io.write(
+            unparser, [program1, program2],
+            f_output_stream, f_sourcemap_stream,
+            source_mapping_url=None)
+
+        self.assertEqual('foo = true;bar = false;', output_stream.getvalue())
+
+        sourcemap = json.loads(sourcemap_stream.getvalue())
+        self.assertEqual({
+            "version": 3,
+            "sources": ["program1.js", "program2.js"],
+            "names": [],
+            "mappings": "AAAA,WCAA",
+            "file": "packed.js"
+        }, sourcemap)
+
+    def test_write_same_stream_callable(self):
+        # streams
+        root = mktemp()
+        output_stream = StringIO()
+        output_stream.name = join(root, 'packed.js')
+        called = []
+
+        def f_output_stream():
+            called.append(True)
+            return output_stream
+
+        definitions = {'Node': (
+            Attr(attr='text'), Text(value=';'),
+        )}
+
+        # the program node; attributes are assigned to mimic a real one
+        program = Node()
+        program.text = 'hello'
+        program.sourcepath = join(root, 'program.js')
+        program._token_map = {'hello': [(0, 1, 1)]}
+
+        unparser = BaseUnparser(definitions)
+        io.write(
+            unparser, [program], f_output_stream, f_output_stream,
+            source_mapping_url=None)
+
+        self.assertEqual(1, len(called))
+        self.assertIn('hello', output_stream.getvalue())
+        self.assertIn('program.js', output_stream.getvalue())
+
     def test_write_wrong_type(self):
         stream = StringIO()
         unparser = BaseUnparser({})
