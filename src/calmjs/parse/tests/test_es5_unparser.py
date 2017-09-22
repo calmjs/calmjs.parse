@@ -99,7 +99,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ast = parse('var x = 0;')
         self.assertEqual(quad(unparser(ast)), [
             ('var', 1, 1, None), ('x', 1, 5, None), ('=', 1, 7, None),
-            ('0', 1, 9, None), (';', 1, 10, None),
+            ('0', 1, 9, None),
         ])
 
     def test_simple_identifier(self):
@@ -373,7 +373,7 @@ class OtherUsageTestCase(unittest.TestCase):
             ('(', None, None, None, NotImplemented),
             ('x', None, None, None, NotImplemented),
             (')', None, None, None, NotImplemented),
-            (';', None, None, None, NotImplemented),
+            (';', None, None, None, None),
             ('\n', 0, 0, None, None),
         ])
 
