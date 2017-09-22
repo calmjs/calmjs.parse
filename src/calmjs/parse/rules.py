@@ -8,6 +8,9 @@ rules as having prescedence for any rule conflicts.
 """
 
 from calmjs.parse.ruletypes import (
+    OpenBlock,
+    CloseBlock,
+    EndStatement,
     Space,
     OptionalSpace,
     RequiredSpace,
@@ -21,6 +24,10 @@ from calmjs.parse.handlers.core import (
     rule_handler_noop,
 
     token_handler_unobfuscate,
+
+    layout_handler_openbrace,
+    layout_handler_closebrace,
+    layout_handler_semicolon,
 
     layout_handler_space_imply,
     layout_handler_space_optional_pretty,
@@ -67,6 +74,9 @@ def indent(indent_str=None):
     def indentation_rule():
         inst = Indentator(indent_str)
         return {'layout_handlers': {
+            OpenBlock: layout_handler_openbrace,
+            CloseBlock: layout_handler_closebrace,
+            EndStatement: layout_handler_semicolon,
             Space: layout_handler_space_imply,
             OptionalSpace: layout_handler_space_optional_pretty,
             RequiredSpace: layout_handler_space_imply,
@@ -74,6 +84,8 @@ def indent(indent_str=None):
             Dedent: inst.layout_handler_dedent,
             Newline: inst.layout_handler_newline,
             OptionalNewline: inst.layout_handler_newline_optional,
+            (Space, OpenBlock): NotImplemented,
+            (Space, EndStatement): layout_handler_semicolon,
             (Indent, Newline, Dedent): rule_handler_noop,
         }}
     return indentation_rule
@@ -108,9 +120,14 @@ def obfuscate(
         return {
             'token_handler': token_handler_unobfuscate,
             'layout_handlers': {
+                OpenBlock: layout_handler_openbrace,
+                CloseBlock: layout_handler_closebrace,
+                EndStatement: layout_handler_semicolon,
                 Space: layout_handler_space_minimum,
                 OptionalSpace: layout_handler_space_minimum,
                 RequiredSpace: layout_handler_space_imply,
+                (Space, OpenBlock): layout_handler_openbrace,
+                (Space, EndStatement): layout_handler_semicolon,
             },
             'deferrable_handlers': {
                 Resolve: inst.resolve,

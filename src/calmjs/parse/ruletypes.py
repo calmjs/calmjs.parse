@@ -160,6 +160,24 @@ class Deferrable(Rule):
         raise NotImplementedError
 
 
+class OpenBlock(Format):
+    """
+    Denotes a block being opened (in ES5, '{').
+    """
+
+
+class CloseBlock(Format):
+    """
+    Denotes a block being closed (in ES5, '}').
+    """
+
+
+class EndStatement(Format):
+    """
+    Denotes a statement ending (in ES5, ';').
+    """
+
+
 class Space(Format):
     """
     Represents a space character with unspecified characteristics.
