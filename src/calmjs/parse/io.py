@@ -81,6 +81,20 @@ def write(
         None to disable this.
     """
 
+    closer = []
+
+    def get_stream(stream):
+        if callable(stream):
+            result = stream()
+            closer.append(result.close)
+        else:
+            result = stream
+        return result
+
+    def cleanup():
+        for close in reversed(closer):
+            close()
+
     chunks = None
     if isinstance(nodes, Node):
         chunks = unparser(nodes)
@@ -92,20 +106,18 @@ def write(
     if not chunks:
         raise TypeError('must either provide a Node or list containing Nodes')
 
-    out_s = (
-        output_stream() if callable(output_stream) else output_stream)
-    sourcemap_stream = (
-        out_s if sourcemap_stream is output_stream else sourcemap_stream)
-    mappings, sources, names = sourcemap.write(
-        chunks, out_s, normalize=sourcemap_normalize_mappings)
-    if sourcemap_stream:
+    try:
+        out_s = get_stream(output_stream)
         sourcemap_stream = (
-            sourcemap_stream()
-            if callable(sourcemap_stream) else
-            sourcemap_stream
-        )
-        sourcemap.write_sourcemap(
-            mappings, sources, names, out_s, sourcemap_stream,
-            normalize_paths=sourcemap_normalize_paths,
-            source_mapping_url=source_mapping_url,
-        )
+            out_s if sourcemap_stream is output_stream else sourcemap_stream)
+        mappings, sources, names = sourcemap.write(
+            chunks, out_s, normalize=sourcemap_normalize_mappings)
+        if sourcemap_stream:
+            sourcemap_stream = get_stream(sourcemap_stream)
+            sourcemap.write_sourcemap(
+                mappings, sources, names, out_s, sourcemap_stream,
+                normalize_paths=sourcemap_normalize_paths,
+                source_mapping_url=source_mapping_url,
+            )
+    finally:
+        cleanup()

@@ -199,11 +199,19 @@ class IOTestCase(unittest.TestCase):
         }, sourcemap)
 
     def test_write_callables(self):
+        closed = []
+
+        class Stream(StringIO):
+            # don't actually close the stream so it can be read later by
+            # the tests
+            def close(self):
+                closed.append(self)
+
         # streams
         root = mktemp()
-        output_stream = StringIO()
+        output_stream = Stream()
         output_stream.name = join(root, 'packed.js')
-        sourcemap_stream = StringIO()
+        sourcemap_stream = Stream()
         sourcemap_stream.name = join(root, 'packed.js.map')
 
         def f_output_stream():
@@ -242,6 +250,8 @@ class IOTestCase(unittest.TestCase):
             f_output_stream, f_sourcemap_stream,
             source_mapping_url=None)
 
+        self.assertIn(output_stream, closed)
+        self.assertIn(sourcemap_stream, closed)
         self.assertEqual('foo = true;bar = false;', output_stream.getvalue())
 
         sourcemap = json.loads(sourcemap_stream.getvalue())
@@ -259,6 +269,12 @@ class IOTestCase(unittest.TestCase):
         output_stream = StringIO()
         output_stream.name = join(root, 'packed.js')
         called = []
+        closed = []
+
+        def close():
+            closed.append(True)
+
+        output_stream.close = close
 
         def f_output_stream():
             called.append(True)
@@ -275,13 +291,48 @@ class IOTestCase(unittest.TestCase):
         program._token_map = {'hello': [(0, 1, 1)]}
 
         unparser = BaseUnparser(definitions)
-        io.write(
-            unparser, [program], f_output_stream, f_output_stream,
-            source_mapping_url=None)
+        io.write(unparser, [program], f_output_stream, f_output_stream)
 
         self.assertEqual(1, len(called))
+        self.assertEqual(1, len(closed))
         self.assertIn('hello', output_stream.getvalue())
         self.assertIn('program.js', output_stream.getvalue())
+
+    def test_write_error_handled_callable_closed(self):
+        # streams
+        root = mktemp()
+        output_stream = StringIO()
+        output_stream.name = join(root, 'packed.js')
+        closed = []
+
+        def close():
+            closed.append(True)
+
+        output_stream.close = close
+
+        def f_output_stream():
+            return output_stream
+
+        def f_error():
+            raise IOError('some error happened')
+
+        definitions = {'Node': (
+            Attr(attr='text'), Text(value=';'),
+        )}
+
+        # the program node; attributes are assigned to mimic a real one
+        program = Node()
+        program.text = 'hello'
+        program.sourcepath = join(root, 'program.js')
+        program._token_map = {'hello': [(0, 1, 1)]}
+
+        unparser = BaseUnparser(definitions)
+        with self.assertRaises(IOError):
+            io.write(unparser, [program], f_output_stream, f_error)
+
+        self.assertEqual(1, len(closed))
+        self.assertEqual('hello;', output_stream.getvalue())
+        self.assertNotIn('program.js', output_stream.getvalue())
 
     def test_write_wrong_type(self):
         stream = StringIO()
