@@ -6,7 +6,6 @@ possible.
 
 from __future__ import unicode_literals
 
-from itertools import chain
 from calmjs.parse.asttypes import Node
 from calmjs.parse.ruletypes import Token
 from calmjs.parse.ruletypes import Structure
@@ -301,8 +300,6 @@ def walk(dispatcher, node, definition=None):
         # through the layout_rule_chunks and generate a normalized form
         # for the final handling to happen.
 
-        # The contracted layout rule chunks to be formed.
-        normalized_lrcs = []
         # the preliminary stack that will be cleared whenever a
         # normalized layout rule chunk is generated.
         lrcs_stack = []
@@ -324,14 +321,15 @@ def walk(dispatcher, node, definition=None):
             # So a handler is found from inside the rules; extend the
             # chunks from the stack that didn't get normalized, and
             # generate a new layout rule chunk.  Junk the stack after.
-            normalized_lrcs.extend(lrcs_stack[:idx])
-            normalized_lrcs.append(LayoutChunk(
-                tuple(rule_stack[idx:]), handler, layout_rule_chunks[0].node))
-            lrcs_stack[:] = []
-            rule_stack[:] = []
+            lrcs_stack[:] = lrcs_stack[:idx]
+            lrcs_stack.append(LayoutChunk(
+                tuple(rule_stack[idx:]), handler,
+                layout_rule_chunks[idx].node,
+            ))
+            rule_stack[:] = [tuple(rule_stack[idx:])]
 
         # second pass: now the processing can be done.
-        for lr_chunk in chain(normalized_lrcs, lrcs_stack):
+        for lr_chunk in lrcs_stack:
             gen = lr_chunk.handler(
                 dispatcher, lr_chunk.node, before_text, after_text, prev_text)
             if not gen:
