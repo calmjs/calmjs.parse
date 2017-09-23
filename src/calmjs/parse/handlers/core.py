@@ -185,6 +185,7 @@ def default_rules():
         # if an indent is immediately followed by dedent without actual
         # content, simply do nothing.
         (Indent, Newline, Dedent): rule_handler_noop,
+        (OptionalSpace, EndStatement): layout_handler_semicolon,
     }}
 
 
@@ -200,4 +201,5 @@ def minimum_rules():
         (Space, OpenBlock): layout_handler_openbrace,
         # remove space before ';' for empty for statement
         (Space, EndStatement): layout_handler_semicolon,
+        (OptionalSpace, EndStatement): layout_handler_semicolon,
     }}

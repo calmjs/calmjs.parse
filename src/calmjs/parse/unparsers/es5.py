@@ -161,8 +161,8 @@ definitions = {
             Space, Attr(attr='identifier'))), EndStatement,
     ),
     'Break': (
-        Text(value='break'), Optional('identifier', (
-            Space, Attr(attr='identifier'))), EndStatement,
+        Text(value='break'), OptionalSpace, Optional('identifier', (
+            Attr(attr='identifier'),)), EndStatement,
     ),
     'Return': (
         Text(value='return'), Optional('expr', (

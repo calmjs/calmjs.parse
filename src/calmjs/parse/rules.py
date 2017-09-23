@@ -79,6 +79,7 @@ def minify(drop_semi=True):
         RequiredSpace: layout_handler_space_imply,
         (Space, OpenBlock): layout_handler_openbrace,
         (Space, EndStatement): layout_handler_semicolon,
+        (OptionalSpace, EndStatement): layout_handler_semicolon,
     }
 
     if drop_semi:
@@ -116,6 +117,7 @@ def indent(indent_str=None):
             OptionalNewline: inst.layout_handler_newline_optional,
             (Space, OpenBlock): NotImplemented,
             (Space, EndStatement): layout_handler_semicolon,
+            (OptionalSpace, EndStatement): layout_handler_semicolon,
             (Indent, Newline, Dedent): rule_handler_noop,
         }}
     return indentation_rule
