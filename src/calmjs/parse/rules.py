@@ -152,15 +152,6 @@ def obfuscate(
         return {
             'token_handler': token_handler_unobfuscate,
             'layout_handlers': {
-                OpenBlock: layout_handler_openbrace,
-                CloseBlock: layout_handler_closebrace,
-                EndStatement: layout_handler_semicolon,
-                Space: layout_handler_space_minimum,
-                OptionalSpace: layout_handler_space_minimum,
-                RequiredSpace: layout_handler_space_imply,
-                (Space, OpenBlock): layout_handler_openbrace,
-                (Space, EndStatement): layout_handler_semicolon,
-                (EndStatement, CloseBlock): layout_handler_closebrace,
             },
             'deferrable_handlers': {
                 Resolve: inst.resolve,

@@ -182,6 +182,9 @@ def default_rules():
         RequiredSpace: layout_handler_space_imply,
         Newline: layout_handler_newline_simple,
         OptionalNewline: layout_handler_newline_optional_pretty,
+        # define these as noop so they can be normalized
+        Indent: rule_handler_noop,
+        Dedent: rule_handler_noop,
         # if an indent is immediately followed by dedent without actual
         # content, simply do nothing.
         (Indent, Newline, Dedent): rule_handler_noop,

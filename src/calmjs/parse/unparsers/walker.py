@@ -13,9 +13,6 @@ from calmjs.parse.ruletypes import Structure
 from calmjs.parse.ruletypes import Layout
 from calmjs.parse.ruletypes import LayoutChunk
 
-# the default noop.
-from calmjs.parse.handlers.core import rule_handler_noop
-
 
 def optimize_structure_handler(rule, handler):
     """
@@ -163,9 +160,9 @@ class Dispatcher(object):
                 elif issubclass(rule, Layout):
                     # a noop here so that the relevant chunk will be
                     # yielded for normalization by bulk-lookup.
-                    handler = self.__layout_handlers.get(
-                        rule, rule_handler_noop)
-                    rules.append(optimize_layout_handler(rule, handler))
+                    handler = self.__layout_handlers.get(rule)
+                    if handler:
+                        rules.append(optimize_layout_handler(rule, handler))
                     continue
             if isinstance(rule, Token):
                 value = (self.optimize_definition(
