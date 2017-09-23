@@ -2130,6 +2130,14 @@ MinifyPrintTestCase = build_equality_testcase(
         "(function(){var a=1;try{console.log(a);throw Error('welp');}catch(a){"
         "console.log(a);}})();"
     ), (
+        'for_in_a_block',
+        """
+        if (true) {
+            for(;;);
+        }
+        """,
+        'if(true){for(;;);}',
+    ), (
         'function_dollar_sign',
         """
         (function $() {

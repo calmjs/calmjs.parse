@@ -39,7 +39,7 @@ from calmjs.parse.handlers.core import (
 from calmjs.parse.handlers.indentation import Indentator
 from calmjs.parse.handlers.obfuscation import Obfuscator
 
-__all__ = ['default', 'minimum', 'indent', 'obfuscate']
+__all__ = ['default', 'minimum', 'minify', 'indent', 'obfuscate']
 
 
 def default():
@@ -58,6 +58,36 @@ def minimum():
     """
 
     return minimum_rules
+
+
+def minify(drop_semi=True):
+    """
+    Rules for minifying output.
+
+    Arguments:
+
+    drop_semi
+        Drop semicolons whenever possible.
+    """
+
+    layout_handlers = {
+        OpenBlock: layout_handler_openbrace,
+        CloseBlock: layout_handler_closebrace,
+        EndStatement: layout_handler_semicolon,
+        Space: layout_handler_space_minimum,
+        OptionalSpace: layout_handler_space_minimum,
+        RequiredSpace: layout_handler_space_imply,
+        (Space, OpenBlock): layout_handler_openbrace,
+        (Space, EndStatement): layout_handler_semicolon,
+    }
+
+    if drop_semi:
+        layout_handlers[(EndStatement, Dedent)] = rule_handler_noop
+
+    def minify_rule():
+        return {'layout_handlers': layout_handlers}
+
+    return minify_rule
 
 
 def indent(indent_str=None):
@@ -128,6 +158,7 @@ def obfuscate(
                 RequiredSpace: layout_handler_space_imply,
                 (Space, OpenBlock): layout_handler_openbrace,
                 (Space, EndStatement): layout_handler_semicolon,
+                (EndStatement, CloseBlock): layout_handler_closebrace,
             },
             'deferrable_handlers': {
                 Resolve: inst.resolve,
