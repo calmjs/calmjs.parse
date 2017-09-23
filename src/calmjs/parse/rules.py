@@ -28,6 +28,7 @@ from calmjs.parse.handlers.core import (
     layout_handler_openbrace,
     layout_handler_closebrace,
     layout_handler_semicolon,
+    layout_handler_semicolon_optional,
 
     layout_handler_space_imply,
     layout_handler_space_optional_pretty,
@@ -67,7 +68,11 @@ def minify(drop_semi=True):
     Arguments:
 
     drop_semi
-        Drop semicolons whenever possible.
+        Drop semicolons whenever possible.  Note that if Dedent and
+        OptionalNewline has a handler defined, it will stop final break
+        statements from being resolved due to reliance on normalized
+        resolution.
+
     """
 
     layout_handlers = {
@@ -83,7 +88,27 @@ def minify(drop_semi=True):
     }
 
     if drop_semi:
-        layout_handlers[(EndStatement, Dedent)] = rule_handler_noop
+        # if these are defined, they should be dropped; should really
+        # provide these as a flag.
+        # layout_handlers.update({
+        #     OptionalNewline: None,
+        #     Dedent: None,
+        # })
+
+        layout_handlers.update({
+            EndStatement: layout_handler_semicolon_optional,
+
+            # these two rules rely on the normalized resolution
+            (OptionalSpace, EndStatement): layout_handler_semicolon_optional,
+            (EndStatement, CloseBlock): layout_handler_closebrace,
+
+            # this is a fallback rule for when Dedent is defined by
+            # some other rule, which won't neuter all optional
+            # semicolons.
+            (EndStatement, Dedent): rule_handler_noop,
+            ((OptionalSpace, EndStatement), CloseBlock):
+                layout_handler_closebrace,
+        })
 
     def minify_rule():
         return {'layout_handlers': layout_handlers}

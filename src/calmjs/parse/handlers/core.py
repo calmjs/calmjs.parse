@@ -93,6 +93,13 @@ def layout_handler_semicolon(dispatcher, node, before, after, prev):
     yield StreamFragment(';', lineno, colno, None, None)
 
 
+def layout_handler_semicolon_optional(dispatcher, node, before, after, prev):
+    # only yield if there is something after
+    if after:
+        _, lineno, colno = node.getpos(';', 0)
+        yield StreamFragment(';', lineno, colno, None, None)
+
+
 def layout_handler_openbrace(dispatcher, node, before, after, prev):
     # required layout handler for the OpenBlock Format rule.
     _, lineno, colno = node.getpos('{', 0)
