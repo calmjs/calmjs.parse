@@ -32,6 +32,26 @@ class IOTestCase(unittest.TestCase):
         node = io.read(parser, stream)
         self.assertEqual(node.sourcepath, 'somefile.js')
 
+    def test_read_callable(self):
+        # given that there is no generic parser, emulate one like so
+        def parser(text):
+            result = Node()
+            result.raw = text
+            return result
+
+        stream = StringIO('var foo = "bar";')
+
+        def close():
+            stream._closed = True
+
+        def wrapper():
+            stream.close = close
+            return stream
+
+        stream = StringIO('var foo = "bar";')
+        io.read(parser, wrapper)
+        self.assertTrue(stream._closed)
+
     def test_read_error(self):
         # given that there is no generic parser, emulate one like so
         def parser(text):
