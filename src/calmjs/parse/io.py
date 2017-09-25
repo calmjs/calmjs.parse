@@ -81,7 +81,14 @@ def write(
         value will be called to close the stream.
     sourcemap_stream
         If one is provided, the sourcemap will be written out to it.
-        Like output_stream, it could also be a callable.
+        Like output_stream, it could also be a callable and be handled
+        in the same manner.
+
+        If this argument is the same as output_stream (note: the return
+        value of any callables are not compared), the stream object that
+        is the same as the output_stream will be used for writing out
+        the source map, and the source map will instead be encoded as a
+        'data:application/json;base64,' URL.
     sourcemap_normalize_mappings
         Flag for the normalization of the sourcemap mappings; Defaults
         to True to enable a reduction in output size.

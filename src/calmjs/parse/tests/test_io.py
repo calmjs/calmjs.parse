@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 import unittest
+import base64
 import json
 from io import StringIO
 from os.path import join
@@ -315,8 +316,21 @@ class IOTestCase(unittest.TestCase):
 
         self.assertEqual(1, len(called))
         self.assertEqual(1, len(closed))
-        self.assertIn('hello', output_stream.getvalue())
-        self.assertIn('program.js', output_stream.getvalue())
+        output = output_stream.getvalue()
+        self.assertIn('hello', output)
+        self.assertNotIn('program.js', output)
+        # since output stream is a StringIO, default to utf8 encoding
+        self.assertIn('data:application/json;base64;charset=utf8', output)
+        # decode the base64 string
+        self.assertEqual({
+            "version": 3,
+            "sources": ["program.js"],
+            "names": [],
+            "mappings": "AAAA",
+            "file": "packed.js"
+        }, json.loads(base64.b64decode(
+            output.splitlines()[-1].split(',')[-1].encode('utf8')
+        ).decode('utf8')))
 
     def test_write_error_handled_callable_closed(self):
         # streams
