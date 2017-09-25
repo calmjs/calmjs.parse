@@ -461,6 +461,48 @@ def encode_sourcemap(filename, mappings, sources, names=[]):
     }
 
 
+def verify_write_sourcemap_args(
+        mappings, sources, names, output_stream, sourcemap_stream,
+        normalize_paths=True):
+
+    def validate_path(path, name):
+        # yes, rather than equality, this token is imported from
+        # the sourcemap module is the identity of all invalid
+        # sources.
+        if path is INVALID_SOURCE:
+            # well, this was preemptively replaced, still need to
+            # report this fact as a warning.
+            logger.warning(
+                "%s is either undefine or invalid - it is replaced "
+                "with '%s'", name, INVALID_SOURCE)
+
+    output_js = getattr(output_stream, 'name', INVALID_SOURCE)
+    output_js_map = getattr(sourcemap_stream, 'name', INVALID_SOURCE)
+
+    validate_path(output_js, 'sourcemap.file')
+    validate_path(output_js_map, 'sourceMappingURL')
+    for idx, source in enumerate(sources):
+        validate_path(source, 'sourcemap.sources[%d]' % idx)
+
+    if normalize_paths:
+        # Caveat: macpath.pardir ignored.
+        return ((
+            # filename
+            '/'.join(normrelpath(output_js_map, output_js).split(sep)),
+            # mappings
+            mappings,
+            # sources
+            [
+                '/'.join(normrelpath(output_js_map, src).split(sep))
+                for src in sources
+            ],
+            # names
+            names,
+        ), '/'.join(normrelpath(output_js, output_js_map).split(sep)))
+
+    return (output_js, mappings, sources, names), output_js_map
+
+
 def write_sourcemap(
         mappings, sources, names, output_stream, sourcemap_stream,
         normalize_paths=True, source_mapping_url=NotImplemented):
@@ -492,35 +534,10 @@ def write_sourcemap(
         if the behavior is unwanted.
     """
 
-    def validate_path(path, name):
-        # yes, rather than equality, this token is imported from
-        # the sourcemap module is the identity of all invalid
-        # sources.
-        if path is INVALID_SOURCE:
-            # well, this was preemptively replaced, still need to
-            # report this fact as a warning.
-            logger.warning(
-                "%s is either undefine or invalid - it is replaced "
-                "with '%s'", name, INVALID_SOURCE)
-
-    output_js = getattr(output_stream, 'name', INVALID_SOURCE)
-    output_js_map = getattr(sourcemap_stream, 'name', INVALID_SOURCE)
-
-    validate_path(output_js, 'sourcemap.file')
-    validate_path(output_js_map, 'sourceMappingURL')
-    for idx, source in enumerate(sources):
-        validate_path(source, 'sourcemap.sources[%d]' % idx)
-
-    if normalize_paths:
-        # Caveat: macpath.pardir ignored.
-        sources = [
-            '/'.join(normrelpath(output_js_map, src).split(sep))
-            for src in sources
-        ]
-        output_js, output_js_map = (
-            '/'.join(normrelpath(output_js_map, output_js).split(sep)),
-            '/'.join(normrelpath(output_js, output_js_map).split(sep)),
-        )
+    encode_sourcemap_args, output_js_map = verify_write_sourcemap_args(
+        mappings, sources, names, output_stream, sourcemap_stream,
+        normalize_paths
+    )
 
     if source_mapping_url is not None:
         output_stream.writelines(['\n//# sourceMappingURL=', (
@@ -529,6 +546,6 @@ def write_sourcemap(
         ), '\n'])
 
     sourcemap_stream.write(json.dumps(
-        encode_sourcemap(output_js, mappings, sources, names),
+        encode_sourcemap(*encode_sourcemap_args),
         sort_keys=True, ensure_ascii=False,
     ))
