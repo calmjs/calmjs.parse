@@ -3,7 +3,7 @@ calmjs.parse
 
 A collection of parsers and helper libraries for understanding
 ECMAScript; a near feature complete fork of |slimit|_.  A CLI front-end
-for this package is shipped separately as |crimp|_
+for this package is shipped separately as |crimp|_.
 
 .. image:: https://travis-ci.org/calmjs/calmjs.parse.svg?branch=1.0.x
     :target: https://travis-ci.org/calmjs/calmjs.parse
@@ -378,14 +378,15 @@ streams:
     var b=function(a){return'<b>'+a+'</b>';};var a=function(a){...};
     //# sourceMappingURL=html4.min.js.map
 
-For a simple concatenation of multiple sources into one file, the
-following may be done:
+For a simple concatenation of multiple sources into one file, along with
+inline source map (i.e. where the sourceMappingURL is a ``data:`` URL of
+the base64 encoding of the JSON string), the following may be done:
 
 .. code:: python
 
     >>> files = [open('/tmp/html4.js'), open('/tmp/legacy.js')]
     >>> combined = open('/tmp/combined.js', 'w+')
-    >>> io.write(print_p, (io.read(es5, f) for f in files), combined)
+    >>> io.write(print_p, (io.read(es5, f) for f in files), combined, combined)
     >>> pos = combined.seek(0)
     >>> print(combined.read())
     var bold = function(s) {
@@ -400,11 +401,18 @@ following may be done:
     var blink = function(s) {
         return '<blink>' + s + '</blink>';
     };
+    //# sourceMappingURL=data:application/json;base64;...
 
-Naturally, if a minifying printer with globals being obfuscated, the
-resulting script will have the earlier obfuscated global names mangled
-by later ones, as the unparsing is done separately by the ``io.write``
-function.
+In this example, the ``io.write`` function was provided with the pretty
+unparser, an generator expression that will produce the two ASTs from
+the two source files, and then both the target and sourcemap argument
+are identical, which forces the source map generator to generate the
+base64 encoding.
+
+Do note that if multiple ASTs were supplied to a minifying printer with
+globals being obfuscated, the resulting script will have the earlier
+obfuscated global names mangled by later ones, as the unparsing is done
+separately by the ``io.write`` function.
 
 
 Advanced usage
