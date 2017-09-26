@@ -5,6 +5,7 @@ import unittest
 from collections import namedtuple
 
 from calmjs.parse.parsers.es5 import parse as es5
+from calmjs.parse.asttypes import Node
 from calmjs.parse.asttypes import VarStatement
 from calmjs.parse.asttypes import VarDecl
 from calmjs.parse.unparsers.walker import Dispatcher
@@ -143,6 +144,37 @@ class DispatcherWalkTestCase(unittest.TestCase):
             "definition for 'Node' contain unsupported rule (got:",
             e.exception.args[0],
         )
+
+    def test_nested_layouts(self):
+        def simple_layout_space(dispatcher, node, before, after, prev):
+            yield SimpleChunk(' ')
+
+        def nested_layout(dispatcher, node, before, after, prev):
+            yield SimpleChunk('?')
+
+        def noop(*a, **kw):
+            return
+            yield  # pragma: no cover
+
+        dispatcher = Dispatcher(
+            definitions={
+                'Node': (Space, JoinAttr(Iter(), value=(Space,)),)
+            },
+            token_handler=noop,
+            layout_handlers={
+                Space: simple_layout_space,
+                (Space, Space): noop,
+                ((Space, Space), Space): nested_layout,
+            },
+            deferrable_handlers={},
+        )
+
+        n0 = Node([])
+        self.assertEqual(' ', ''.join(c.text for c in walk(dispatcher, n0)))
+        n1 = Node([n0])
+        self.assertEqual('', ''.join(c.text for c in walk(dispatcher, n1)))
+        n2 = Node([n1, n0])
+        self.assertEqual('?', ''.join(c.text for c in walk(dispatcher, n2)))
 
 
 class DispatcherTestcase(unittest.TestCase):

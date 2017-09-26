@@ -63,16 +63,16 @@ def build_exception_testcase(name, f, manifest, exception=None):
         The exception expected to be raised.
     """
 
-    def create_test_method(argument, answer):
+    def create_test_method(argument, msg):
         def _method(self):
-            self.assertRaises(answer, f, argument)
+            with self.assertRaises(exception) as e:
+                f(argument)
+            if msg is not None:
+                self.assertEqual(msg, str(e.exception))
 
         return _method
 
-    return build_testcase(name, f, (
-        (label, argument, exception)
-        for label, argument in manifest
-    ), create_test_method)
+    return build_testcase(name, f, manifest, create_test_method)
 
 
 def setup_logger(testcase, logger, level=logging.DEBUG):

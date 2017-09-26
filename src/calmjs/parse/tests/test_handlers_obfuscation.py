@@ -11,6 +11,10 @@ from calmjs.parse.asttypes import Catch
 from calmjs.parse.ruletypes import Attr
 from calmjs.parse.ruletypes import Resolve
 from calmjs.parse.ruletypes import Space
+from calmjs.parse.ruletypes import OpenBlock
+from calmjs.parse.ruletypes import CloseBlock
+from calmjs.parse.ruletypes import EndStatement
+
 from calmjs.parse.unparsers.base import Dispatcher
 from calmjs.parse.unparsers.walker import walk
 from calmjs.parse.unparsers.es5 import Unparser
@@ -18,6 +22,9 @@ from calmjs.parse.handlers.indentation import indent
 from calmjs.parse.handlers.core import rule_handler_noop
 from calmjs.parse.handlers.core import token_handler_str_default
 from calmjs.parse.handlers.core import layout_handler_space_minimum
+from calmjs.parse.handlers.core import layout_handler_openbrace
+from calmjs.parse.handlers.core import layout_handler_closebrace
+from calmjs.parse.handlers.core import layout_handler_semicolon
 from calmjs.parse.handlers.core import minimum_rules
 from calmjs.parse.handlers.core import default_rules
 
@@ -479,6 +486,9 @@ class ObfuscatorTestCase(unittest.TestCase):
         dispatcher = Dispatcher(
             unparser.definitions, token_handler_str_default, {
                 Space: layout_handler_space_minimum,
+                OpenBlock: layout_handler_openbrace,
+                CloseBlock: layout_handler_closebrace,
+                EndStatement: layout_handler_semicolon,
             }, {
                 Resolve: obfuscator.resolve,
             }
@@ -546,6 +556,9 @@ class ObfuscatorTestCase(unittest.TestCase):
         main_dispatcher = Dispatcher(
             unparser.definitions, token_handler_unobfuscate, {
                 Space: layout_handler_space_minimum,
+                OpenBlock: layout_handler_openbrace,
+                CloseBlock: layout_handler_closebrace,
+                EndStatement: layout_handler_semicolon,
             }, {
                 Resolve: obfuscator.resolve,
             }

@@ -22,6 +22,9 @@ from calmjs.parse.asttypes import (
 from calmjs.parse.ruletypes import (
     StreamFragment,
 
+    OpenBlock,
+    CloseBlock,
+    EndStatement,
     Space,
     OptionalSpace,
     RequiredSpace,
@@ -44,7 +47,8 @@ space_drop = StreamFragment(' ', None, None, None, None)
 
 def rule_handler_noop(*a, **kw):
     # a no op for layouts
-    return iter(())
+    return
+    yield  # pragma: no cover
 
 
 def token_handler_str_default(
@@ -81,6 +85,31 @@ def token_handler_unobfuscate(
 
     yield StreamFragment(
         subnode, lineno, colno, original, sourcepath_stack[-1])
+
+
+def layout_handler_semicolon(dispatcher, node, before, after, prev):
+    # required layout handler for the EndStatement Format rule.
+    _, lineno, colno = node.getpos(';', 0)
+    yield StreamFragment(';', lineno, colno, None, None)
+
+
+def layout_handler_semicolon_optional(dispatcher, node, before, after, prev):
+    # only yield if there is something after
+    if after:
+        _, lineno, colno = node.getpos(';', 0)
+        yield StreamFragment(';', lineno, colno, None, None)
+
+
+def layout_handler_openbrace(dispatcher, node, before, after, prev):
+    # required layout handler for the OpenBlock Format rule.
+    _, lineno, colno = node.getpos('{', 0)
+    yield StreamFragment('{', lineno, colno, None, None)
+
+
+def layout_handler_closebrace(dispatcher, node, before, after, prev):
+    # required layout handler for the CloseBlock Format rule.
+    _, lineno, colno = node.getpos('}', 0)
+    yield StreamFragment('}', lineno, colno, None, None)
 
 
 def layout_handler_space_imply(dispatcher, node, before, after, prev):
@@ -152,20 +181,35 @@ def layout_handler_space_minimum(dispatcher, node, before, after, prev):
 
 def default_rules():
     return {'layout_handlers': {
+        OpenBlock: layout_handler_openbrace,
+        CloseBlock: layout_handler_closebrace,
+        EndStatement: layout_handler_semicolon,
         Space: layout_handler_space_imply,
         OptionalSpace: layout_handler_space_optional_pretty,
         RequiredSpace: layout_handler_space_imply,
         Newline: layout_handler_newline_simple,
         OptionalNewline: layout_handler_newline_optional_pretty,
+        # define these as noop so they can be normalized
+        Indent: rule_handler_noop,
+        Dedent: rule_handler_noop,
         # if an indent is immediately followed by dedent without actual
         # content, simply do nothing.
         (Indent, Newline, Dedent): rule_handler_noop,
+        (OptionalSpace, EndStatement): layout_handler_semicolon,
     }}
 
 
 def minimum_rules():
     return {'layout_handlers': {
+        OpenBlock: layout_handler_openbrace,
+        CloseBlock: layout_handler_closebrace,
+        EndStatement: layout_handler_semicolon,
         Space: layout_handler_space_minimum,
         OptionalSpace: layout_handler_space_minimum,
         RequiredSpace: layout_handler_space_imply,
+        # drop the space before '{'
+        (Space, OpenBlock): layout_handler_openbrace,
+        # remove space before ';' for empty for statement
+        (Space, EndStatement): layout_handler_semicolon,
+        (OptionalSpace, EndStatement): layout_handler_semicolon,
     }}

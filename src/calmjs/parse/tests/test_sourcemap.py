@@ -2,11 +2,14 @@
 from __future__ import unicode_literals
 
 import unittest
+import base64
+import codecs
 import json
 import logging
 import textwrap
 from os.path import join
 from io import StringIO
+from io import BytesIO
 from tempfile import mktemp
 
 from calmjs.parse import sourcemap
@@ -1061,3 +1064,64 @@ class SourceMapTestCase(unittest.TestCase):
             "file": 'srcfinal.js',
         }, json.loads(sourcemap_stream.getvalue()))
         self.assertEqual('', output_stream.getvalue())
+
+    def test_write_sourcemap_source_mapping_same_output_stream(self):
+        root = mktemp()
+        output_stream = StringIO()
+        output_stream.name = join(root, 'srcfinal.js')
+        output_stream.write('//')
+        mappings = [[(0, 0, 0, 0, 0)]]
+        sources = [join(root, 'src', 'src1.js'), join(root, 'src', 'src2.js')]
+        names = ['foo']
+
+        sourcemap.write_sourcemap(
+            mappings, sources, names, output_stream, output_stream,
+            source_mapping_url='src.map')
+
+        output = output_stream.getvalue()
+        # the sourcemap is written as a sourceMappingURL, with the
+        # source_mapping_url argument ignored.
+        self.assertIn(
+            '# sourceMappingURL=data:application/json;base64;charset=utf8',
+            output,
+        )
+        # decode the base64 string
+        self.assertEqual({
+            "version": 3,
+            "sources": ['src/src1.js', 'src/src2.js'],
+            "names": ["foo"],
+            "mappings": "AAAAA",
+            "file": 'srcfinal.js',
+        }, json.loads(base64.b64decode(
+            output.splitlines()[-1].split(',')[-1].encode('utf8')
+        ).decode('utf8')))
+
+    def test_write_sourcemap_source_mapping_encoded_same(self):
+        root = mktemp()
+        # emulating a codecs.open with encoding as shift_jis
+        raw_stream = BytesIO()
+        raw_stream.encoding = 'shift_jis'
+        raw_stream.name = join(root, 'lang.js')
+        output_stream = codecs.getwriter(raw_stream.encoding)(raw_stream)
+        output_stream.write('yes\u306f\u3044//')
+        mappings = [[(0, 0, 0, 0, 0)]]
+        sources = [join(root, 'src', 'ja.js')]
+        names = ['yes\u306f\u3044']
+
+        sourcemap.write_sourcemap(
+            mappings, sources, names, output_stream, output_stream,
+            source_mapping_url='src.map')
+
+        encoded = raw_stream.getvalue().splitlines()[-1]
+        # the sourcemap is written as a sourceMappingURL, with the
+        # source_mapping_url argument ignored.
+        self.assertIn(b'application/json;base64;charset=shift_jis', encoded)
+        # decode the base64 string; note the shift_jis encoding
+        self.assertEqual({
+            "version": 3,
+            "sources": ['src/ja.js'],
+            "names": ["yes\u306f\u3044"],
+            "mappings": "AAAAA",
+            "file": 'lang.js',
+        }, json.loads(base64.b64decode(
+            encoded.split(b',')[-1]).decode('shift_jis')))

@@ -7,16 +7,40 @@ from itertools import chain
 from collections import Iterable
 from calmjs.parse.asttypes import Node
 from calmjs.parse import sourcemap
+from calmjs.parse.exceptions import ECMASyntaxError
+from calmjs.parse.utils import repr_compat
 
 
 def read(parser, stream):
     """
     Return an AST from the input ES5 stream.
+
+    Arguments
+
+    parser
+        A parser instance.
+    stream
+        Either a stream object or a callable that produces one.  The
+        stream object to read from; its 'read' method will be invoked.
+
+        If a callable was provided, the 'close' method on its return
+        value will be called to close the stream.
     """
 
-    text = stream.read()
-    result = parser(text)
-    result.sourcepath = getattr(stream, 'name', None)
+    source = stream() if callable(stream) else stream
+    try:
+        text = source.read()
+        stream_name = getattr(source, 'name', None)
+        try:
+            result = parser(text)
+        except ECMASyntaxError as e:
+            error_name = repr_compat(stream_name or source)
+            raise type(e)('%s in %s' % (str(e), error_name))
+    finally:
+        if callable(stream):
+            source.close()
+
+    result.sourcepath = stream_name
     return result
 
 
@@ -50,10 +74,21 @@ def write(
         The Node or list of Nodes to stream to the output stream with
         the unparser.
     output_stream
-        The stream object to write to; its 'write' method will be
-        invoked.
+        Either a stream object or a callable that produces one.  The
+        stream object to write to; its 'write' method will be invoked.
+
+        If a callable was provided, the 'close' method on its return
+        value will be called to close the stream.
     sourcemap_stream
         If one is provided, the sourcemap will be written out to it.
+        Like output_stream, it could also be a callable and be handled
+        in the same manner.
+
+        If this argument is the same as output_stream (note: the return
+        value of any callables are not compared), the stream object that
+        is the same as the output_stream will be used for writing out
+        the source map, and the source map will instead be encoded as a
+        'data:application/json;base64,' URL.
     sourcemap_normalize_mappings
         Flag for the normalization of the sourcemap mappings; Defaults
         to True to enable a reduction in output size.
@@ -70,6 +105,20 @@ def write(
         None to disable this.
     """
 
+    closer = []
+
+    def get_stream(stream):
+        if callable(stream):
+            result = stream()
+            closer.append(result.close)
+        else:
+            result = stream
+        return result
+
+    def cleanup():
+        for close in reversed(closer):
+            close()
+
     chunks = None
     if isinstance(nodes, Node):
         chunks = unparser(nodes)
@@ -81,11 +130,18 @@ def write(
     if not chunks:
         raise TypeError('must either provide a Node or list containing Nodes')
 
-    mappings, sources, names = sourcemap.write(
-        chunks, output_stream, normalize=sourcemap_normalize_mappings)
-    if sourcemap_stream:
-        sourcemap.write_sourcemap(
-            mappings, sources, names, output_stream, sourcemap_stream,
-            normalize_paths=sourcemap_normalize_paths,
-            source_mapping_url=source_mapping_url,
-        )
+    try:
+        out_s = get_stream(output_stream)
+        sourcemap_stream = (
+            out_s if sourcemap_stream is output_stream else sourcemap_stream)
+        mappings, sources, names = sourcemap.write(
+            chunks, out_s, normalize=sourcemap_normalize_mappings)
+        if sourcemap_stream:
+            sourcemap_stream = get_stream(sourcemap_stream)
+            sourcemap.write_sourcemap(
+                mappings, sources, names, out_s, sourcemap_stream,
+                normalize_paths=sourcemap_normalize_paths,
+                source_mapping_url=source_mapping_url,
+            )
+    finally:
+        cleanup()

@@ -7,6 +7,9 @@ from __future__ import unicode_literals
 from calmjs.parse.lexers.es5 import Lexer
 
 from calmjs.parse.ruletypes import (
+    OpenBlock,
+    CloseBlock,
+    EndStatement,
     Space,
     RequiredSpace,
     OptionalSpace,
@@ -51,14 +54,14 @@ definitions = {
         OptionalNewline,
     ),
     'Block': (
-        Text(value='{'),
+        OpenBlock,
         Indent, Newline,
         children_newline,
         Dedent, OptionalNewline,
-        Text(value='}'),
+        CloseBlock,
     ),
     'VarStatement': (
-        Text(value='var'), Space, children_comma, Text(value=';'),
+        Text(value='var'), Space, children_comma, EndStatement,
     ),
     'VarDecl': (
         Attr(Declare('identifier')), Optional('initializer', (
@@ -81,35 +84,35 @@ definitions = {
         Text(value='get'), Space, Attr('prop_name'),
         PushScope,
         Text(value='('), Text(value=')'), Space,
-        Text(value='{'),
+        OpenBlock,
         Indent, Newline,
         JoinAttr(attr='elements', value=(Newline,)),
         Dedent, OptionalNewline,
-        Text(value='}'),
+        CloseBlock,
         PopScope,
     ),
     'SetPropAssign': (
         Text(value='set'), Space, Attr('prop_name'), Text(value='('),
         PushScope,
         Attr(Declare('parameter')), Text(value=')'), Space,
-        Text(value='{'),
+        OpenBlock,
         Indent, Newline,
         JoinAttr(attr='elements', value=(Newline,)),
         Dedent, OptionalNewline,
-        Text(value='}'),
+        CloseBlock,
         PopScope,
     ),
     'Number': value,
     'Comma': (
         Attr('left'), Text(value=','), Space, Attr('right'),
     ),
-    'EmptyStatement': value,
+    'EmptyStatement': (EndStatement,),
     'If': (
         Text(value='if'), Space,
-        Text(value='('), Attr('predicate'), Text(value=')'), OptionalSpace,
+        Text(value='('), Attr('predicate'), Text(value=')'), Space,
         Attr('consequent'),
         Optional('alternative', (
-            Newline, Text(value='else'), OptionalSpace, Attr('alternative'),)),
+            Newline, Text(value='else'), Space, Attr('alternative'),)),
     ),
     'Boolean': value,
     'For': (
@@ -117,13 +120,13 @@ definitions = {
         Attr('init'),
         OptionalSpace, Attr('cond'),
         OptionalSpace, Attr('count'),
-        Text(value=')'), OptionalSpace, Attr('statement'),
+        Text(value=')'), Space, Attr('statement'),
     ),
     'ForIn': (
         Text(value='for'), Space, Text(value='('),
         Attr('item'),
         Space, Text(value='in'), Space,
-        Attr('iterable'), Text(value=')'), OptionalSpace, Attr('statement'),
+        Attr('iterable'), Text(value=')'), Space, Attr('statement'),
     ),
     'BinOp': (
         Attr('left'), Space, Operator(attr='op'), Space, Attr('right'),
@@ -135,12 +138,12 @@ definitions = {
         Operator(attr='value'), Attr('op'),
     ),
     'ExprStatement': (
-        Attr('expr'), Text(value=';'),
+        Attr('expr'), EndStatement,
     ),
     'DoWhile': (
         Text(value='do'), Space, Attr('statement'), Space,
         Text(value='while'), Space, Text(value='('),
-        Attr('predicate'), Text(value=');'),
+        Attr('predicate'), Text(value=')'), EndStatement,
     ),
     'While': (
         Text(value='while'), Space,
@@ -155,15 +158,15 @@ definitions = {
     ),
     'Continue': (
         Text(value='continue'), Optional('identifier', (
-            Space, Attr(attr='identifier'))), Text(value=';'),
+            Space, Attr(attr='identifier'))), EndStatement,
     ),
     'Break': (
-        Text(value='break'), Optional('identifier', (
-            Space, Attr(attr='identifier'))), Text(value=';'),
+        Text(value='break'), OptionalSpace, Optional('identifier', (
+            Attr(attr='identifier'),)), EndStatement,
     ),
     'Return': (
         Text(value='return'), Optional('expr', (
-            Space, Attr(attr='expr'))), Text(value=';'),
+            Space, Attr(attr='expr'))), EndStatement,
     ),
     'With': (
         Text(value='with'), Space,
@@ -182,11 +185,11 @@ definitions = {
         Attr('case_block'),
     ),
     'CaseBlock': (
-        Text(value='{'),
+        OpenBlock,
         Indent, Newline,
         children_newline,
         Dedent, OptionalNewline,
-        Text(value='}'),
+        CloseBlock,
     ),
     'Case': (
         Text(value='case'), Space, Attr('expr'), Text(value=':'),
@@ -201,10 +204,10 @@ definitions = {
         Dedent,
     ),
     'Throw': (
-        Text(value='throw'), Space, Attr('expr'), Text(value=';'),
+        Text(value='throw'), Space, Attr('expr'), EndStatement,
     ),
     'Debugger': (
-        Text(value='debugger'), Text(value=';'),
+        Text(value='debugger'), EndStatement,
     ),
     'Try': (
         Text(value='try'), Space, Attr('statements'),
@@ -227,11 +230,11 @@ definitions = {
         PushScope, Optional('identifier', (ResolveFuncName,)),
         JoinAttr(Declare('parameters'), value=(Text(value=','), Space)),
         Text(value=')'), Space,
-        Text(value='{'),
+        OpenBlock,
         Indent, Newline,
         JoinAttr('elements', value=(Newline,)),
         Dedent, OptionalNewline,
-        Text(value='}'),
+        CloseBlock,
         PopScope,
     ),
     'FuncExpr': (
@@ -240,11 +243,11 @@ definitions = {
         PushScope, Optional('identifier', (ResolveFuncName,)),
         JoinAttr(Declare('parameters'), value=(Text(value=','), Space,)),
         Text(value=')'), Space,
-        Text(value='{'),
+        OpenBlock,
         Indent, Newline,
         JoinAttr('elements', value=(Newline,)),
         Dedent, OptionalNewline,
-        Text(value='}'),
+        CloseBlock,
         PopScope,
     ),
     'Conditional': (
@@ -339,22 +342,49 @@ def pretty_print(ast, indent_str='  '):
 
 
 def minify_printer(
-        obfuscate=False, obfuscate_globals=False, shadow_funcname=False):
+        obfuscate=False,
+        obfuscate_globals=False,
+        shadow_funcname=False,
+        drop_semi=False):
     """
     Construct a minimum printer.
+
+    Arguments
+
+    obfuscate
+        If True, obfuscate identifiers nested in each scope with a
+        shortened identifier name to further reduce output size.
+
+        Defaults to False.
+    obfuscate_globals
+        Also do the same to identifiers nested on the global scope; do
+        not enable unless the renaming of global variables in a not
+        fully deterministic manner into something else is guaranteed to
+        not cause problems with the generated code and other code that
+        in the same environment that it will be executed in.
+
+        Defaults to False for the reason above.
+    drop_semi
+        Drop semicolons whenever possible (e.g. the final semicolons of
+        a given block).
     """
 
-    return Unparser(rules=(
-        rules.obfuscate(
+    active_rules = [rules.minify(drop_semi=drop_semi)]
+    if obfuscate:
+        active_rules.append(rules.obfuscate(
             obfuscate_globals=obfuscate_globals,
             shadow_funcname=shadow_funcname,
             reserved_keywords=(Lexer.keywords_dict.keys())
-        ),
-    ) if obfuscate else (rules.minimum(),))
+        ))
+    return Unparser(rules=active_rules)
 
 
 def minify_print(
-        ast, obfuscate=False, obfuscate_globals=False, shadow_funcname=False):
+        ast,
+        obfuscate=False,
+        obfuscate_globals=False,
+        shadow_funcname=False,
+        drop_semi=False):
     """
     Simple minify print function; returns a string rendering of an input
     AST of an ES5 program
@@ -376,7 +406,10 @@ def minify_print(
         in the same environment that it will be executed in.
 
         Defaults to False for the reason above.
+    drop_semi
+        Drop semicolons whenever possible (e.g. the final semicolons of
+        a given block).
     """
 
     return ''.join(chunk.text for chunk in minify_printer(
-        obfuscate, obfuscate_globals, shadow_funcname)(ast))
+        obfuscate, obfuscate_globals, shadow_funcname, drop_semi)(ast))

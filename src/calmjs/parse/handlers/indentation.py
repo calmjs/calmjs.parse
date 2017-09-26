@@ -3,11 +3,21 @@
 Layout handlers for building indentation.
 """
 
-from calmjs.parse.ruletypes import Dedent
-from calmjs.parse.ruletypes import Indent
-from calmjs.parse.ruletypes import Newline
-from calmjs.parse.ruletypes import OptionalNewline
-from calmjs.parse.ruletypes import StreamFragment
+from calmjs.parse.ruletypes import (
+    Dedent,
+    Indent,
+    Newline,
+    OptionalNewline,
+    StreamFragment,
+    OpenBlock,
+    CloseBlock,
+    EndStatement,
+)
+from calmjs.parse.handlers.core import (
+    layout_handler_semicolon,
+    layout_handler_openbrace,
+    layout_handler_closebrace,
+)
 
 
 class Indentator(object):
@@ -60,7 +70,7 @@ class Indentator(object):
         # the typical <CR><LF>
         newline_strs = {'\r', '\n', dispatcher.newline_str}
 
-        if lc(before) in '\r\n':
+        if (before and lc(before) in '\r\n'):
             # not needed since this is the beginning
             return
         # if no new lines in any of the checked characters
@@ -83,5 +93,8 @@ def indent(indent_str=None):
             Dedent: inst.layout_handler_dedent,
             Newline: inst.layout_handler_newline,
             OptionalNewline: inst.layout_handler_newline_optional,
+            OpenBlock: layout_handler_openbrace,
+            CloseBlock: layout_handler_closebrace,
+            EndStatement: layout_handler_semicolon,
         }}
     return indentation_rule

@@ -1,10 +1,14 @@
 # -*- coding: utf-8 -*-
 import unittest
 
+from calmjs.parse.asttypes import Node
 from calmjs.parse.handlers.core import (
     layout_handler_space_optional_pretty,
     layout_handler_space_minimum,
     layout_handler_newline_optional_pretty,
+    layout_handler_openbrace,
+    layout_handler_closebrace,
+    layout_handler_semicolon,
 )
 from calmjs.parse.unparsers.walker import Dispatcher
 
@@ -16,6 +20,30 @@ class SimpleHandlersTestCase(unittest.TestCase):
     """
     Assorted test cases for edges.
     """
+
+    def test_core_structures(self):
+        # initialise a barebone dispatcher.
+        node = Node()
+        dispatcher = Dispatcher({}, None, {}, {})
+        self.assertEqual([('{', 0, 0, None, None,)], list(
+            layout_handler_openbrace(dispatcher, node, None, None, None)))
+        self.assertEqual([('}', 0, 0, None, None,)], list(
+            layout_handler_closebrace(dispatcher, node, None, None, None)))
+        self.assertEqual([(';', 0, 0, None, None,)], list(
+            layout_handler_semicolon(dispatcher, node, None, None, None)))
+
+        # with token map
+        node._token_map = {
+            '{': [(0, 1, 1)],
+            '}': [(1, 1, 2)],
+            ';': [(2, 1, 3)],
+        }
+        self.assertEqual([('{', 1, 1, None, None,)], list(
+            layout_handler_openbrace(dispatcher, node, None, None, None)))
+        self.assertEqual([('}', 1, 2, None, None,)], list(
+            layout_handler_closebrace(dispatcher, node, None, None, None)))
+        self.assertEqual([(';', 1, 3, None, None,)], list(
+            layout_handler_semicolon(dispatcher, node, None, None, None)))
 
     def test_space_optional_pretty(self):
         # initialise a barebone dispatcher.

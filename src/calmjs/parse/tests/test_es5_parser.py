@@ -2050,12 +2050,13 @@ ParsedNodeTypeTestCase = build_equality_testcase(
     ), (
         'function_expr_1',
         """
-        function(arg) {};
+        (function(arg) {});
         """,
         """
         <ES5Program @1:1 ?children=[
-          <ExprStatement @1:1 expr=<FuncExpr @1:1 elements=[],
-            identifier=None, parameters=[<Identifier @1:10 value='arg'>]>>
+          <ExprStatement @1:1 expr=<GroupingOp @1:1 expr=<
+            FuncExpr @1:2 elements=[],
+              identifier=None, parameters=[<Identifier @1:11 value='arg'>]>>>
         ]>
         """
     ), (
@@ -2532,12 +2533,15 @@ ECMASyntaxErrorsTestCase = build_exception_testcase(
     'ECMASyntaxErrorsTestCase', parse_to_repr, ((
         label,
         textwrap.dedent(argument).strip(),
-    ) for label, argument in [(
+        msg,
+    ) for label, argument, msg in [(
         'interger_unwrapped_raw_dot_accessor',
-        '0.toString();'
+        '0.toString();',
+        "Unexpected 'toString' at 1:3 between '0.' at 1:1 and '(' at 1:11",
     ), (
         'unterminated_comment',  # looks like regex
-        's = /****/;'
+        's = /****/;',
+        "Unexpected ';' at 1:11 after '/****/' at 1:5",
     ), (
         # expression is not optional in throw statement
         # ASI at lexer level should insert ';' after throw
@@ -2545,7 +2549,8 @@ ECMASyntaxErrorsTestCase = build_exception_testcase(
         """
         throw
           'exc';
-        """
+        """,
+        "Unexpected \"'exc'\" at 1:9 after 'throw' at 1:1",
     ), (
         'setter_single_arg',
         """
@@ -2555,6 +2560,13 @@ ECMASyntaxErrorsTestCase = build_exception_testcase(
           }
         };
         """,
+        "Unexpected ',' at 2:19 between 'arg1' at 2:15 and 'arg2' at 2:21",
+    ), (
+        'bare_function_expr',
+        """
+        function(arg) {};
+        """,
+        "Function statement requires a name at 1:9",
     )]), ECMASyntaxError
 )
 
@@ -2563,11 +2575,14 @@ ECMARegexSyntaxErrorsTestCase = build_exception_testcase(
     'ECMARegexSyntaxErrorsTestCase', parse_to_repr, ((
         label,
         textwrap.dedent(argument).strip(),
-    ) for label, argument in [(
+        msg,
+    ) for label, argument, msg in [(
         'unmatched_brackets',
-        'var x = /][/;'
+        'var x = /][/;',
+        "Error parsing regular expression '/][/;' at 1:9",
     ), (
         'unmatched_backslash',
-        r'var x = /\/;'
+        r'var x = /\/;',
+        "Error parsing regular expression '/\/;' at 1:9",
     )]), ECMARegexSyntaxError
 )

@@ -6,15 +6,11 @@ possible.
 
 from __future__ import unicode_literals
 
-from itertools import chain
 from calmjs.parse.asttypes import Node
 from calmjs.parse.ruletypes import Token
 from calmjs.parse.ruletypes import Structure
 from calmjs.parse.ruletypes import Layout
 from calmjs.parse.ruletypes import LayoutChunk
-
-# the default noop.
-from calmjs.parse.handlers.core import rule_handler_noop
 
 
 def optimize_structure_handler(rule, handler):
@@ -25,7 +21,8 @@ def optimize_structure_handler(rule, handler):
 
     def runner(walk, dispatcher, node):
         handler(dispatcher, node)
-        return iter([])
+        return
+        yield  # pragma: no cover
 
     return runner
 
@@ -162,9 +159,9 @@ class Dispatcher(object):
                 elif issubclass(rule, Layout):
                     # a noop here so that the relevant chunk will be
                     # yielded for normalization by bulk-lookup.
-                    handler = self.__layout_handlers.get(
-                        rule, rule_handler_noop)
-                    rules.append(optimize_layout_handler(rule, handler))
+                    handler = self.__layout_handlers.get(rule)
+                    if handler:
+                        rules.append(optimize_layout_handler(rule, handler))
                     continue
             if isinstance(rule, Token):
                 value = (self.optimize_definition(
@@ -303,8 +300,6 @@ def walk(dispatcher, node, definition=None):
         # through the layout_rule_chunks and generate a normalized form
         # for the final handling to happen.
 
-        # The contracted layout rule chunks to be formed.
-        normalized_lrcs = []
         # the preliminary stack that will be cleared whenever a
         # normalized layout rule chunk is generated.
         lrcs_stack = []
@@ -313,21 +308,28 @@ def walk(dispatcher, node, definition=None):
         # first pass: generate both the normalized/finalized lrcs.
         for lrc in layout_rule_chunks:
             rule_stack.append(lrc.rule)
-            handler = dispatcher.layout(tuple(rule_stack))
-            if handler is NotImplemented:
-                # not implemented so we keep going; also add the chunk
-                # to the stack.
+
+            # check every single chunk from left to right...
+            for idx in range(len(rule_stack)):
+                handler = dispatcher.layout(tuple(rule_stack[idx:]))
+                if handler is not NotImplemented:
+                    break
+            else:
                 lrcs_stack.append(lrc)
                 continue
-            # so a handler is found, generate a new layout rule chunk,
-            # and junk the stack.
-            normalized_lrcs.append(LayoutChunk(
-                tuple(rule_stack), handler, layout_rule_chunks[0].node))
-            lrcs_stack[:] = []
-            rule_stack[:] = []
+
+            # So a handler is found from inside the rules; extend the
+            # chunks from the stack that didn't get normalized, and
+            # generate a new layout rule chunk.  Junk the stack after.
+            lrcs_stack[:] = lrcs_stack[:idx]
+            lrcs_stack.append(LayoutChunk(
+                tuple(rule_stack[idx:]), handler,
+                layout_rule_chunks[idx].node,
+            ))
+            rule_stack[:] = [tuple(rule_stack[idx:])]
 
         # second pass: now the processing can be done.
-        for lr_chunk in chain(normalized_lrcs, lrcs_stack):
+        for lr_chunk in lrcs_stack:
             gen = lr_chunk.handler(
                 dispatcher, lr_chunk.node, before_text, after_text, prev_text)
             if not gen:

@@ -99,7 +99,7 @@ class BaseVisitorTestCase(unittest.TestCase):
         ast = parse('var x = 0;')
         self.assertEqual(quad(unparser(ast)), [
             ('var', 1, 1, None), ('x', 1, 5, None), ('=', 1, 7, None),
-            ('0', 1, 9, None), (';', 1, 10, None),
+            ('0', 1, 9, None),
         ])
 
     def test_simple_identifier(self):
@@ -131,12 +131,12 @@ class BaseVisitorTestCase(unittest.TestCase):
 
     def test_simple_function_declare(self):
         unparser = Unparser()
-        ast = parse('function(){};')
+        ast = parse('function foo(){}')
         self.assertEqual(quad(unparser(ast)), [
-            ('function', 1, 1, None),
-            ('(', 1, 9, None), (')', 1, 10, None), (' ', 0, 0, None),
-            ('{', 1, 11, None), ('\n', 0, 0, None), ('}', 1, 12, None),
-            (';', 1, 13, None), ('\n', 0, 0, None),
+            ('function', 1, 1, None), (' ', 0, 0, None), ('foo', 1, 10, None),
+            ('(', 1, 13, None), (')', 1, 14, None), (' ', 0, 0, None),
+            ('{', 1, 15, None), ('\n', 0, 0, None), ('}', 1, 16, None),
+            ('\n', 0, 0, None),
         ])
 
     def test_simple_function_invoke(self):
@@ -373,7 +373,7 @@ class OtherUsageTestCase(unittest.TestCase):
             ('(', None, None, None, NotImplemented),
             ('x', None, None, None, NotImplemented),
             (')', None, None, None, NotImplemented),
-            (';', None, None, None, NotImplemented),
+            (';', None, None, None, None),
             ('\n', 0, 0, None, None),
         ])
 
@@ -1517,13 +1517,13 @@ ES5IdentityTestCase = build_equality_testcase(
         ++i;
         --i;
         !i;
-        function() {
+        function foo() {
           i++;
           i--;
           ++i;
           --i;
           !i;
-        };
+        }
         """,
 
     ), (
@@ -1531,10 +1531,10 @@ ES5IdentityTestCase = build_equality_testcase(
         """
         x << y;
         y >> x;
-        function() {
+        function foo() {
           x << y;
           y >> x;
-        };
+        }
         """,
 
     ), (
@@ -1543,11 +1543,11 @@ ES5IdentityTestCase = build_equality_testcase(
         x * y;
         y / x;
         x % z;
-        function() {
+        function foo() {
           x * y;
           y / x;
           x % z;
-        };
+        }
         """,
 
     ), (
@@ -1731,8 +1731,8 @@ ES5IdentityTestCase = build_equality_testcase(
     ), (
         'function_expr_1',
         """
-        function(arg) {
-        };
+        (function(arg) {
+        });
         """,
     ), (
         'octal_slimit_issue_70',
@@ -2130,6 +2130,14 @@ MinifyPrintTestCase = build_equality_testcase(
         "(function(){var a=1;try{console.log(a);throw Error('welp');}catch(a){"
         "console.log(a);}})();"
     ), (
+        'for_in_a_block',
+        """
+        if (true) {
+            for(;;);
+        }
+        """,
+        'if(true){for(;;);}',
+    ), (
         'function_dollar_sign',
         """
         (function $() {
@@ -2139,5 +2147,119 @@ MinifyPrintTestCase = build_equality_testcase(
         })();
         """,
         '(function $(){(function a(){var a=1;})();})();',
+    )])
+)
+
+
+MinifyDropSemiPrintTestCase = build_equality_testcase(
+    'MinifyDropSemiPrintTestCase',
+    partial(
+        minify_print, obfuscate=True, shadow_funcname=True, drop_semi=True
+    ), ((
+        label,
+        parse(textwrap.dedent(source).strip()),
+        answer,
+    ) for label, source, answer in [(
+        'switch_statement',
+        """
+        (function() {
+          var result;
+          switch (day_of_week) {
+            case 6:
+            case 7:
+              result = 'Weekend';
+              break;
+            case 1:
+              result = 'Monday';
+              break;
+            default:
+              break;
+          }
+          return result
+        })();
+        """,
+        "(function(){var a;switch(day_of_week){case 6:case 7:a='Weekend';"
+        "break;case 1:a='Monday';break;default:break}return a})()",
+    ), (
+        'function_with_arguments',
+        """
+        function foo(x, y) {
+          z = 10 + x;
+          return x + y + z;
+        }
+        """,
+        "function foo(a,b){z=10+a;return a+b+z}",
+
+    ), (
+        'plus_plusplus_split',
+        """
+        var a = b+ ++c+d;
+        """,
+        "var a=b+ ++c+d"
+    ), (
+        'minus_plusplus_join',
+        """
+        var a = b- ++c+d;
+        """,
+        "var a=b-++c+d"
+    ), (
+        'object_props',
+        """
+        (function() {
+          Name.prototype = {
+            validated: function(key) {
+              return token.get(key + this.last);
+            },
+
+            get fullName() {
+              return this.first + ' ' + this.last;
+            },
+
+            set fullName(name) {
+              var names = name.split(' ');
+              this.first = names[0];
+              this.last = names[1];
+            }
+          };
+        })();
+        """,
+        "(function(){Name.prototype={validated:function(a){return token.get("
+        "a+this.last)},get fullName(){return this.first+' '+this.last},"
+        "set fullName(b){var a=b.split(' ');this.first=a[0];this.last=a[1]}}"
+        "})()"
+    ), (
+        'try_catch_shadow',
+        """
+        (function() {
+          var value = 1;
+          try {
+            console.log(value);
+            throw Error('welp');
+          }
+          catch (value) {
+            console.log(value);
+          }
+        })();
+        """,
+        "(function(){var a=1;try{console.log(a);throw Error('welp')}catch(a){"
+        "console.log(a)}})()"
+    ), (
+        'for_in_a_block',
+        """
+        if (true) {
+            for(;;);
+        }
+        """,
+        'if(true){for(;;);}',
+    ), (
+        'function_dollar_sign',
+        """
+        (function $() {
+          (function $() {
+            var foo = 1;
+          })()
+        })();
+        """,
+        '(function $(){(function a(){var a=1})()})()',
     )])
 )

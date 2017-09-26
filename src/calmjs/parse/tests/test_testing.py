@@ -43,19 +43,30 @@ class BuilderEqualityTestCase(unittest.TestCase):
 class BuilderExceptionTestCase(unittest.TestCase):
 
     def test_build_exception_testcase(self):
+        def demo(arg):
+            if not arg.isdigit():
+                raise ValueError(arg + ' not a number')
+
         FailTestCase = build_exception_testcase(
-            'FailTestCase', int, [
-                ('str_to_int_fail1', 'hello'),
-                ('str_to_int_fail2', 'goodbye'),
-                ('str_to_int_fail3', '1'),
+            'FailTestCase', demo, [
+                ('str_to_int_fail1', 'hello', 'hello not a number'),
+                ('str_to_int_fail2', 'goodbye', 'hello not a number'),
+                ('str_to_int_fail3', '1', '1 not a number'),
+                ('str_to_int_no_msg', 'hello', None),
             ],
             ValueError,
         )
         FailTestCase.runTest = run
         testcase = FailTestCase()
+
         # ValueError should have been caught.
         testcase.test_str_to_int_fail1()
-        testcase.test_str_to_int_fail2()
+        # no message check done.
+        testcase.test_str_to_int_no_msg()
+
+        # wrong exception message
+        with self.assertRaises(AssertionError):
+            testcase.test_str_to_int_fail2()
 
         # Naturally, the final test will not raise it.
         with self.assertRaises(AssertionError):
