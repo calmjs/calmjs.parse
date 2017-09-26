@@ -29,6 +29,7 @@ Minify printer now has ability to shorten/obfuscate identifiers:
   further achieve minified output.  Note that this does not yet fully
   achieve the level of minification ``slimit`` had; future versions
   may implement this functionality as various AST transformations.
+- Also provided ability to drop unneeded semicolons.
 
 Other significant changes:
 
@@ -79,6 +80,7 @@ Other significant changes:
   source.
 - Also provide an even higher level function for usage with streams
   through the ``calmjs.parse.io`` module.
+- Semicolons and braces added as structures to be rendered.
 
 Bug fixes:
 
@@ -98,6 +100,7 @@ Bug fixes:
   Option for shadowing of names of named closures, which is now disabled
   by default (obfuscated named closures will not be shadowed by other
   obfuscated names in children).
+- Expressions can no longer contain an unnamed function.
 
 0.10.1 - 2017-08-26
 -------------------

@@ -558,6 +558,19 @@ A workaround helper script is provided, it may be executed like so:
 Further details on this topic may be found in the `manual optimization`_
 section of this document.
 
+Slow performance
+~~~~~~~~~~~~~~~~
+
+As this program is basically fully decomposed into very small functions,
+this result in massive performance penalties as compared to other
+implementations due to function calls being one of the most expensive
+operations in Python.  It may be possible to further optimize the
+definitions within the description in the Dispatcher by combining all
+the resolved generator functions for each asttype Node type, however
+this will may require both the token and layout functions not having
+arguments with name collisions, and the new function will take in all
+of those arguments in one go.
+
 
 Contribute
 ----------
