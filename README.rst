@@ -77,7 +77,7 @@ current Python environment.
 As this package uses |ply|, it requires the generation of optimization
 modules for its lexer.  The wheel distribution of |calmjs.parse| does
 not require this extra step as it contains these pre-generated modules
-for |ply| up to version 3.10 (the latest version available at the time
+for |ply| up to version 3.11 (the latest version available at the time
 of previous release), however the source tarball or if |ply| version
 that is installed lies outside of the supported versions, the following
 caveats will apply.
@@ -87,7 +87,7 @@ upgrades to that version, those pre-generated modules may become
 incompatible, which may result in a decreased performance and/or errors.
 A corrective action can be achieved through a `manual optimization`_
 step if a newer version of |calmjs.parse| is not available, or |ply| may
-be downgraded back to version 3.10 if possible.
+be downgraded back to version 3.11 if possible.
 
 Once the package is installed, the installation may be `tested`_ or be
 `used directly`_.

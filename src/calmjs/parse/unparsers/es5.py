@@ -313,7 +313,7 @@ class Unparser(BaseUnparser):
             rules=rules,
             layout_handlers=layout_handlers,
             deferrable_handlers=deferrable_handlers,
-            prewalk_hooks=(),
+            prewalk_hooks=prewalk_hooks,
         )
 
 
