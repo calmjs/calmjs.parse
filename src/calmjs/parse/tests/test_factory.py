@@ -16,7 +16,7 @@ class SRFactoryTestCase(unittest.TestCase):
         class B(object):
             pass
 
-        class O(object):
+        class Obj(object):
             pass
 
         def dummy_str(s):
@@ -25,7 +25,7 @@ class SRFactoryTestCase(unittest.TestCase):
         def dummy_repr(s):
             return '0x%x' % ord(s.__class__.__name__)
 
-        o = O()
+        o = Obj()
         o.A = A
         o.B = B
 

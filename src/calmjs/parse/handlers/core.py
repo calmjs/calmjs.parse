@@ -133,13 +133,13 @@ def layout_handler_newline_optional_pretty(
         dispatcher, node, before, after, prev):
     # simply render the newline with an implicit sourcemap line/col, if
     # not already preceded or followed by a newline
-    l = len(dispatcher.newline_str)
+    idx = len(dispatcher.newline_str)
 
     def fc(s):
-        return '' if s is None else s[:l]
+        return '' if s is None else s[:idx]
 
     def lc(s):
-        return '' if s is None else s[-l:]
+        return '' if s is None else s[-idx:]
 
     # include standard ones plus whatever else that was provided, i.e.
     # the typical <CR><LF>
