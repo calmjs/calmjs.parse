@@ -1,6 +1,13 @@
 Changelog
 =========
 
+1.0.1 - 2018-04-19
+------------------
+
+- Ensure that the es5 Unparser pass on the prewalk_hooks argument in
+  its constructor.
+- Minor packaging fixes; also include optimization modules for ply-3.11.
+
 1.0.0 - 2017-09-26
 ------------------
 
