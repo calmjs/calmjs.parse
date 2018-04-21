@@ -565,6 +565,35 @@ es2015_cases = [
         ('`foo`',
          ['TEMPLATE `foo`']),
     ), (
+        'template_multiline',
+        ('`foo\nbar\r\nfoo`',
+         ['TEMPLATE `foo\nbar\r\nfoo`']),
+    ), (
+        'template_other_newlines',
+        ('`foo\u2028\u2029foo`',
+         ['TEMPLATE `foo\u2028\u2029foo`']),
+    ), (
+        'template_literal_with_dollar',
+        ('`foo$`',
+         ['TEMPLATE `foo$`']),
+    ), (
+        'template_head_tail',
+        (r'`hello ${name} while this`',
+         ['TEMPLATE `hello ${', 'ID name', 'TEMPLATE } while this`']),
+    ), (
+        'template_empty_head_tail',
+        (r'`${name}`',
+         ['TEMPLATE `${', 'ID name', 'TEMPLATE }`']),
+    ), (
+        'template_nested',
+        (r'`${`${a * 2}`} ${b}`',
+         ['TEMPLATE `${', 'TEMPLATE `${', 'ID a', 'MULT *', 'NUMBER 2',
+          'TEMPLATE }`', 'TEMPLATE } ${', 'ID b', 'TEMPLATE }`']),
+    ), (
+        'template_some_keywords',
+        (r'`this -> ${this}.`',
+         ['TEMPLATE `this -> ${', 'THIS this', 'TEMPLATE }.`']),
+    ), (
         'template_literal_escape',
         (r'`f\`o`',
          [r'TEMPLATE `f\`o`']),

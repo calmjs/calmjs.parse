@@ -53,5 +53,5 @@ LexerES5AllTestCase = build_equality_testcase(
     )), ((label, data[0], data[1],) for label, data in es5_all_cases))
 
 LexerES2015TestCase = build_equality_testcase(
-    'LexerTestCase', partial(run_lexer, lexer_cls=Lexer), (
+    'LexerES2015TestCase', partial(run_lexer, lexer_cls=Lexer), (
         (label, data[0], data[1],) for label, data in es2015_cases))
