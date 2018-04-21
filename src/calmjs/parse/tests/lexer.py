@@ -545,6 +545,36 @@ es5_pos_cases = [
     )
 ]
 
+es2015_cases = [
+    (
+        'const_keyword',
+        ('const c',
+         ['CONST const', 'ID c']),
+    ), (
+        'arrow_punctuator',
+        ('=>',
+         ['ARROW =>']),
+    ), (
+        'arrow_functions',
+        ('const c = (name) => { return name; }',
+         ['CONST const', 'ID c', 'EQ =', 'LPAREN (', 'ID name', 'RPAREN )',
+          'ARROW =>', 'LBRACE {', 'RETURN return', 'ID name', 'SEMI ;',
+          'RBRACE }']),
+    ), (
+        'template_literal',
+        ('`foo`',
+         ['TEMPLATE `foo`']),
+    ), (
+        'template_literal_escape',
+        (r'`f\`o`',
+         [r'TEMPLATE `f\`o`']),
+    ), (
+        'template_literal_assignment',
+        ('s = `hello world`',
+         ['ID s', 'EQ =', 'TEMPLATE `hello world`']),
+    )
+]
+
 
 def run_lexer(value, lexer_cls):
     lexer = lexer_cls()
