@@ -2550,7 +2550,7 @@ ECMASyntaxErrorsTestCase = build_exception_testcase(
         throw
           'exc';
         """,
-        "Unexpected \"'exc'\" at 1:9 after 'throw' at 1:1",
+        "Unexpected \"'exc'\" at 2:3 after 'throw' at 1:1",
     ), (
         'setter_single_arg',
         """

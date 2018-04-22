@@ -22,8 +22,11 @@
 #
 ###############################################################################
 
+from __future__ import unicode_literals
+
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
+import re
 import ply.lex
 
 from calmjs.parse.lexers.tokens import AutoLexToken
@@ -71,6 +74,9 @@ DIVISION_SYNTAX_MARKERS = frozenset([
     'LINE_TERMINATOR', 'LINE_COMMENT', 'BLOCK_COMMENT'
 ])
 
+PATT_LINE_TERMINATOR_SEQUENCE = re.compile(
+    r'(\n|\r(?!\n)|\u2028|\u2029|\r\n)', flags=re.S)
+
 
 class Lexer(object):
     """A JavaScript lexer.
@@ -82,7 +88,7 @@ class Lexer(object):
 
     >>> lexer.input('a = 1;')
     >>> for token in lexer:
-    ...     print(token)
+    ...     print(str(token).replace("u'", "'"))
     ...
     LexToken(ID,'a',1,0)
     LexToken(EQ,'=',1,2)
@@ -96,7 +102,7 @@ class Lexer(object):
     ...     token = lexer.token()
     ...     if not token:
     ...         break
-    ...     print(token)
+    ...     print(str(token).replace("u'", "'"))
     ...
     LexToken(ID,'a',1,0)
     LexToken(EQ,'=',1,2)
@@ -105,7 +111,7 @@ class Lexer(object):
 
     >>> lexer.input('a = 1;')
     >>> token = lexer.token()
-    >>> token.type, token.value, token.lineno, token.lexpos
+    >>> str(token.type), str(token.value), token.lineno, token.lexpos
     ('ID', 'a', 1, 0)
 
     For more information see:
@@ -141,16 +147,23 @@ class Lexer(object):
     def input(self, text):
         self.lexer.input(text)
 
-    def _set_pos(self, token):
-        lines = token.value.splitlines(True)
+    def _update_newline_idx(self, token):
         lexpos = token.lexpos
-        for line in lines:
-            if line[-1:] in '\r\n':
-                lexpos += len(line)
-                self.lexer.lineno += 1
-                self.newline_idx.append(lexpos)
+        fragments = PATT_LINE_TERMINATOR_SEQUENCE.split(token.value)
+        for fragment, newline in zip(*[iter(fragments)] * 2):
+            lexpos += len(fragment + newline)
+            self.lexer.lineno += 1
+            self.newline_idx.append(lexpos)
+
+    def get_lexer_token(self):
+        token = self.lexer.token()
+        if token:
+            token.colno = self._get_colno(token)
+            self._update_newline_idx(token)
+        return token
 
     def token(self):
+        # auto-semi tokens that got added
         if self.next_tokens:
             return self.next_tokens.pop()
 
@@ -166,7 +179,6 @@ class Lexer(object):
             except IndexError:
                 tok = self._get_update_token()
                 if tok is not None and tok.type == 'LINE_TERMINATOR':
-                    self._set_pos(tok)
                     continue
                 else:
                     return tok
@@ -174,7 +186,6 @@ class Lexer(object):
             if char != '/' or (char == '/' and next_char in ('/', '*')):
                 tok = self._get_update_token()
                 if tok.type in DIVISION_SYNTAX_MARKERS:
-                    self._set_pos(tok)
                     continue
                 else:
                     return tok
@@ -226,12 +237,12 @@ class Lexer(object):
 
     def _read_regex(self):
         self.lexer.begin('regex')
-        token = self.lexer.token()
+        token = self.get_lexer_token()
         self.lexer.begin('INITIAL')
         return token
 
     def _get_update_token(self):
-        self._set_tokens(self.lexer.token())
+        self._set_tokens(self.get_lexer_token())
 
         if self.cur_token is not None:
 
@@ -259,7 +270,7 @@ class Lexer(object):
                     "Mismatched '%s' at %d:%d" % (
                         self.cur_token.value,
                         self.cur_token.lineno,
-                        self._get_colno(self.cur_token),
+                        self.cur_token.colno,
                     )
                 )
 
@@ -272,12 +283,7 @@ class Lexer(object):
                                          'RETURN', 'THROW']):
             return self._create_semi_token(self.cur_token)
 
-        return self._set_colno(self.cur_token)
-
-    def _set_colno(self, token):
-        if token:
-            token.colno = self._get_colno(token)
-        return token
+        return self.cur_token
 
     def _get_colno(self, token):
         # have a 1 offset to map nicer to commonly used/configured
@@ -465,7 +471,8 @@ class Lexer(object):
     t_LINE_COMMENT  = r'//[^\r\n]*'
     t_BLOCK_COMMENT = r'/\*[^*]*\*+([^/*][^*]*\*+)*/'
 
-    t_LINE_TERMINATOR = r'[\n\r]+'
+    # 7.3 Line Terminators
+    t_LINE_TERMINATOR = r'\s'
 
     t_ignore = (
         # space, tab, line tab, form feed, nbsp
