@@ -117,14 +117,12 @@ es5_cases = [
         # multiline string (string written across multiple lines
         # of code) https://github.com/rspivak/slimit/issues/24
         'slimit_issue_24_multi_line_code_double',
-        (r"""var a = 'hello \
-world'""",
-         ['VAR var', 'ID a', 'EQ =', "STRING 'hello world'"]),
+        ("var a = 'hello \\\n world'""",
+         ['VAR var', 'ID a', 'EQ =', "STRING 'hello \\\n world'"]),
     ), (
         'slimit_issue_24_multi_line_code_single',
-        (r'''var a = "hello \
-world"''',
-         ['VAR var', 'ID a', 'EQ =', 'STRING "hello world"']),
+        ('var a = "hello \\\r world"',
+         ['VAR var', 'ID a', 'EQ =', 'STRING "hello \\\r world"']),
     ), (
         # # Comments
         # ("""
@@ -354,6 +352,30 @@ world"''',
           'PERIOD .', 'ID split', 'LPAREN (', r"STRING '\1'", 'RPAREN )',
           'PERIOD .', 'ID split', 'LPAREN (', r"STRING '\0'", 'RPAREN )',
           'SEMI ;'])
+    ), (
+        'section_7_8_4_string_literal_with_7_3_conformance',
+        ("'<LF>\\\n<CR>\\\r<LS>\\\u2028<PS>\\\u2029<CR><LF>\\\r\n'",
+         ["STRING '<LF>\\\n<CR>\\\r<LS>\\\u2028<PS>\\\u2029<CR><LF>\\\r\n'"])
+    ),
+]
+
+es5_error_cases = [
+    (
+        'naked_line_separator_in_string',
+        "'test\u2028foo'",
+        'Illegal character "\'" at 1:1',
+    ), (
+        'naked_line_feed_in_string',
+        "'test\u2029foo'",
+        'Illegal character "\'" at 1:1',
+    ), (
+        'naked_crnl_in_string',
+        "'test\r\nfoo'",
+        'Illegal character "\'" at 1:1',
+    ), (
+        'naked_cr_in_string',
+        "'test\\\n\rfoo'",
+        'Illegal character "\'" at 1:1',
     )
 ]
 

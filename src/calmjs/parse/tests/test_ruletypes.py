@@ -2,8 +2,10 @@
 import unittest
 
 from calmjs.parse.asttypes import Identifier
+from calmjs.parse.asttypes import String
 from calmjs.parse.ruletypes import Declare
 from calmjs.parse.ruletypes import Resolve
+from calmjs.parse.ruletypes import Literal
 
 
 class Node(object):
@@ -119,3 +121,11 @@ class DeferrableTestCase(unittest.TestCase):
         # if the handler is not implemented
         self.handler = NotImplemented
         self.assertEqual('value', rslv(self.dispatcher, identifier))
+
+    def test_literal_string(self):
+        literal = Literal()
+        string = String('"value"')
+        self.assertEqual('"VALUE"', literal(self.dispatcher, string))
+        # if the handler is not implemented
+        self.handler = NotImplemented
+        self.assertEqual('"value"', literal(self.dispatcher, string))

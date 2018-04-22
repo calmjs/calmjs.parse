@@ -478,5 +478,18 @@ class Resolve(Deferrable):
         return node.value
 
 
+class Literal(Deferrable):
+    """
+    Provides special handling for literals such as strings.
+    """
+
+    def __call__(self, dispatcher, node):
+        handler = dispatcher.deferrable(self)
+        if handler is not NotImplemented:
+            # the handler will return the value
+            return handler(dispatcher, node)
+        return node.value
+
+
 children_newline = JoinAttr(Iter(), value=(Newline,))
 children_comma = JoinAttr(Iter(), value=(Text(value=','), Space,))

@@ -32,6 +32,7 @@ from calmjs.parse.ruletypes import (
     ElisionJoinAttr,
 )
 from calmjs.parse.ruletypes import (
+    Literal,
     Declare,
     Resolve,
     ResolveFuncName,
@@ -154,7 +155,7 @@ definitions = {
         Text(value='null'),
     ),
     'String': (
-        Attr(attr='value'),
+        Attr(Literal()),
     ),
     'Continue': (
         Text(value='continue'), Optional('identifier', (

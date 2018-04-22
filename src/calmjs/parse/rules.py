@@ -19,6 +19,7 @@ from calmjs.parse.ruletypes import (
     Indent,
     Dedent,
     Resolve,
+    Literal,
 )
 from calmjs.parse.handlers.core import (
     rule_handler_noop,
@@ -33,6 +34,8 @@ from calmjs.parse.handlers.core import (
     layout_handler_space_imply,
     layout_handler_space_optional_pretty,
     layout_handler_space_minimum,
+
+    deferrable_handler_literal_continuation,
 
     default_rules,
     minimum_rules,
@@ -111,7 +114,12 @@ def minify(drop_semi=True):
         })
 
     def minify_rule():
-        return {'layout_handlers': layout_handlers}
+        return {
+            'layout_handlers': layout_handlers,
+            'deferrable_handlers': {
+                Literal: deferrable_handler_literal_continuation,
+            },
+        }
 
     return minify_rule
 

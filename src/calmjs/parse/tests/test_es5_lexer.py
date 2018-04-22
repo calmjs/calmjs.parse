@@ -32,11 +32,13 @@ from calmjs.parse.lexers.es5 import Lexer
 from calmjs.parse.exceptions import ECMASyntaxError
 
 from calmjs.parse.testing.util import build_equality_testcase
+from calmjs.parse.testing.util import build_exception_testcase
 from calmjs.parse.tests.lexer import (
     run_lexer,
     run_lexer_pos,
     es5_cases,
     es5_pos_cases,
+    es5_error_cases,
 )
 
 
@@ -68,7 +70,7 @@ class LexerFailureTestCase(unittest.TestCase):
 
 
 LexerKeywordTestCase = build_equality_testcase(
-    'LexerTestCase', partial(run_lexer, lexer_cls=Lexer), (
+    'LexerKeywordTestCase', partial(run_lexer, lexer_cls=Lexer), (
         (label, data[0], data[1],) for label, data in [(
             # Keywords
             # ('break case ...', ['BREAK break', 'CASE case', ...])
@@ -83,6 +85,10 @@ LexerKeywordTestCase = build_equality_testcase(
 LexerTestCase = build_equality_testcase(
     'LexerTestCase', partial(run_lexer, lexer_cls=Lexer), (
         (label, data[0], data[1],) for label, data in es5_cases))
+
+LexerErrorTestCase = build_exception_testcase(
+    'LexerErrorTestCase', partial(
+        run_lexer, lexer_cls=Lexer), es5_error_cases, ECMASyntaxError)
 
 LexerPosTestCase = build_equality_testcase(
     'LexerPosTestCase', partial(

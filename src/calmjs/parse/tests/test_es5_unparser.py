@@ -1759,6 +1759,14 @@ ES5IdentityTestCase = build_equality_testcase(
         """
         for (index in [1, 2, 3]) /^salign$/;
         """,
+    ), (
+        'line_continuation_string',
+        r"""
+        {
+          var a = "\
+          ";
+        }
+        """,
     )]))
 )
 
@@ -2147,6 +2155,13 @@ MinifyPrintTestCase = build_equality_testcase(
         })();
         """,
         '(function $(){(function a(){var a=1;})();})();',
+    ), (
+        'line_continuation_string',
+        r"""
+        var a = "\
+          ";
+        """,
+        'var a="  ";',
     )])
 )
 

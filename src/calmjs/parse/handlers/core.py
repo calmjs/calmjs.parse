@@ -33,6 +33,7 @@ from calmjs.parse.ruletypes import (
     Indent,
     Dedent,
 )
+from calmjs.parse.lexers.es5 import PATT_LINE_CONTINUATION
 
 required_space = re.compile(r'^(?:\w\w|\+\+|\-\-)$')
 
@@ -177,6 +178,11 @@ def layout_handler_space_minimum(dispatcher, node, before, after, prev):
     s = before[-1:] + after[:1]
     if required_space.match(s):
         yield space_imply
+
+
+def deferrable_handler_literal_continuation(dispatcher, node):
+    # assume the es5 method will continue to work.
+    return PATT_LINE_CONTINUATION.sub('', node.value)
 
 
 def default_rules():

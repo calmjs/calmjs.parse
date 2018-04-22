@@ -9,6 +9,7 @@ from calmjs.parse.handlers.core import (
     layout_handler_openbrace,
     layout_handler_closebrace,
     layout_handler_semicolon,
+    deferrable_handler_literal_continuation,
 )
 from calmjs.parse.unparsers.walker import Dispatcher
 
@@ -151,3 +152,10 @@ class SimpleHandlersTestCase(unittest.TestCase):
 
         # The first layout rule
         self.assertEqual(run(';', 'function', None), newline)
+
+    def test_deferrable_handler_literal_continuation(self):
+        dispatcher = Dispatcher({}, None, {}, {})
+        node = Node()
+        node.value = '"foo\\\r\nbar"'
+        self.assertEqual('"foobar"', deferrable_handler_literal_continuation(
+            dispatcher, node))

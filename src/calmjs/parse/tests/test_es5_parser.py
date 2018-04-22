@@ -2552,6 +2552,15 @@ ECMASyntaxErrorsTestCase = build_exception_testcase(
         """,
         "Unexpected \"'exc'\" at 2:3 after 'throw' at 1:1",
     ), (
+        # note that the line continuation do not swallow
+        'throw_error_after_line_continuation_lineno',
+        r"""
+        s = 'something \
+        '
+        throw;
+        """,
+        "Unexpected ';' at 3:6 after 'throw' at 3:1",
+    ), (
         'setter_single_arg',
         """
         Name.prototype = {
