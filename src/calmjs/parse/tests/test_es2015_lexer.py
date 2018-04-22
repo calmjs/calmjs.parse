@@ -40,11 +40,11 @@ LexerKeywordTestCase = build_equality_testcase(
 )
 
 LexerES5TestCase = build_equality_testcase(
-    'LexerTestCase', partial(run_lexer, lexer_cls=Lexer), (
+    'LexerES5TestCase', partial(run_lexer, lexer_cls=Lexer), (
         (label, data[0], data[1],) for label, data in es5_cases))
 
 LexerES5PosTestCase = build_equality_testcase(
-    'LexerPosTestCase', partial(
+    'LexerES5PosTestCase', partial(
         run_lexer_pos, lexer_cls=Lexer), es5_pos_cases)
 
 LexerES5AllTestCase = build_equality_testcase(

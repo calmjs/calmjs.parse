@@ -3,9 +3,21 @@
 ES2015 (ECMAScript 6th Edition/ES6) lexer.
 """
 
+import re
 import ply
 
 from calmjs.parse.lexers.es5 import Lexer as ES5Lexer
+
+template_token_types = (
+    (re.compile(r'`.*`', re.S),
+        'TEMPLATE_NOSUB'),
+    (re.compile(r'`.*\${', re.S),
+        'TEMPLATE_HEAD'),
+    (re.compile(r'}.*\${', re.S),
+        'TEMPLATE_MIDDLE'),
+    (re.compile(r'}.*`', re.S),
+        'TEMPLATE_TAIL'),
+)
 
 
 class Lexer(ES5Lexer):
@@ -25,7 +37,7 @@ class Lexer(ES5Lexer):
         'ARROW', 'SPREAD',    # => ...
 
         # ES2015 terminal types
-        'TEMPLATE',
+        'TEMPLATE_NOSUB', 'TEMPLATE_HEAD', 'TEMPLATE_MIDDLE', 'TEMPLATE_TAIL',
     )
 
     template = r"""
@@ -42,8 +54,8 @@ class Lexer(ES5Lexer):
     """
 
     @ply.lex.TOKEN(template)
-    def t_TEMPLATE(self, token):
-        # remove escape + new line sequence used for strings
-        # written across multiple lines of code
-        token.value = token.value.replace('\\\n', '')
+    def t_TEMPLATE_RAW(self, token):
+        for patt, token_type in template_token_types:
+            if patt.match(token.value):
+                token.type = token_type
         return token

@@ -551,9 +551,9 @@ es2015_cases = [
         ('const c',
          ['CONST const', 'ID c']),
     ), (
-        'arrow_punctuator',
-        ('=>',
-         ['ARROW =>']),
+        'punctuators',
+        ('=> ...',
+         ['ARROW =>', 'SPREAD ...']),
     ), (
         'arrow_functions',
         ('const c = (name) => { return name; }',
@@ -561,46 +561,52 @@ es2015_cases = [
           'ARROW =>', 'LBRACE {', 'RETURN return', 'ID name', 'SEMI ;',
           'RBRACE }']),
     ), (
+        'spread',
+        ('[...spring, ...summer]',
+         ['LBRACKET [', 'SPREAD ...', 'ID spring', 'COMMA ,', 'SPREAD ...',
+          'ID summer', 'RBRACKET ]']),
+    ), (
         'template_literal',
         ('`foo`',
-         ['TEMPLATE `foo`']),
+         ['TEMPLATE_NOSUB `foo`']),
     ), (
         'template_multiline',
         ('`foo\nbar\r\nfoo`',
-         ['TEMPLATE `foo\nbar\r\nfoo`']),
+         ['TEMPLATE_NOSUB `foo\nbar\r\nfoo`']),
     ), (
         'template_other_newlines',
         ('`foo\u2028\u2029foo`',
-         ['TEMPLATE `foo\u2028\u2029foo`']),
+         ['TEMPLATE_NOSUB `foo\u2028\u2029foo`']),
     ), (
         'template_literal_with_dollar',
         ('`foo$`',
-         ['TEMPLATE `foo$`']),
+         ['TEMPLATE_NOSUB `foo$`']),
     ), (
         'template_head_tail',
         (r'`hello ${name} while this`',
-         ['TEMPLATE `hello ${', 'ID name', 'TEMPLATE } while this`']),
+         ['TEMPLATE_HEAD `hello ${', 'ID name', 'TEMPLATE_TAIL } while this`']),
     ), (
         'template_empty_head_tail',
         (r'`${name}`',
-         ['TEMPLATE `${', 'ID name', 'TEMPLATE }`']),
+         ['TEMPLATE_HEAD `${', 'ID name', 'TEMPLATE_TAIL }`']),
     ), (
         'template_nested',
         (r'`${`${a * 2}`} ${b}`',
-         ['TEMPLATE `${', 'TEMPLATE `${', 'ID a', 'MULT *', 'NUMBER 2',
-          'TEMPLATE }`', 'TEMPLATE } ${', 'ID b', 'TEMPLATE }`']),
+         ['TEMPLATE_HEAD `${', 'TEMPLATE_HEAD `${', 'ID a', 'MULT *',
+          'NUMBER 2', 'TEMPLATE_TAIL }`', 'TEMPLATE_MIDDLE } ${', 'ID b',
+          'TEMPLATE_TAIL }`']),
     ), (
         'template_some_keywords',
         (r'`this -> ${this}.`',
-         ['TEMPLATE `this -> ${', 'THIS this', 'TEMPLATE }.`']),
+         ['TEMPLATE_HEAD `this -> ${', 'THIS this', 'TEMPLATE_TAIL }.`']),
     ), (
         'template_literal_escape',
         (r'`f\`o`',
-         [r'TEMPLATE `f\`o`']),
+         [r'TEMPLATE_NOSUB `f\`o`']),
     ), (
         'template_literal_assignment',
         ('s = `hello world`',
-         ['ID s', 'EQ =', 'TEMPLATE `hello world`']),
+         ['ID s', 'EQ =', 'TEMPLATE_NOSUB `hello world`']),
     )
 ]
 
