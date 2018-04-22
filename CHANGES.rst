@@ -1,6 +1,13 @@
 Changelog
 =========
 
+1.1.0 - Unreleased
+------------------
+
+- Correct the implementation of line continuation in strings.  This also
+  meant a change in the minify unparser so that it will continue to
+  remove the line continuation sequences.
+
 1.0.1 - 2018-04-19
 ------------------
 
