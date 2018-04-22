@@ -13,6 +13,7 @@ from calmjs.parse.tests.lexer import (
     es5_pos_cases,
     es5_all_cases,
     es2015_cases,
+    es2015_pos_cases,
 )
 
 
@@ -55,3 +56,7 @@ LexerES5AllTestCase = build_equality_testcase(
 LexerES2015TestCase = build_equality_testcase(
     'LexerES2015TestCase', partial(run_lexer, lexer_cls=Lexer), (
         (label, data[0], data[1],) for label, data in es2015_cases))
+
+LexerES2015PosTestCase = build_equality_testcase(
+    'LexerES2015PosTestCase', partial(
+        run_lexer_pos, lexer_cls=Lexer), es2015_pos_cases)
