@@ -20,6 +20,11 @@ template_token_types = (
 )
 
 
+es2015_keywords = (
+    'LET',
+)
+
+
 class Lexer(ES5Lexer):
     """
     ES2015 lexer.
@@ -32,7 +37,10 @@ class Lexer(ES5Lexer):
     t_ARROW          = r'=>'
     t_SPREAD         = r'\.\.\.'
 
-    tokens = ES5Lexer.tokens + (
+    keywords = ES5Lexer.keywords + es2015_keywords
+    keywords_dict = dict((key.lower(), key) for key in keywords)
+
+    tokens = ES5Lexer.tokens + es2015_keywords + (
         # ES2015 punctuators
         'ARROW', 'SPREAD',    # => ...
 

@@ -551,6 +551,14 @@ es2015_cases = [
         ('const c',
          ['CONST const', 'ID c']),
     ), (
+        'let_keyword',
+        ('let c',
+         ['LET let', 'ID c']),
+    ), (
+        'var_let_keyword',
+        ('var let = 1',
+         ['VAR var', 'LET let', 'EQ =', 'NUMBER 1']),
+    ), (
         'punctuators',
         ('=> ...',
          ['ARROW =>', 'SPREAD ...']),
