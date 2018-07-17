@@ -186,7 +186,8 @@ immediate access to the parsing feature.  It may be used like so:
     ... console.log(main('world'));
     ... '''
     >>> program = es5(program_source)
-    >>> program  # for a simple repr-like nested view of the ast
+    >>> # for a simple repr-like nested view of the ast
+    >>> program  # equivalent to repr(program)
     <ES5Program @3:1 ?children=[
       <VarStatement @3:1 ?children=[
         <VarDecl @3:5 identifier=<Identifier ...>, initializer=<FuncExpr ...>>
@@ -194,7 +195,9 @@ immediate access to the parsing feature.  It may be used like so:
       <ExprStatement @7:1 expr=<FunctionCall @7:1 args=<Arguments ...>,
         identifier=<DotAccessor ...>>>
     ]>
-    >>> print(program)  # automatic reconstruction of ast into source
+    >>> # automatic reconstruction of ast into source, without having to
+    >>> # call something like `.to_ecma()`
+    >>> print(program)  # equivalent to str(program)
     var main = function(greet) {
       var hello = "hello " + greet;
       return hello;
@@ -503,7 +506,7 @@ Object assignments from a given script file:
 .. code:: python
 
     >>> from calmjs.parse import es5
-    >>> from calmjs.parse.asttypes import Object, VarDecl
+    >>> from calmjs.parse.asttypes import Object, VarDecl, FunctionCall
     >>> from calmjs.parse.walkers import Walker
     >>> walker = Walker()
     >>> declarations = es5(u'''
@@ -514,12 +517,17 @@ Object assignments from a given script file:
     ...         v: "value"
     ...     }
     ... };
+    ... foo({foo: "bar"});
     ... function bar() {
     ...     var t = {
     ...         foo: "bar",
-    ...     }
+    ...     };
+    ...     return t;
     ... }
+    ... foo.bar = bar;
+    ... foo.bar();
     ... ''')
+    >>> # print out the object nodes that were part of some assignments
     >>> for node in walker.filter(declarations, lambda node: (
     ...         isinstance(node, VarDecl) and
     ...         isinstance(node.initializer, Object))):
@@ -534,6 +542,13 @@ Object assignments from a given script file:
     {
       foo: "bar"
     }
+    >>> # print out all function calls
+    >>> for node in walker.filter(declarations, lambda node: (
+    ...         isinstance(node, FunctionCall))):
+    ...     print(node.identifier)
+    ...
+    foo
+    foo.bar
 
 Further details and example usage can be consulted from the various
 docstrings found within the module.
