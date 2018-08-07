@@ -114,7 +114,7 @@ class ParserTestCase(unittest.TestCase):
             parser.parse(text)
         self.assertEqual(
             str(e.exception),
-            "Unexpected ',' at 2:1 between '\\n' at 1:7 and 'b' at 2:3")
+            "Unexpected ',' at 2:1 after '\\n' at 1:7")
 
     def test_bare_start(self):
         text = textwrap.dedent("""
@@ -236,6 +236,65 @@ class ParserTestCase(unittest.TestCase):
         stream.name = 'somefile.js'
         node = read(stream)
         self.assertEqual(node.sourcepath, 'somefile.js')
+
+    # 7.9.2
+    def test_asi_empty_if_parse_fail(self):
+        text = "if (true)"
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            str(e.exception),
+            "Unexpected end of input after ')' at 1:9")
+
+    def test_asi_empty_if_parse_fail_inside_block(self):
+        # https://github.com/rspivak/slimit/issues/101
+        text = textwrap.dedent("""
+        function foo(args) {
+            if (true)
+        }
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            str(e.exception),
+            r"Unexpected '}' at 3:1 after '\n' at 2:14")
+
+    def test_asi_for_truncated_fail(self):
+        text = textwrap.dedent("""
+        for (a; b
+        )
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            str(e.exception),
+            r"Unexpected ')' at 2:1 after '\n' at 1:10")
+
+    def test_asi_for_bare_fail(self):
+        text = textwrap.dedent("""
+        for (a; b; c)
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            str(e.exception),
+            "Unexpected end of input after ')' at 1:13")
+
+    def test_asi_omitted_if_else_fail(self):
+        text = textwrap.dedent("""
+        if (a > b)
+        else c = d
+        """).strip()
+        parser = Parser()
+        with self.assertRaises(ECMASyntaxError) as e:
+            parser.parse(text)
+        self.assertEqual(
+            str(e.exception),
+            r"Unexpected 'else' at 2:1 after '\n' at 1:11")
 
 
 repr_walker = ReprWalker()

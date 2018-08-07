@@ -100,18 +100,6 @@ class Parser(object):
         # over again.
         self._error_tokens = {}
 
-    def _has_been_seen_before(self, token):
-        if token is None:
-            return False
-        key = token.type, token.value, token.lineno, token.lexpos
-        return key in self._error_tokens
-
-    def _mark_as_seen(self, token):
-        if token is None:
-            return
-        key = token.type, token.value, token.lineno, token.lexpos
-        self._error_tokens[key] = True
-
     def _raise_syntax_error(self, token):
         tokens = [format_lex_token(t) for t in [
             self.lexer.valid_prev_token,
@@ -141,22 +129,11 @@ class Parser(object):
     def p_empty(self, p):
         """empty :"""
 
-    def p_auto_semi(self, p):
-        """auto_semi : error"""
-
     def p_error(self, token):
-        # https://github.com/rspivak/slimit/issues/29
-        if self._has_been_seen_before(token):
-            self._raise_syntax_error(token)
-
-        if token is None or token.type != 'SEMI':
-            next_token = self.lexer.auto_semi(token)
-            if next_token is not None:
-                # https://github.com/rspivak/slimit/issues/29
-                self._mark_as_seen(token)
-                self.parser.errok()
-                return next_token
-
+        next_token = self.lexer.auto_semi(token)
+        if next_token is not None:
+            self.parser.errok()
+            return next_token
         self._raise_syntax_error(token)
 
     # Comment rules
@@ -1094,7 +1071,7 @@ class Parser(object):
     # 12.2 Variable Statement
     def p_variable_statement(self, p):
         """variable_statement : VAR variable_declaration_list SEMI
-                              | VAR variable_declaration_list auto_semi
+                              | VAR variable_declaration_list AUTOSEMI
         """
         p[0] = self.asttypes.VarStatement(p[2])
         p[0].setpos(p)
@@ -1162,7 +1139,7 @@ class Parser(object):
     # 12.4 Expression Statement
     def p_expr_statement(self, p):
         """expr_statement : expr_nobf SEMI
-                          | expr_nobf auto_semi
+                          | expr_nobf AUTOSEMI
         """
         # In 12.4, expression statements cannot start with either the
         # 'function' keyword or '{'.  However, the lexing and production
@@ -1200,7 +1177,7 @@ class Parser(object):
         """
         iteration_statement \
             : DO statement WHILE LPAREN expr RPAREN SEMI
-            | DO statement WHILE LPAREN expr RPAREN auto_semi
+            | DO statement WHILE LPAREN expr RPAREN AUTOSEMI
         """
         p[0] = self.asttypes.DoWhile(predicate=p[5], statement=p[2])
         p[0].setpos(p)
@@ -1287,14 +1264,14 @@ class Parser(object):
     # 12.7 The continue Statement
     def p_continue_statement_1(self, p):
         """continue_statement : CONTINUE SEMI
-                              | CONTINUE auto_semi
+                              | CONTINUE AUTOSEMI
         """
         p[0] = self.asttypes.Continue()
         p[0].setpos(p)
 
     def p_continue_statement_2(self, p):
         """continue_statement : CONTINUE identifier SEMI
-                              | CONTINUE identifier auto_semi
+                              | CONTINUE identifier AUTOSEMI
         """
         p[0] = self.asttypes.Continue(p[2])
         p[0].setpos(p)
@@ -1302,14 +1279,14 @@ class Parser(object):
     # 12.8 The break Statement
     def p_break_statement_1(self, p):
         """break_statement : BREAK SEMI
-                           | BREAK auto_semi
+                           | BREAK AUTOSEMI
         """
         p[0] = self.asttypes.Break()
         p[0].setpos(p)
 
     def p_break_statement_2(self, p):
         """break_statement : BREAK identifier SEMI
-                           | BREAK identifier auto_semi
+                           | BREAK identifier AUTOSEMI
         """
         p[0] = self.asttypes.Break(p[2])
         p[0].setpos(p)
@@ -1317,14 +1294,14 @@ class Parser(object):
     # 12.9 The return Statement
     def p_return_statement_1(self, p):
         """return_statement : RETURN SEMI
-                            | RETURN auto_semi
+                            | RETURN AUTOSEMI
         """
         p[0] = self.asttypes.Return()
         p[0].setpos(p)
 
     def p_return_statement_2(self, p):
         """return_statement : RETURN expr SEMI
-                            | RETURN expr auto_semi
+                            | RETURN expr AUTOSEMI
         """
         p[0] = self.asttypes.Return(expr=p[2])
         p[0].setpos(p)
@@ -1396,7 +1373,7 @@ class Parser(object):
     # 12.13 The throw Statement
     def p_throw_statement(self, p):
         """throw_statement : THROW expr SEMI
-                           | THROW expr auto_semi
+                           | THROW expr AUTOSEMI
         """
         p[0] = self.asttypes.Throw(expr=p[2])
         p[0].setpos(p)
@@ -1430,7 +1407,7 @@ class Parser(object):
     # 12.15 The debugger statement
     def p_debugger_statement(self, p):
         """debugger_statement : DEBUGGER SEMI
-                              | DEBUGGER auto_semi
+                              | DEBUGGER AUTOSEMI
         """
         p[0] = self.asttypes.Debugger(p[1])
         p[0].setpos(p)
