@@ -6,7 +6,20 @@ Changelog
 
 - Correct the implementation of line continuation in strings.  This also
   meant a change in the minify unparser so that it will continue to
-  remove the line continuation sequences.
+  remove the line continuation sequences.  [
+  `#16 <https://github.com/calmjs/calmjs.parse/issues/16>`_
+  ]
+
+- Correct the implementation of ASI (automatic semicolon insertion) by
+  introducing a dedicated token type, such that the production of
+  empty statement can no longer happen and that distinguishes it from
+  production of statements that should not have ASI applied, such that
+  incorrectly successful parsing due to this issue will no longer
+  result.  [
+  `#18 <https://github.com/calmjs/calmjs.parse/issues/18>`_
+  `rspivak/slimit#29 <https://github.com/rspivak/slimit/issues/29>`_
+  `rspivak/slimit#101 <https://github.com/rspivak/slimit/issues/101>`_
+  ]
 
 1.0.1 - 2018-04-19
 ------------------
