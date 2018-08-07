@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.1.0 - Unreleased
+1.1.0 - 2018-08-07
 ------------------
 
 - Correct the implementation of line continuation in strings.  This also
