@@ -326,7 +326,7 @@ def walk(dispatcher, node, definition=None):
                 tuple(rule_stack[idx:]), handler,
                 layout_rule_chunks[idx].node,
             ))
-            rule_stack[:] = [tuple(rule_stack[idx:])]
+            rule_stack[:] = rule_stack[:idx] + [tuple(rule_stack[idx:])]
 
         # second pass: now the processing can be done.
         for lr_chunk in lrcs_stack:

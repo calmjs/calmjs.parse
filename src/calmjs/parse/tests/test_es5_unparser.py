@@ -2284,5 +2284,16 @@ MinifyDropSemiPrintTestCase = build_equality_testcase(
         })();
         """,
         '(function $(){(function a(){var a=1})()})()',
+    ), (
+        'nested_return_function',
+        """
+        v = function() {
+            return function() {
+                return function() {
+                };
+            };
+        };
+        """,
+        'v=function(){return function(){return function(){}}}',
     )])
 )
