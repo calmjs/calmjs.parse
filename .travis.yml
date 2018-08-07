@@ -2,50 +2,54 @@ sudo: false
 matrix:
   allow_failures:
     - os: osx
-    - python: 3.7-dev
-    - python: pypy3.3-5.2-alpha1
+    - python: 3.8-dev
     - env: TRAVIS_NODE_VERSION=7.4
   include:
     - language: python
       python: 2.7
-      env: TRAVIS_NODE_VERSION=0.12
+      env: TRAVIS_NODE_VERSION=4.9
     - language: python
       python: 3.3
-      env: TRAVIS_NODE_VERSION=4.6
+      env: TRAVIS_NODE_VERSION=6.14
     - language: python
       python: 3.4
-      env: TRAVIS_NODE_VERSION=4.6
+      env: TRAVIS_NODE_VERSION=8.9
     - language: python
       python: 3.5
-      env: TRAVIS_NODE_VERSION=6.9
+      env: TRAVIS_NODE_VERSION=8.11
     - language: python
       python: 3.6
       env: TRAVIS_NODE_VERSION=6.9
     - language: python
-      python: 3.7-dev
-      env: TRAVIS_NODE_VERSION=7.4
+      python: 3.7
+      dist: xenial
+      sudo: true
+      env: TRAVIS_NODE_VERSION=10
     - language: python
-      python: pypy
-      env: TRAVIS_NODE_VERSION=0.12
+      python: 3.8-dev
+      dist: xenial
+      sudo: true
+      env: TRAVIS_NODE_VERSION=10
     - language: python
       python: pypy3
       env: TRAVIS_NODE_VERSION=6.9
-    - language: python
-      python: pypy3.3-5.2-alpha1
-      env: TRAVIS_NODE_VERSION=7.4
     # test different versions of Node.js on osx
     - language: node_js
-      node_js: 4.6
+      node_js: 4.9
       os: osx
-      env: TRAVIS_PYTHON_VERSION=3.4.5
+      env: TRAVIS_PYTHON_VERSION=3.4.8
     - language: node_js
-      node_js: 6.9
+      node_js: 6.14
       os: osx
-      env: TRAVIS_PYTHON_VERSION=3.5.3
+      env: TRAVIS_PYTHON_VERSION=3.5.5
     - language: node_js
-      node_js: 7.4
+      node_js: 8.11
       os: osx
-      env: TRAVIS_PYTHON_VERSION=3.6.0
+      env: TRAVIS_PYTHON_VERSION=3.6.6
+    - language: node_js
+      node_js: 10
+      os: osx
+      env: TRAVIS_PYTHON_VERSION=3.7.0
 
 before_install:
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
