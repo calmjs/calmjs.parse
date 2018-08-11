@@ -176,6 +176,40 @@ class DispatcherWalkTestCase(unittest.TestCase):
         n2 = Node([n1, n0])
         self.assertEqual('?', ''.join(c.text for c in walk(dispatcher, n2)))
 
+    def test_repeated_layouts(self):
+        class Block(Node):
+            pass
+
+        def space_layout(dispatcher, node, before, after, prev):
+            yield SimpleChunk(' ')
+
+        def newline_layout(dispatcher, node, before, after, prev):
+            yield SimpleChunk('n')
+
+        dispatcher = Dispatcher(
+            definitions={
+                'Node': (Space,),
+                'Block': (JoinAttr(Iter(), value=(Newline,)),)
+            },
+            token_handler=None,  # not actually produced
+            layout_handlers={
+                Space: space_layout,
+                Newline: newline_layout,
+                # drop the subsequent space
+                (Newline, Space): newline_layout,
+            },
+            deferrable_handlers={},
+        )
+
+        n0 = Block([])
+        self.assertEqual('', ''.join(c.text for c in walk(dispatcher, n0)))
+        n1 = Block([Node([])] * 1)
+        self.assertEqual(' ', ''.join(c.text for c in walk(dispatcher, n1)))
+        n2 = Block([Node([])] * 2)
+        self.assertEqual(' n', ''.join(c.text for c in walk(dispatcher, n2)))
+        n3 = Block([Node([])] * 3)
+        self.assertEqual(' nn', ''.join(c.text for c in walk(dispatcher, n3)))
+
 
 class DispatcherTestcase(unittest.TestCase):
 
