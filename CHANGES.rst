@@ -1,6 +1,25 @@
 Changelog
 =========
 
+1.1.1 - 2018-08-11
+------------------
+
+- Ensure that the accounting of layout rule chunks is done correctly in
+  the case where layout handlers specified a tuple of layout rules for
+  combined handling.  [
+  `#19 <https://github.com/calmjs/calmjs.parse/issues/19>`_
+  ]
+
+  - The issue caused by this error manifest severely in the case where
+    multiple layout rule tokens are produced in a manner that repeats
+    a pattern that also have a layout handler rule for them, which
+    does not typically happen for normal code with the standard printers
+    (as layout chunks are many and they generally do not result in a
+    repeated pattern that gets consumed).  However this is severely
+    manifested in the case of minified output with semicolons dropped,
+    as that basically guarantee that any series of closing blocks that
+    fit the pattern to be simply dropped.
+
 1.1.0 - 2018-08-07
 ------------------
 

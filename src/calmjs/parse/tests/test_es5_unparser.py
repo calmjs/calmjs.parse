@@ -2166,11 +2166,19 @@ MinifyPrintTestCase = build_equality_testcase(
 )
 
 
+def minify_drop_semi_helper(tree):
+    result = minify_print(
+        tree, obfuscate=True, shadow_funcname=True, drop_semi=True)
+    # try to parse the result to ensure that it also is valid
+    new_tree = es5(result)
+    assert result == minify_print(
+        new_tree, obfuscate=True, shadow_funcname=True, drop_semi=True)
+    return result
+
+
 MinifyDropSemiPrintTestCase = build_equality_testcase(
     'MinifyDropSemiPrintTestCase',
-    partial(
-        minify_print, obfuscate=True, shadow_funcname=True, drop_semi=True
-    ), ((
+    minify_drop_semi_helper, ((
         label,
         parse(textwrap.dedent(source).strip()),
         answer,
@@ -2276,5 +2284,16 @@ MinifyDropSemiPrintTestCase = build_equality_testcase(
         })();
         """,
         '(function $(){(function a(){var a=1})()})()',
+    ), (
+        'nested_return_function',
+        """
+        v = function() {
+            return function() {
+                return function() {
+                };
+            };
+        };
+        """,
+        'v=function(){return function(){return function(){}}}',
     )])
 )
