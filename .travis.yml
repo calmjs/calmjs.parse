@@ -31,8 +31,11 @@ matrix:
       sudo: true
       env: TRAVIS_NODE_VERSION=10
     - language: python
-      python: pypy3
+      python: pypy
       env: TRAVIS_NODE_VERSION=6.9
+    - language: python
+      python: pypy3
+      env: TRAVIS_NODE_VERSION=8.11
     # test different versions of Node.js on osx
     - language: node_js
       node_js: 4.9
