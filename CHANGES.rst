@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.1.1 - 2018-08-??
+1.1.1 - 2018-08-11
 ------------------
 
 - Ensure that the accounting of layout rule chunks is done correctly in
