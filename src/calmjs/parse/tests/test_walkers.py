@@ -6,6 +6,7 @@ import unittest
 
 from calmjs.parse import walkers
 from calmjs.parse import es5
+from calmjs.parse.parsers.es5 import asttypes
 
 repr_walker = walkers.ReprWalker()
 walker = walkers.Walker()
@@ -184,3 +185,36 @@ class ReprTestCase(unittest.TestCase):
           ]>
         ]>
         """).strip(), result)
+
+    def test_synthetic_node_default_repr(self):
+        node = asttypes.Object(properties=[
+            asttypes.Assign(
+                left=asttypes.String(value='"foo"'),
+                op=':',
+                right=asttypes.String(value='"bar"'),
+            ),
+            asttypes.Assign(
+                left=asttypes.String(value='"result"'),
+                op=':',
+                right=asttypes.Number(value='1'),
+            ),
+        ])
+        # simple sanity test
+        self.assertEqual(textwrap.dedent("""
+        {
+          "foo": "bar",
+          "result": 1
+        }
+        """).strip(), str(node))
+        self.assertEqual(
+            repr_walker(node),
+            "<Object @?:? properties=[\n"
+
+            "  <Assign @?:? left=<String @?:? value='\"foo\"'>, op=':', "
+            "right=<String @?:? value='\"bar\"'>>,\n"
+
+            "  <Assign @?:? left=<String @?:? value='\"result\"'>, op=':', "
+            "right=<Number @?:? value='1'>>\n"
+
+            "]>"
+        )
