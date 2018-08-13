@@ -1,6 +1,14 @@
 Changelog
 =========
 
+1.1.2 - 2018-??-??
+------------------
+
+- Default repr on synthetic nodes or nodes without column or row number
+  assigned should no longer error.  [
+  `#20 <https://github.com/calmjs/calmjs.parse/issues/20>`_
+  ]
+
 1.1.1 - 2018-08-11
 ------------------
 
