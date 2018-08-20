@@ -1,6 +1,20 @@
 Changelog
 =========
 
+1.1.2 - 2018-??-??
+------------------
+
+- Default repr on synthetic nodes or nodes without column or row number
+  assigned should no longer error.  [
+  `#20 <https://github.com/calmjs/calmjs.parse/issues/20>`_
+  ]
+- The same line terminator regex introduced in 1.1.0 used for line
+  continuation in strings now applied to the line terminator pattern to
+  the lexer, such that the line numbering is corrected for the Windows
+  specific <CR><LF> sequence.  [
+  `#21 <https://github.com/calmjs/calmjs.parse/issues/21>`_
+  ]
+
 1.1.1 - 2018-08-11
 ------------------
 

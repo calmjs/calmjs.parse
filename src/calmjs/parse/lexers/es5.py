@@ -476,7 +476,7 @@ class Lexer(object):
     t_BLOCK_COMMENT = r'/\*[^*]*\*+([^/*][^*]*\*+)*/'
 
     # 7.3 Line Terminators
-    t_LINE_TERMINATOR = r'\s'
+    t_LINE_TERMINATOR = r'(\n|\r(?!\n)|\u2028|\u2029|\r\n)'
 
     t_ignore = (
         # space, tab, line tab, form feed, nbsp
