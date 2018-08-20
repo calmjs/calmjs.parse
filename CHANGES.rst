@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.1.2 - 2018-??-??
+1.1.2 - 2018-08-20
 ------------------
 
 - Default repr on synthetic nodes or nodes without column or row number
