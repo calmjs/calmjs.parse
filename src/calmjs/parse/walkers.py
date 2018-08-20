@@ -186,7 +186,10 @@ class ReprWalker(object):
                 for child in children
                 if id(child) in ids) + tailer + ']'))
 
-        position = '@%d:%d ' % (node.lineno, node.colno) if pos else ''
+        position = ('@%s:%s ' % (
+            '?' if node.lineno is None else node.lineno,
+            '?' if node.colno is None else node.colno,
+        ) if pos else '')
 
         omit_keys = () if not omit else set(omit)
         return '<%s %s%s>' % (node.__class__.__name__, position, ', '.join(
