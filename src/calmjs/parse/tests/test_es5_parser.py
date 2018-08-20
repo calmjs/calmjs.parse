@@ -2213,6 +2213,67 @@ ParsedNodeTypeTestCase = build_equality_testcase(
               node=<GroupingOp @1:4 expr=<Identifier @1:5 value='value'>>>>>
         ]>
         """
+    ), (
+        'crlf_lineno',
+        """
+        var dummy = function() {\r\n    return 0;\r\n};
+        """,
+        r"""
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='dummy'>,
+            initializer=<FuncExpr @1:13 elements=[
+              <Return @2:5 expr=<Number @2:12 value='0'>>
+            ], identifier=None, parameters=[]>
+          >
+        ]>]>
+        """
+    ), (
+        'nlcr_lineno',
+        """
+        var dummy = function() {\n\r    return 0;\n\r};
+        """,
+        r"""
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='dummy'>,
+            initializer=<FuncExpr @1:13 elements=[
+              <Return @3:5 expr=<Number @3:12 value='0'>>
+            ], identifier=None, parameters=[]>
+          >
+        ]>]>
+        """
+    ), (
+        'crlf_lineno_line_cont',
+        """
+        var dummy = function() {\r\n  var r = '\\\r\n  ';\r\n  return r;\r\n};
+        """,
+        r"""
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='dummy'>,
+            initializer=<FuncExpr @1:13 elements=[
+              <VarStatement @2:3 ?children=[
+                <VarDecl @2:7 identifier=<Identifier @2:7 value='r'>,
+                  initializer=<String @2:11 value="'\\\r\n  '">>
+                ]>,
+              <Return @4:3 expr=<Identifier @4:10 value='r'>>
+            ],
+            identifier=None, parameters=[]>
+          >
+        ]>]>
+        """
+    ), (
+        'cr_lineno',
+        """
+        var dummy = function() {\r    return 0;\r};
+        """,
+        r"""
+        <ES5Program @1:1 ?children=[<VarStatement @1:1 ?children=[
+          <VarDecl @1:5 identifier=<Identifier @1:5 value='dummy'>,
+            initializer=<FuncExpr @1:13 elements=[
+              <Return @2:5 expr=<Number @2:12 value='0'>>
+            ], identifier=None, parameters=[]>
+          >
+        ]>]>
+        """
     )])
 )
 
