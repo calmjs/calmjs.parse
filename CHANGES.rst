@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.1.3 - 2018-11-??
+1.1.3 - 2018-11-08
 ------------------
 
 - Correct issues with certain non-optional spaces being omitted for the
