@@ -2195,7 +2195,7 @@ MinifyPrintTestCase = build_equality_testcase(
     ), (
         'return_string',
         """
-        return "foo";
+        return"foo";
         """,
         'return"foo";'
     ), (
@@ -2247,20 +2247,34 @@ MinifyPrintTestCase = build_equality_testcase(
         """,
         'for($bling$ in $bling$bling$){}',
     ), (
-        'case_nonwords',
+        'iteration_in_str',
+        """
+        for ($bling$ in"bingbling") {
+          console.log($bling$);
+        }
+        """,
+        'for($bling$ in"bingbling"){console.log($bling$);}',
+    ), (
+        'case_various',
         """
         switch (foo) {
           case $dollar:
             break;
+          case !1:
+            break;
+          case"foo":
+            break;
         }
         """,
-        'switch(foo){case $dollar:break;}',
+        'switch(foo){case $dollar:break;case!1:break;case"foo":break;}',
     ), (
-        'throw_nonword',
+        'throw_various',
         """
         throw $exc;
+        throw!1;
+        throw"exception";
         """,
-        'throw $exc;',
+        'throw $exc;throw!1;throw"exception";',
     ), (
         'new_nonword',
         """

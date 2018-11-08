@@ -126,7 +126,7 @@ definitions = {
     'ForIn': (
         Text(value='for'), Space, Text(value='('),
         Attr('item'),
-        RequiredSpace, Text(value='in'), RequiredSpace,
+        RequiredSpace, Text(value='in'), Space,
         Attr('iterable'), Text(value=')'), Space, Attr('statement'),
     ),
     'BinOp': (
@@ -193,7 +193,7 @@ definitions = {
         CloseBlock,
     ),
     'Case': (
-        Text(value='case'), RequiredSpace, Attr('expr'), Text(value=':'),
+        Text(value='case'), Space, Attr('expr'), Text(value=':'),
         Indent, Newline,
         JoinAttr('elements', value=(Newline,)),
         Dedent,
@@ -205,7 +205,7 @@ definitions = {
         Dedent,
     ),
     'Throw': (
-        Text(value='throw'), RequiredSpace, Attr('expr'), EndStatement,
+        Text(value='throw'), Space, Attr('expr'), EndStatement,
     ),
     'Debugger': (
         Text(value='debugger'), EndStatement,
