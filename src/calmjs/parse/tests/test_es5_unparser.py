@@ -2129,6 +2129,23 @@ MinifyPrintTestCase = build_equality_testcase(
         "set fullName(b){var a=b.split(' ');this.first=a[0];this.last=a[1];}};"
         "})();"
     ), (
+        'object_props_nonword',
+        """
+        (function() {
+          Name.prototype = {
+            get $dollar() {
+              return this.money;
+            },
+
+            set $dollar(value) {
+              this.money = value;
+            }
+          };
+        })();
+        """,
+        "(function(){Name.prototype={get $dollar(){return this.money;},"
+        "set $dollar(a){this.money=a;}};})();"
+    ), (
         'try_catch_shadow',
         """
         (function() {
@@ -2199,6 +2216,57 @@ MinifyPrintTestCase = build_equality_testcase(
         return _;
         """,
         'return _;'
+    ), (
+        'while_loop_break_nonword_label',
+        """
+        while (1) {
+          break $dollar;
+        }
+        """,
+        'while(1){break $dollar;}',
+    ), (
+        'while_continue_nonword_label',
+        """
+        while (1) {
+          continue $dollar;
+        }
+        """,
+        'while(1){continue $dollar;}',
+    ), (
+        'iteration_in_nonword',
+        """
+        for (p in $obj) {
+        }
+        """,
+        'for(p in $obj){}',
+    ), (
+        'iteration_in_nonword_pre',
+        """
+        for ($bling$ in $bling$bling$) {
+        }
+        """,
+        'for($bling$ in $bling$bling$){}',
+    ), (
+        'case_nonwords',
+        """
+        switch (foo) {
+          case $dollar:
+            break;
+        }
+        """,
+        'switch(foo){case $dollar:break;}',
+    ), (
+        'throw_nonword',
+        """
+        throw $exc;
+        """,
+        'throw $exc;',
+    ), (
+        'new_nonword',
+        """
+        new $Money();
+        """,
+        'new $Money();',
     )])
 )
 

@@ -82,7 +82,7 @@ definitions = {
         Attr('left'), OptionalSpace, Attr('op'), Space, Attr('right'),
     ),
     'GetPropAssign': (
-        Text(value='get'), Space, Attr('prop_name'),
+        Text(value='get'), RequiredSpace, Attr('prop_name'),
         PushScope,
         Text(value='('), Text(value=')'), Space,
         OpenBlock,
@@ -93,7 +93,7 @@ definitions = {
         PopScope,
     ),
     'SetPropAssign': (
-        Text(value='set'), Space, Attr('prop_name'), Text(value='('),
+        Text(value='set'), RequiredSpace, Attr('prop_name'), Text(value='('),
         PushScope,
         Attr(Declare('parameter')), Text(value=')'), Space,
         OpenBlock,
@@ -126,7 +126,7 @@ definitions = {
     'ForIn': (
         Text(value='for'), Space, Text(value='('),
         Attr('item'),
-        Space, Text(value='in'), Space,
+        RequiredSpace, Text(value='in'), RequiredSpace,
         Attr('iterable'), Text(value=')'), Space, Attr('statement'),
     ),
     'BinOp': (
@@ -159,11 +159,11 @@ definitions = {
     ),
     'Continue': (
         Text(value='continue'), Optional('identifier', (
-            Space, Attr(attr='identifier'))), EndStatement,
+            RequiredSpace, Attr(attr='identifier'))), EndStatement,
     ),
     'Break': (
-        Text(value='break'), OptionalSpace, Optional('identifier', (
-            Attr(attr='identifier'),)), EndStatement,
+        Text(value='break'), Optional('identifier', (
+            RequiredSpace, Attr(attr='identifier'),)), EndStatement,
     ),
     'Return': (
         Text(value='return'), Optional('expr', (
@@ -193,7 +193,7 @@ definitions = {
         CloseBlock,
     ),
     'Case': (
-        Text(value='case'), Space, Attr('expr'), Text(value=':'),
+        Text(value='case'), RequiredSpace, Attr('expr'), Text(value=':'),
         Indent, Newline,
         JoinAttr('elements', value=(Newline,)),
         Dedent,
@@ -205,7 +205,7 @@ definitions = {
         Dedent,
     ),
     'Throw': (
-        Text(value='throw'), Space, Attr('expr'), EndStatement,
+        Text(value='throw'), RequiredSpace, Attr('expr'), EndStatement,
     ),
     'Debugger': (
         Text(value='debugger'), EndStatement,
@@ -258,7 +258,7 @@ definitions = {
     ),
     'Regex': value,
     'NewExpr': (
-        Text(value='new'), Space, Attr('identifier'), Attr('args'),
+        Text(value='new'), RequiredSpace, Attr('identifier'), Attr('args'),
     ),
     'DotAccessor': (
         Attr('node'), Text(value='.'), Attr('identifier'),
