@@ -62,7 +62,7 @@ definitions = {
         CloseBlock,
     ),
     'VarStatement': (
-        Text(value='var'), Space, children_comma, EndStatement,
+        Text(value='var'), RequiredSpace, children_comma, EndStatement,
     ),
     'VarDecl': (
         Attr(Declare('identifier')), Optional('initializer', (
@@ -82,7 +82,7 @@ definitions = {
         Attr('left'), OptionalSpace, Attr('op'), Space, Attr('right'),
     ),
     'GetPropAssign': (
-        Text(value='get'), Space, Attr('prop_name'),
+        Text(value='get'), RequiredSpace, Attr('prop_name'),
         PushScope,
         Text(value='('), Text(value=')'), Space,
         OpenBlock,
@@ -93,7 +93,7 @@ definitions = {
         PopScope,
     ),
     'SetPropAssign': (
-        Text(value='set'), Space, Attr('prop_name'), Text(value='('),
+        Text(value='set'), RequiredSpace, Attr('prop_name'), Text(value='('),
         PushScope,
         Attr(Declare('parameter')), Text(value=')'), Space,
         OpenBlock,
@@ -126,7 +126,7 @@ definitions = {
     'ForIn': (
         Text(value='for'), Space, Text(value='('),
         Attr('item'),
-        Space, Text(value='in'), Space,
+        RequiredSpace, Text(value='in'), Space,
         Attr('iterable'), Text(value=')'), Space, Attr('statement'),
     ),
     'BinOp': (
@@ -159,11 +159,11 @@ definitions = {
     ),
     'Continue': (
         Text(value='continue'), Optional('identifier', (
-            Space, Attr(attr='identifier'))), EndStatement,
+            RequiredSpace, Attr(attr='identifier'))), EndStatement,
     ),
     'Break': (
-        Text(value='break'), OptionalSpace, Optional('identifier', (
-            Attr(attr='identifier'),)), EndStatement,
+        Text(value='break'), Optional('identifier', (
+            RequiredSpace, Attr(attr='identifier'),)), EndStatement,
     ),
     'Return': (
         Text(value='return'), Optional('expr', (
@@ -258,7 +258,7 @@ definitions = {
     ),
     'Regex': value,
     'NewExpr': (
-        Text(value='new'), Space, Attr('identifier'), Attr('args'),
+        Text(value='new'), RequiredSpace, Attr('identifier'), Attr('args'),
     ),
     'DotAccessor': (
         Attr('node'), Text(value='.'), Attr('identifier'),

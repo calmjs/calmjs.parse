@@ -35,7 +35,7 @@ from calmjs.parse.ruletypes import (
 )
 from calmjs.parse.lexers.es5 import PATT_LINE_CONTINUATION
 
-required_space = re.compile(r'^(?:\w\w|\+\+|\-\-)$')
+required_space = re.compile(r'^(?:\w\w|\+\+|\-\-|\w\$|\$\w)$')
 
 # the various assignments symbols; for dealing with pretty spacing
 assignment_tokens = {
