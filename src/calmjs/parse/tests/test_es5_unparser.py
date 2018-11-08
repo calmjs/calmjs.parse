@@ -2175,6 +2175,30 @@ MinifyPrintTestCase = build_equality_testcase(
         var $foo = bar;
         """,
         'var $foo=bar;',
+    ), (
+        'return_string',
+        """
+        return "foo";
+        """,
+        'return"foo";'
+    ), (
+        'return_statement_negation',
+        """
+        return !1;
+        """,
+        'return!1;'
+    ), (
+        'return_nonword',
+        """
+        return $foo;
+        """,
+        'return $foo;'
+    ), (
+        'return_underscore',
+        """
+        return _;
+        """,
+        'return _;'
     )])
 )
 
