@@ -62,7 +62,7 @@ definitions = {
         CloseBlock,
     ),
     'VarStatement': (
-        Text(value='var'), Space, children_comma, EndStatement,
+        Text(value='var'), RequiredSpace, children_comma, EndStatement,
     ),
     'VarDecl': (
         Attr(Declare('identifier')), Optional('initializer', (
