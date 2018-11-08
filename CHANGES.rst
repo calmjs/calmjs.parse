@@ -1,6 +1,14 @@
 Changelog
 =========
 
+1.1.3 - 2018-11-??
+------------------
+
+- Correct issues with certain non-optional spaces being omitted for the
+  minify print cases, which caused malformed outputs.  [
+  `#22 <https://github.com/calmjs/calmjs.parse/issues/22>`_
+  ]
+
 1.1.2 - 2018-08-20
 ------------------
 
