@@ -39,6 +39,7 @@ from calmjs.parse.tests.lexer import (
     es5_cases,
     es5_pos_cases,
     es5_error_cases,
+    es5_error_cases_str_dq,
 )
 
 
@@ -89,6 +90,10 @@ LexerTestCase = build_equality_testcase(
 LexerErrorTestCase = build_exception_testcase(
     'LexerErrorTestCase', partial(
         run_lexer, lexer_cls=Lexer), es5_error_cases, ECMASyntaxError)
+
+LexerErrorStrDQTestCase = build_exception_testcase(
+    'LexerErrorStrDQTestCase', partial(
+        run_lexer, lexer_cls=Lexer), es5_error_cases_str_dq, ECMASyntaxError)
 
 LexerPosTestCase = build_equality_testcase(
     'LexerPosTestCase', partial(

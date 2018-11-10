@@ -517,7 +517,7 @@ class Lexer(object):
         (?:"                               # opening double quote
             (?: [^"\\\n\r\u2028\u2029]     # no \, line terminators or "
                 | \\(\n|\r(?!\n)|\u2028|\u2029|\r\n)  # or line continuation
-                | \\[a-zA-Z!-\/:-@\[-`{-~] # or escaped characters or
+                | \\[a-tvwyzA-TVWYZ!-\/:-@\[-`{-~] # or escaped chars
                 | \\x[0-9a-fA-F]{2}        # or hex_escape_sequence
                 | \\u[0-9a-fA-F]{4}        # or unicode_escape_sequence
                 | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3})  # or octal_escape_sequence
@@ -529,7 +529,7 @@ class Lexer(object):
         (?:'                               # opening single quote
             (?: [^'\\\n\r\u2028\u2029]     # no \, line terminators or "
                 | \\(\n|\r(?!\n)|\u2028|\u2029|\r\n)  # or line continuation
-                | \\[a-zA-Z!-\/:-@\[-`{-~] # or escaped characters
+                | \\[a-tvwyzA-TVWYZ!-\/:-@\[-`{-~] # or escaped chars
                 | \\x[0-9a-fA-F]{2}        # or hex_escape_sequence
                 | \\u[0-9a-fA-F]{4}        # or unicode_escape_sequence
                 | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # or octal_escape_sequence

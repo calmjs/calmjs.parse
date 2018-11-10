@@ -7,6 +7,8 @@ from __future__ import unicode_literals
 
 import textwrap
 
+swapquotes = {39: 34, 34: 39}
+
 # The structure and some test cases are taken
 # from https://bitbucket.org/ned/jslex
 es5_cases = [
@@ -376,7 +378,21 @@ es5_error_cases = [
         'naked_cr_in_string',
         "'test\\\n\rfoo'",
         'Illegal character "\'" at 1:1',
+    ), (
+        # note the follow are interim error messages
+        'invalid_hex_sequence',
+        "'fail\\x1'",
+        'Illegal character "\'" at 1:1',
+    ), (
+        'invalid_unicode_sequence',
+        "'fail\\u12'",
+        'Illegal character "\'" at 1:1',
     )
+]
+
+es5_error_cases_str_dq = [
+    (n, arg.translate(swapquotes), msg.translate(swapquotes))
+    for n, arg, msg in es5_error_cases
 ]
 
 es5_pos_cases = [
