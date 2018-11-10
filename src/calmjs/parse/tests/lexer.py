@@ -568,6 +568,11 @@ es2015_cases = [
         ('var static = 1',
          ['VAR var', 'STATIC static', 'EQ =', 'NUMBER 1']),
     ), (
+        'yield_keyword',
+        ('function *gen() { yield 1 }',
+         ['FUNCTION function', 'MULT *', 'ID gen', 'LPAREN (', 'RPAREN )',
+          'LBRACE {', 'YIELD yield', 'NUMBER 1', 'RBRACE }']),
+    ), (
         'punctuators',
         ('=> ...',
          ['ARROW =>', 'SPREAD ...']),
