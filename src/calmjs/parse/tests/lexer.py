@@ -559,6 +559,15 @@ es2015_cases = [
         ('var let = 1',
          ['VAR var', 'LET let', 'EQ =', 'NUMBER 1']),
     ), (
+        'static_keyword',
+        ('class Foo { static foo() {} }',
+         ['CLASS class', 'ID Foo', 'LBRACE {', 'STATIC static', 'ID foo',
+          'LPAREN (', 'RPAREN )', 'LBRACE {', 'RBRACE }', 'RBRACE }']),
+    ), (
+        'var_static_keyword',
+        ('var static = 1',
+         ['VAR var', 'STATIC static', 'EQ =', 'NUMBER 1']),
+    ), (
         'punctuators',
         ('=> ...',
          ['ARROW =>', 'SPREAD ...']),

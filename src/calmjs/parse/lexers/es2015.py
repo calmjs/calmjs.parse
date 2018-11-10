@@ -22,6 +22,7 @@ template_token_types = (
 
 es2015_keywords = (
     'LET',
+    'STATIC',
 )
 
 
