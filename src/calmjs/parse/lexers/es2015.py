@@ -50,6 +50,27 @@ class Lexer(ES5Lexer):
         'TEMPLATE_NOSUB', 'TEMPLATE_HEAD', 'TEMPLATE_MIDDLE', 'TEMPLATE_TAIL',
     )
 
+    t_NUMBER = r"""
+    (?: 0[bB][01]+                     # binary_integer_literal
+     |  0[oO][0-7]+                    # or octal_integer_literal
+     |  0[xX][0-9a-fA-F]+              # or hex_integer_literal
+     |  0[0-7]+                        # or legacy_octal_integer_literal
+     |  (?:                            # or decimal_literal
+            (?:0|[1-9][0-9]*)          # decimal_integer_literal
+            \.                         # dot
+            [0-9]*                     # decimal_digits_opt
+            (?:[eE][+-]?[0-9]+)?       # exponent_part_opt
+         |
+            \.                         # dot
+            [0-9]+                     # decimal_digits
+            (?:[eE][+-]?[0-9]+)?       # exponent_part_opt
+         |
+            (?:0|[1-9][0-9]*)          # decimal_integer_literal
+            (?:[eE][+-]?[0-9]+)?       # exponent_part_opt
+         )
+    )
+    """
+
     template = r"""
     (?:(?:`|})                         # opening ` or }
         (?: [^`\\]                     # not `, \; allow

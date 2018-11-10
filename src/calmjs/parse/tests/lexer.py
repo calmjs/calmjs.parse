@@ -573,6 +573,10 @@ es2015_cases = [
          ['FUNCTION function', 'MULT *', 'ID gen', 'LPAREN (', 'RPAREN )',
           'LBRACE {', 'YIELD yield', 'NUMBER 1', 'RBRACE }']),
     ), (
+        'es2015_numbers',
+        (('0b1011 0B1101 0o755 0O644'),
+         ['NUMBER 0b1011', 'NUMBER 0B1101', 'NUMBER 0o755', 'NUMBER 0O644']),
+    ), (
         'punctuators',
         ('=> ...',
          ['ARROW =>', 'SPREAD ...']),
