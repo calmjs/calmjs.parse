@@ -2217,6 +2217,12 @@ MinifyPrintTestCase = build_equality_testcase(
         """,
         'return _;'
     ), (
+        'dollar_instanceof_dollar',
+        """
+        foo$ instanceof $bar;
+        """,
+        'foo$ instanceof $bar;'
+    ), (
         'while_loop_break_nonword_label',
         """
         while (1) {
