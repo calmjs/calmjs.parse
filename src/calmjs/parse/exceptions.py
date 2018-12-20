@@ -9,6 +9,10 @@ class ECMASyntaxError(SyntaxError):
     Syntax error for ECMA parsing.
     """
 
+    # TODO formalize construction argument such that various details
+    # such as lexical position and character(s) that caused the error
+    # may be interrogated by the exception handler.
+
 
 class ECMARegexSyntaxError(ECMASyntaxError):
     """

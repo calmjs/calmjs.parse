@@ -7,7 +7,11 @@ from __future__ import unicode_literals
 
 import textwrap
 
-swapquotes = {39: 34, 34: 39}
+swapquotes = {
+    39: 34, 34: 39,
+    # note the follow are interim error messages
+    96: 39,
+}
 
 # The structure and some test cases are taken
 # from https://bitbucket.org/ned/jslex
@@ -361,7 +365,8 @@ es5_cases = [
     ),
 ]
 
-es5_error_cases = [
+# various string related syntax errors
+es5_error_cases_str = [
     (
         'naked_line_separator_in_string',
         "'test\u2028foo'",
@@ -390,9 +395,16 @@ es5_error_cases = [
     )
 ]
 
+# double quote version
 es5_error_cases_str_dq = [
     (n, arg.translate(swapquotes), msg.translate(swapquotes))
-    for n, arg, msg in es5_error_cases
+    for n, arg, msg in es5_error_cases_str
+]
+
+# single quote version
+es5_error_cases_str_sq = [
+    (n, arg, msg.translate({96: 39}))
+    for n, arg, msg in es5_error_cases_str
 ]
 
 es5_pos_cases = [
