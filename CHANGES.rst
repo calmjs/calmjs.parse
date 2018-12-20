@@ -1,6 +1,15 @@
 Changelog
 =========
 
+1.1.4 - 201?-??-??
+------------------
+
+- Correctly fail on incorrect hexadecimal/unicode escape sequences while
+  reporting the specific character location; also report on the starting
+  position of an unterminated string literal.  [
+  `#23 <https://github.com/calmjs/calmjs.parse/issues/23>`_
+  ]
+
 1.1.3 - 2018-11-08
 ------------------
 
