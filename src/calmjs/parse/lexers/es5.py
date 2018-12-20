@@ -291,7 +291,10 @@ class Lexer(object):
     def _get_colno(self, token):
         # have a 1 offset to map nicer to commonly used/configured
         # text editors.
-        return token.lexpos - self.last_newline_lexpos + 1
+        return self._get_colno_lexpos(token.lexpos)
+
+    def _get_colno_lexpos(self, lexpos):
+        return lexpos - self.last_newline_lexpos + 1
 
     def lookup_colno(self, lineno, lexpos):
         """
@@ -542,6 +545,62 @@ class Lexer(object):
     @ply.lex.TOKEN(string)
     def t_STRING(self, token):
         return token
+
+    broken_string = r"""
+    (?:
+        # broken double quoted string
+        (?:"                               # opening double quote
+            (?: [^"\\\n\r\u2028\u2029]     # not ", \, line terminators; allow
+                | \\(\n|\r(?!\n)|\u2028|\u2029|\r\n)  # line continuation
+                | \\[a-tvwyzA-TVWYZ!-\/:-@\[-`{-~] # escaped chars
+                | \\x[0-9a-fA-F]{2}        # hex_escape_sequence
+                | \\u[0-9a-fA-F]{4}        # unicode_escape_sequence
+                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3})  # octal_escape_sequence
+                | \\0                      # <NUL> (15.10.2.11)
+            )*                             # and capture them greedily
+        )                                  # omit closing quote
+        |
+        # broken single quoted string
+        (?:'                               # opening single quote
+            (?: [^'\\\n\r\u2028\u2029]     # not ', \, line terminators; allow
+                | \\(\n|\r(?!\n)|\u2028|\u2029|\r\n)  # line continuation
+                | \\[a-tvwyzA-TVWYZ!-\/:-@\[-`{-~] # escaped chars
+                | \\x[0-9a-fA-F]{2}        # hex_escape_sequence
+                | \\u[0-9a-fA-F]{4}        # unicode_escape_sequence
+                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # octal_escape_sequence
+                | \\0                      # <NUL> (15.10.2.11)
+            )*                             # and capture them greedily
+        )                                  # omit closing quote
+    )
+    """
+
+    @ply.lex.TOKEN(broken_string)
+    def t_BROKEN_STRING(self, token):
+        # calculate colno for current token colno before...
+        colno = self._get_colno(token)
+        # updating the newline indexes for the error reporting for raw
+        # lexpos
+        self._update_newline_idx(token)
+        # probe for the next values (which no valid rules will match)
+        failure = self.lexer.lexdata[self.lexer.lexpos:self.lexer.lexpos + 2]
+        if failure and failure[0] == '\\':
+            type_ = {'x': 'hexadecimal', 'u': 'unicode'}[failure[1]]
+            seq = re.match(
+                r'\\[xu][0-9-a-f-A-F]*', self.lexer.lexdata[self.lexer.lexpos:]
+            ).group()
+            raise ECMASyntaxError(
+                "Invalid %s escape sequence '%s' at %s:%s" % (
+                    type_, seq, self.lineno,
+                    self._get_colno_lexpos(self.lexer.lexpos)
+                )
+            )
+        tl = 16  # truncate length
+        raise ECMASyntaxError(
+            'Unterminated string literal %s at %s:%s' % (
+                repr_compat(
+                    token.value[:tl].strip() + (token.value[tl:] and '...')),
+                token.lineno, colno)
+        )
 
     # XXX: <ZWNJ> <ZWJ> ?
     identifier_start = r'(?:' + r'[a-zA-Z_$]' + r'|' + LETTER + r')+'
