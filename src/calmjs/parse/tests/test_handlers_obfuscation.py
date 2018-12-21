@@ -11,6 +11,7 @@ from calmjs.parse.asttypes import Catch
 from calmjs.parse.ruletypes import Attr
 from calmjs.parse.ruletypes import Resolve
 from calmjs.parse.ruletypes import Space
+from calmjs.parse.ruletypes import RequiredSpace
 from calmjs.parse.ruletypes import OpenBlock
 from calmjs.parse.ruletypes import CloseBlock
 from calmjs.parse.ruletypes import EndStatement
@@ -486,6 +487,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         dispatcher = Dispatcher(
             unparser.definitions, token_handler_str_default, {
                 Space: layout_handler_space_minimum,
+                RequiredSpace: layout_handler_space_minimum,
                 OpenBlock: layout_handler_openbrace,
                 CloseBlock: layout_handler_closebrace,
                 EndStatement: layout_handler_semicolon,
@@ -556,6 +558,7 @@ class ObfuscatorTestCase(unittest.TestCase):
         main_dispatcher = Dispatcher(
             unparser.definitions, token_handler_unobfuscate, {
                 Space: layout_handler_space_minimum,
+                RequiredSpace: layout_handler_space_minimum,
                 OpenBlock: layout_handler_openbrace,
                 CloseBlock: layout_handler_closebrace,
                 EndStatement: layout_handler_semicolon,

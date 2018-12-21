@@ -9,6 +9,7 @@ from calmjs.parse import asttypes
 from calmjs.parse import es5
 from calmjs.parse.ruletypes import Declare
 from calmjs.parse.ruletypes import Space
+from calmjs.parse.ruletypes import RequiredSpace
 from calmjs.parse.ruletypes import Text
 from calmjs.parse.parsers.es5 import parse
 from calmjs.parse.walkers import Walker
@@ -78,6 +79,7 @@ class BaseVisitorTestCase(unittest.TestCase):
     def test_basic_var_space_drop(self):
         unparser = Unparser(layout_handlers={
             Space: layout_handler_space_drop,
+            RequiredSpace: layout_handler_space_drop,
         })
         ast = parse('var x = 0;\nvar y = 0;')
         self.assertEqual(quad(unparser(ast)), [
@@ -1767,6 +1769,11 @@ ES5IdentityTestCase = build_equality_testcase(
           ";
         }
         """,
+    ), (
+        'var_non_word_char_separation',
+        """
+        var $foo = bar;
+        """,
     )]))
 )
 
@@ -2122,6 +2129,23 @@ MinifyPrintTestCase = build_equality_testcase(
         "set fullName(b){var a=b.split(' ');this.first=a[0];this.last=a[1];}};"
         "})();"
     ), (
+        'object_props_nonword',
+        """
+        (function() {
+          Name.prototype = {
+            get $dollar() {
+              return this.money;
+            },
+
+            set $dollar(value) {
+              this.money = value;
+            }
+          };
+        })();
+        """,
+        "(function(){Name.prototype={get $dollar(){return this.money;},"
+        "set $dollar(a){this.money=a;}};})();"
+    ), (
         'try_catch_shadow',
         """
         (function() {
@@ -2162,6 +2186,107 @@ MinifyPrintTestCase = build_equality_testcase(
           ";
         """,
         'var a="  ";',
+    ), (
+        'var_non_word_char_separation',
+        r"""
+        var $foo = bar;
+        """,
+        'var $foo=bar;',
+    ), (
+        'return_string',
+        """
+        return"foo";
+        """,
+        'return"foo";'
+    ), (
+        'return_statement_negation',
+        """
+        return !1;
+        """,
+        'return!1;'
+    ), (
+        'return_nonword',
+        """
+        return $foo;
+        """,
+        'return $foo;'
+    ), (
+        'return_underscore',
+        """
+        return _;
+        """,
+        'return _;'
+    ), (
+        'dollar_instanceof_dollar',
+        """
+        foo$ instanceof $bar;
+        """,
+        'foo$ instanceof $bar;'
+    ), (
+        'while_loop_break_nonword_label',
+        """
+        while (1) {
+          break $dollar;
+        }
+        """,
+        'while(1){break $dollar;}',
+    ), (
+        'while_continue_nonword_label',
+        """
+        while (1) {
+          continue $dollar;
+        }
+        """,
+        'while(1){continue $dollar;}',
+    ), (
+        'iteration_in_nonword',
+        """
+        for (p in $obj) {
+        }
+        """,
+        'for(p in $obj){}',
+    ), (
+        'iteration_in_nonword_pre',
+        """
+        for ($bling$ in $bling$bling$) {
+        }
+        """,
+        'for($bling$ in $bling$bling$){}',
+    ), (
+        'iteration_in_str',
+        """
+        for ($bling$ in"bingbling") {
+          console.log($bling$);
+        }
+        """,
+        'for($bling$ in"bingbling"){console.log($bling$);}',
+    ), (
+        'case_various',
+        """
+        switch (foo) {
+          case $dollar:
+            break;
+          case !1:
+            break;
+          case"foo":
+            break;
+        }
+        """,
+        'switch(foo){case $dollar:break;case!1:break;case"foo":break;}',
+    ), (
+        'throw_various',
+        """
+        throw $exc;
+        throw!1;
+        throw"exception";
+        """,
+        'throw $exc;throw!1;throw"exception";',
+    ), (
+        'new_nonword',
+        """
+        new $Money();
+        """,
+        'new $Money();',
     )])
 )
 

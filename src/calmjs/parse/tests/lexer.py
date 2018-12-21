@@ -7,6 +7,12 @@ from __future__ import unicode_literals
 
 import textwrap
 
+swapquotes = {
+    39: 34, 34: 39,
+    # note the follow are interim error messages
+    96: 39,
+}
+
 # The structure and some test cases are taken
 # from https://bitbucket.org/ned/jslex
 es5_cases = [
@@ -359,24 +365,64 @@ es5_cases = [
     ),
 ]
 
-es5_error_cases = [
+# various string related syntax errors
+es5_error_cases_str = [
     (
+        'unterminated_string_eof',
+        "var foo = 'test",
+        'Unterminated string literal "\'test" at 1:11',
+    ), (
         'naked_line_separator_in_string',
-        "'test\u2028foo'",
-        'Illegal character "\'" at 1:1',
+        "vaf foo = 'test\u2028foo'",
+        'Unterminated string literal "\'test" at 1:11',
     ), (
         'naked_line_feed_in_string',
-        "'test\u2029foo'",
-        'Illegal character "\'" at 1:1',
+        "var foo = 'test\u2029foo'",
+        'Unterminated string literal "\'test" at 1:11',
     ), (
         'naked_crnl_in_string',
-        "'test\r\nfoo'",
-        'Illegal character "\'" at 1:1',
+        "var foo = 'test\r\nfoo'",
+        'Unterminated string literal "\'test" at 1:11',
     ), (
         'naked_cr_in_string',
-        "'test\\\n\rfoo'",
-        'Illegal character "\'" at 1:1',
+        "var foo = 'test\\\n\rfoo'",
+        # FIXME Note that the \\ is double escaped
+        'Unterminated string literal "\'test\\\\" at 1:11',
+    ), (
+        'invalid_hex_sequence',
+        "var foo = 'fail\\x1'",
+        # backticks are converted to single quotes
+        "Invalid hexadecimal escape sequence `\\x1` at 1:16",
+    ), (
+        'invalid_unicode_sequence',
+        "var foo = 'fail\\u12'",
+        "Invalid unicode escape sequence `\\u12` at 1:16",
+    ), (
+        'invalid_hex_sequence_multiline',
+        "var foo = 'foobar\\\r\nfail\\x1'",
+        # backticks are converted to single quotes
+        "Invalid hexadecimal escape sequence `\\x1` at 2:5",
+    ), (
+        'invalid_unicode_sequence_multiline',
+        "var foo = 'foobar\\\nfail\\u12'",
+        "Invalid unicode escape sequence `\\u12` at 2:5",
+    ), (
+        'long_invalid_string_truncated',
+        "var foo = '1234567890abcdetruncated",
+        'Unterminated string literal "\'1234567890abcde..." at 1:11',
     )
+]
+
+# double quote version
+es5_error_cases_str_dq = [
+    (n, arg.translate(swapquotes), msg.translate(swapquotes))
+    for n, arg, msg in es5_error_cases_str
+]
+
+# single quote version
+es5_error_cases_str_sq = [
+    (n, arg, msg.translate({96: 39}))
+    for n, arg, msg in es5_error_cases_str
 ]
 
 es5_pos_cases = [

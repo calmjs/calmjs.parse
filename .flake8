@@ -11,6 +11,12 @@ ignore =
     # - src/calmjs/parse/tests/test_es5_lexer.py
     E501,
 
+    # various files/rules, was not a problem flake in 3.5.0
+    W504,
+    # not even sure what is this one is about, because it's pointing to
+    # locations that made no sense.
+    W605,
+
 include =
     src/
 
