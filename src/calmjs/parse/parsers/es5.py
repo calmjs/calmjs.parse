@@ -90,16 +90,6 @@ class Parser(object):
 
         self.asttypes = asttypes
 
-        # https://github.com/rspivak/slimit/issues/29
-        # lexer.auto_semi can cause a loop in a parser
-        # when a parser error happens on a token right after
-        # a newline.
-        # We keep record of the tokens that caused p_error
-        # and if the token has already been seen - we raise
-        # an ECMASyntaxError exception to avoid looping over and
-        # over again.
-        self._error_tokens = {}
-
     def _raise_syntax_error(self, token):
         tokens = [format_lex_token(t) for t in [
             self.lexer.valid_prev_token,
