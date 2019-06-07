@@ -74,6 +74,10 @@ DIVISION_SYNTAX_MARKERS = frozenset([
     'LINE_TERMINATOR', 'LINE_COMMENT', 'BLOCK_COMMENT'
 ])
 
+COMMENTS = frozenset([
+    'LINE_COMMENT', 'BLOCK_COMMENT'
+])
+
 PATT_LINE_TERMINATOR_SEQUENCE = re.compile(
     r'(\n|\r(?!\n)|\u2028|\u2029|\r\n)', flags=re.S)
 PATT_LINE_CONTINUATION = re.compile(
@@ -184,7 +188,7 @@ class Lexer(object):
     For more information see:
     http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-262.pdf
     """
-    def __init__(self):
+    def __init__(self, with_comments=False):
         self.lexer = None
         self.prev_token = None
         self.valid_prev_token = None
@@ -196,6 +200,7 @@ class Lexer(object):
         self.error_token_handlers = [
             broken_string_token_handler,
         ]
+        self.with_comments = with_comments
         self.build()
 
     @property
@@ -256,7 +261,10 @@ class Lexer(object):
             if char != '/' or (char == '/' and next_char in ('/', '*')):
                 tok = self._get_update_token()
                 if tok.type in DIVISION_SYNTAX_MARKERS:
-                    continue
+                    if self.with_comments and tok.type in COMMENTS:
+                        return tok
+                    else:
+                        continue
                 else:
                     return tok
 
@@ -543,7 +551,7 @@ class Lexer(object):
     t_XOREQUAL      = r'\^='
     t_OREQUAL       = r'\|='
 
-    t_LINE_COMMENT  = r'//[^\r\n]*'
+    t_LINE_COMMENT  = r'//[^\r\n\u2028\u2029]*'
     t_BLOCK_COMMENT = r'/\*[^*]*\*+([^/*][^*]*\*+)*/'
 
     # 7.3 Line Terminators
