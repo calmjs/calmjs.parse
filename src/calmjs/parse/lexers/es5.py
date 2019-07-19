@@ -188,7 +188,7 @@ class Lexer(object):
     For more information see:
     http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-262.pdf
     """
-    def __init__(self, with_comments=False):
+    def __init__(self, with_comments=False, yield_comments=False):
         self.lexer = None
         self.prev_token = None
         self.valid_prev_token = None
@@ -201,7 +201,13 @@ class Lexer(object):
             broken_string_token_handler,
         ]
         self.with_comments = with_comments
+        self.yield_comments = yield_comments
+        self.hidden_tokens = []
         self.build()
+
+        if not with_comments:
+            # just reassign the method.
+            self.token = self._token
 
     @property
     def lineno(self):
@@ -238,6 +244,16 @@ class Lexer(object):
         return token
 
     def token(self):
+        token = self._token()
+        if token:
+            if self.hidden_tokens:
+                token.hidden_tokens = self.hidden_tokens
+                self.hidden_tokens = []
+            else:
+                token.hidden_tokens = None
+        return token
+
+    def _token(self):
         # auto-semi tokens that got added
         if self.next_tokens:
             return self.next_tokens.pop()
@@ -254,6 +270,9 @@ class Lexer(object):
             except IndexError:
                 tok = self._get_update_token()
                 if tok is not None and tok.type == 'LINE_TERMINATOR':
+                    # should this also be implemented?
+                    # if not self.drop_lineterm:
+                    #     self.hidden_tokens.append(tok)
                     continue
                 else:
                     return tok
@@ -261,10 +280,12 @@ class Lexer(object):
             if char != '/' or (char == '/' and next_char in ('/', '*')):
                 tok = self._get_update_token()
                 if tok.type in DIVISION_SYNTAX_MARKERS:
-                    if self.with_comments and tok.type in COMMENTS:
-                        return tok
-                    else:
-                        continue
+                    if tok.type in COMMENTS:
+                        if self.yield_comments:
+                            return tok
+                        elif self.with_comments:
+                            self.hidden_tokens.append(tok)
+                    continue
                 else:
                     return tok
 
