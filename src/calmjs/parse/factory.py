@@ -72,8 +72,8 @@ def RawParserUnparserFactory(parser_name, parse_callable, *unparse_callables):
 
     def build_parse(f):
         @wraps(f)
-        def parse(self, source):
-            return f(source)
+        def parse(self, source, *a, **kw):
+            return f(source, *a, **kw)
         parse.__name__ = parser_name
         parse.__qualname__ = parser_name
         return parse

@@ -27,6 +27,7 @@ from __future__ import unicode_literals
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 from collections import defaultdict
+from ply.lex import LexToken
 from calmjs.parse.utils import str
 
 # This should be nodetypes; asttypes means type of AST, and defining a
@@ -36,6 +37,7 @@ from calmjs.parse.utils import str
 class Node(object):
     lexpos = lineno = colno = None
     sourcepath = None
+    comments = None
 
     def __init__(self, children=None):
         self._children_list = [] if children is None else children
@@ -64,7 +66,22 @@ class Node(object):
         return lexpos, lineno, colno
 
     def setpos(self, p, idx=1, additional=()):
+        """
+        This takes a production produced by the lexer and set various
+        attributes for this node, such as the positions in the original
+        source that defined this token, along with other "hidden" tokens
+        that should be converted into comment nodes associated with this
+        node.
+        """
+
         self._token_map = defaultdict(list)
+
+        # only do so if the lexer has comments enabled, and that the
+        # production at the index actually has a token provided (which
+        # presumes that this is the lowest level node being produced).
+        if p.lexer.with_comments and isinstance(p.slice[idx], LexToken):
+            self.set_comments(p, idx)
+
         self.lexpos, self.lineno, self.colno = self.findpos(p, idx)
         for i, token in enumerate(p):
             if not isinstance(token, str):
@@ -88,6 +105,35 @@ class Node(object):
         #     # _src = extract_stack(sys._getframe(1), 1)[0].line
         #     # if '# require yacc_tracking' not in _src:
         #     #     import pdb;pdb.set_trace()
+
+    def set_comments(self, p, idx):
+        """
+        Set comments associated with the element inside the production
+        rule provided referenced by idx to this node.  Only applicable
+        if the element is a LexToken and that the hidden_tokens is set.
+        """
+
+        comments = []
+        # reversing the order to capture the first pos in the
+        # laziest way possible.
+        for token in reversed(getattr(p.slice[idx], 'hidden_tokens', [])):
+            if token.type == 'LINE_COMMENT':
+                comment = LineComment(token.value)
+            elif token.type == 'BLOCK_COMMENT':
+                comment = BlockComment(token.value)
+            else:
+                continue  # pragma: no cover
+
+            # short-circuit the setpos only
+            pos = (token.lexpos, token.lineno, token.colno)
+            comment.lexpos, comment.lineno, comment.colno = pos
+            comment._token_map = {token.value: [pos]}
+            comments.append(comment)
+
+        if comments:
+            self.comments = Comments(list(reversed(comments)))
+            (self.comments.lexpos, self.comments.lineno,
+                self.comments.colno) = pos
 
     def __iter__(self):
         for child in self.children():
@@ -524,3 +570,20 @@ class Elision(Node):
 class This(Node):
     def __init__(self):
         pass
+
+
+class Comments(Node):
+    pass
+
+
+class Comment(Node):
+    def __init__(self, value):
+        self.value = value
+
+
+class BlockComment(Comment):
+    pass
+
+
+class LineComment(Comment):
+    pass

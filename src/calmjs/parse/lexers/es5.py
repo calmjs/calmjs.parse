@@ -245,12 +245,9 @@ class Lexer(object):
 
     def token(self):
         token = self._token()
-        if token:
-            if self.hidden_tokens:
-                token.hidden_tokens = self.hidden_tokens
-                self.hidden_tokens = []
-            else:
-                token.hidden_tokens = None
+        if token and self.hidden_tokens:
+            token.hidden_tokens = self.hidden_tokens
+            self.hidden_tokens = []
         return token
 
     def _token(self):

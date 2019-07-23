@@ -553,6 +553,26 @@ Object assignments from a given script file:
 Further details and example usage can be consulted from the various
 docstrings found within the module.
 
+Limitations
+-----------
+
+Comments currently may be incomplete
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Due to the implementation of the lexer/parser along with how the ast
+node types have been implemented, there are restrictions on where the
+comments may be exposed if enabled.  Currently, such limitations exists
+for nodes that are created by production rules that consume multiple
+lexer tokens at once - only comments preceding the first token will be
+captured, with all remaining comments discarded.
+
+For example, this limitation means that any comments before the ``else``
+token will be omitted (as the comment will be provided by the ``if``
+token), as the production rule for an ``If`` node consumes both these
+tokens and the node as implemented only provides a single slot for
+comments.  Likewise, any comments before the ``:`` token in a ternary
+statement will also be discarded as that is the second token consumed
+by the production rule that produces a ``Conditional`` node.
 
 Troubleshooting
 ---------------

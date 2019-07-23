@@ -98,7 +98,7 @@ class LexerWithCommentsTestCase(unittest.TestCase):
         '''))
         tokens = [token for token in lexer]
         self.assertEqual(2, len(tokens))
-        self.assertIsNone(tokens[0].hidden_tokens)
+        self.assertFalse(hasattr(tokens[0], 'hidden_tokens'))
         token = tokens[1]
         self.assertEqual(1, len(token.hidden_tokens))
         self.assertEqual(token.hidden_tokens[0].value, '// bar')
@@ -112,7 +112,7 @@ class LexerWithCommentsTestCase(unittest.TestCase):
         '''))
         tokens = [token for token in lexer]
         self.assertEqual(2, len(tokens))
-        self.assertIsNone(tokens[0].hidden_tokens)
+        self.assertFalse(hasattr(tokens[0], 'hidden_tokens'))
         token = tokens[1]
         self.assertEqual(1, len(token.hidden_tokens))
         self.assertEqual(token.hidden_tokens[0].value, '/*foo\n*/')
