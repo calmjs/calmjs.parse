@@ -273,6 +273,16 @@ class Attr(Token):
             yield chunk
 
 
+class CommentsAttr(Attr):
+    """
+    Essentially identical to Attr, except default to handling comments
+    such that the rules can be more easily filtered out if required.
+    """
+
+    def __init__(self, attr='comments', value=None, pos=0):
+        super(CommentsAttr, self).__init__(attr=attr, value=value, pos=pos)
+
+
 class Text(Token):
     """
     Simply leverage the dispatcher object for generating the rendering
@@ -489,6 +499,34 @@ class Literal(Deferrable):
             # the handler will return the value
             return handler(dispatcher, node)
         return node.value
+
+
+class Comment(Deferrable):
+    """
+    Provide special handling for comments of either types.
+    """
+
+    # yes this is similar enough to Literal, but for now keep the two
+    # implementation separate until merging can be proven to be harmless
+
+    def __call__(self, dispatcher, node):
+        handler = dispatcher.deferrable(self)
+        if handler is not NotImplemented:
+            # the handler will return the value
+            return handler(dispatcher, node)
+        # do not return a default for now?
+
+
+class LineComment(Comment):
+    """
+    Provide special handling for line comments
+    """
+
+
+class BlockComment(Comment):
+    """
+    Provide special handling for line comments
+    """
 
 
 children_newline = JoinAttr(Iter(), value=(Newline,))

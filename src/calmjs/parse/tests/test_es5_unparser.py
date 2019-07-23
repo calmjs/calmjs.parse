@@ -503,7 +503,7 @@ def parse_to_sourcemap_tokens_pretty(text):
     return quad(Unparser(rules=(
         default_rules,
         indent(),
-    ))(parse(text)))
+    ))(parse(text, with_comments=True)))
 
 
 def parse_to_sourcemap_tokens_min(text):
@@ -739,6 +739,33 @@ ParsedNodeTypeSrcmapTokenPPTestCase = build_equality_testcase(
             ('i', 3, 9, None), (' ', 0, 0, None), ('+', 3, 10, None),
             (' ', 0, 0, None), ('-', 3, 12, None), ('i', 3, 13, None),
             (';', 3, 14, None),
+            ('\n', 0, 0, None),
+        ],
+    ), (
+        'assorted_comments',
+        """
+        // line
+        /* block
+           line 2
+           final */
+           // hrm
+           this;
+         /* more? */
+        this;
+        """, [
+            ('// line', 1, 1, None),
+            ('\n', 0, 0, None),
+            ('/* block\n   line 2\n   final */', 2, 1, None),
+            ('\n', 0, 0, None),
+            ('// hrm', 5, 4, None),
+            ('\n', 0, 0, None),
+            ('this', 6, 4, None),
+            (';', 6, 8, None),
+            ('\n', 0, 0, None),
+            ('/* more? */', 7, 2, None),
+            ('\n', 0, 0, None),
+            ('this', 8, 1, None),
+            (';', 8, 5, None),
             ('\n', 0, 0, None),
         ],
     )])
@@ -1773,6 +1800,71 @@ ES5IdentityTestCase = build_equality_testcase(
         'var_non_word_char_separation',
         """
         var $foo = bar;
+        """,
+    )]))
+)
+
+
+PrintWithCommentsTestCase = build_equality_testcase(
+    'PrintWithCommentsTestCase', pretty_print, ((
+        label, parse(value, with_comments=True), value,
+    ) for label, value in ((
+        label,
+        # using lstrip as the pretty printer produces a trailing newline
+        textwrap.dedent(value).lstrip(),
+    ) for label, value in [(
+        'this_keyword',
+        """
+        // foo
+        // foo
+        /* foo */
+        this;
+        """,
+    ), (
+        'before_function',
+        """
+        /* a comment */
+        function foo() {
+        }
+        """,
+
+    ), (
+        'before_if',
+        """
+        /* a comment */
+        if (foo == bar) {
+        }
+        """,
+
+    ), (
+        'not_quite_before_else_if',
+        """
+        if (somecondition) {
+        }
+        else /* a comment */
+        if (foo == bar) {
+          // also this is indented
+          var baz = 1;
+        }
+        """,
+    ), (
+        'for_loop',
+        """
+        /* a comment */
+        // more comments
+        /* even more comments */
+        for (i = 0; i < 10; i++) {
+          var baz = 1;
+        }
+        """,
+    ), (
+        'while_loop',
+        """
+        /* an infinte loop */
+        while (true) {
+          // this is very pointless
+          var baz = 1;
+        }
         """,
     )]))
 )

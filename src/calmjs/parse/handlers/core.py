@@ -32,6 +32,8 @@ from calmjs.parse.ruletypes import (
     OptionalNewline,
     Indent,
     Dedent,
+    LineComment as RuleTypeLineComment,
+    BlockComment as RuleTypeBlockComment,
 )
 from calmjs.parse.lexers.es5 import PATT_LINE_CONTINUATION
 
@@ -185,6 +187,11 @@ def deferrable_handler_literal_continuation(dispatcher, node):
     return PATT_LINE_CONTINUATION.sub('', node.value)
 
 
+def deferrable_handler_comment(dispatcher, node):
+    # simply return the value
+    return node.value
+
+
 def default_rules():
     return {'layout_handlers': {
         OpenBlock: layout_handler_openbrace,
@@ -202,6 +209,9 @@ def default_rules():
         # content, simply do nothing.
         (Indent, Newline, Dedent): rule_handler_noop,
         (OptionalSpace, EndStatement): layout_handler_semicolon,
+    }, 'deferrable_handlers': {
+        RuleTypeLineComment: deferrable_handler_comment,
+        RuleTypeBlockComment: deferrable_handler_comment,
     }}
 
 
