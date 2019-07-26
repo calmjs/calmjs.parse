@@ -80,7 +80,7 @@ PATT_LINE_CONTINUATION = re.compile(
     r'\\(\n|\r(?!\n)|\u2028|\u2029|\r\n)', flags=re.S)
 
 
-broken_string_patt = re.compile(r"""
+PATT_BROKEN_STRING = re.compile(r"""
 (?:
     # broken double quoted string
     (?:"                               # opening double quote
@@ -110,7 +110,7 @@ broken_string_patt = re.compile(r"""
 
 
 def broken_string_token_handler(lexer, token):
-    match = broken_string_patt.match(token.value)
+    match = PATT_BROKEN_STRING.match(token.value)
     if not match:
         return
 
