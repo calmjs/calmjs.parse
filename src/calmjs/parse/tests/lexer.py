@@ -673,6 +673,52 @@ es2015_pos_cases = [
     )
 ]
 
+# various template related syntax errors
+es2015_error_cases_tmpl = [
+    (
+        'unterminated_template_eof',
+        "var foo = `test",
+        "Unterminated template literal '`test' at 1:11",
+    ), (
+        'unterminated_template_middle_eof',
+        "var foo = `${foo}bar${baz}fail",
+        # the specific identifiers are not tracked, thus ...
+        "Unterminated template literal '`${...}bar${...}...' at 1:11",
+    ), (
+        'invalid_hex_sequence',
+        "var foo = `fail\\x1`",
+        # backticks are converted to single quotes
+        "Invalid hexadecimal escape sequence '\\x1' at 1:16",
+    ), (
+        'invalid_unicode_sequence',
+        "var foo = `fail\\u12`",
+        "Invalid unicode escape sequence '\\u12' at 1:16",
+    ), (
+        'invalid_hex_sequence_multiline',
+        "var foo = `foobar\r\nfail\\x1`",
+        # backticks are converted to single quotes
+        "Invalid hexadecimal escape sequence '\\x1' at 2:5",
+    ), (
+        'invalid_unicode_sequence_multiline',
+        "var foo = `foobar\nfail\\u12`",
+        "Invalid unicode escape sequence '\\u12' at 2:5",
+    ), (
+        'invalid_hex_sequence_middle',
+        "var foo = `fail${wat}blah\\x1`",
+        # backticks are converted to single quotes
+        "Invalid hexadecimal escape sequence '\\x1' at 1:26",
+    ), (
+        'invalid_hex_sequence_middle_multiline',
+        "var foo = `foobar${lolwat}\r\nfailure${failure}wat\r\nwat\\x1`",
+        # backticks are converted to single quotes
+        "Invalid hexadecimal escape sequence '\\x1' at 3:4",
+    ), (
+        'long_invalid_template_truncated',
+        "var foo = `1234567890abcdetruncated",
+        "Unterminated template literal '`1234567890abcde...' at 1:11",
+    )
+]
+
 
 def run_lexer(value, lexer_cls):
     lexer = lexer_cls()

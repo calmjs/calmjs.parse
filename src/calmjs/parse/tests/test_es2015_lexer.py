@@ -6,6 +6,7 @@ from calmjs.parse.lexers.es2015 import Lexer
 from calmjs.parse.exceptions import ECMASyntaxError
 
 from calmjs.parse.testing.util import build_equality_testcase
+from calmjs.parse.testing.util import build_exception_testcase
 from calmjs.parse.tests.lexer import (
     run_lexer,
     run_lexer_pos,
@@ -14,6 +15,7 @@ from calmjs.parse.tests.lexer import (
     es5_all_cases,
     es2015_cases,
     es2015_pos_cases,
+    es2015_error_cases_tmpl,
 )
 
 
@@ -24,7 +26,8 @@ class LexerFailureTestCase(unittest.TestCase):
         lexer.input('`')
         with self.assertRaises(ECMASyntaxError) as e:
             [token for token in lexer]
-        self.assertEqual(str(e.exception), "Illegal character '`' at 1:1")
+        self.assertEqual(
+            str(e.exception), "Unterminated template literal '`' at 1:1")
 
 
 LexerKeywordTestCase = build_equality_testcase(
@@ -60,3 +63,7 @@ LexerES2015TestCase = build_equality_testcase(
 LexerES2015PosTestCase = build_equality_testcase(
     'LexerES2015PosTestCase', partial(
         run_lexer_pos, lexer_cls=Lexer), es2015_pos_cases)
+
+LexerES2015ErrorTemplateTestCase = build_exception_testcase(
+    'LexerES2015ErrorTemplateTestCase', partial(
+        run_lexer, lexer_cls=Lexer), es2015_error_cases_tmpl, ECMASyntaxError)

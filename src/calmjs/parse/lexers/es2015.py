@@ -5,7 +5,10 @@ ES2015 (ECMAScript 6th Edition/ES6) lexer.
 
 import re
 import ply
+from itertools import chain
 
+from calmjs.parse.utils import repr_compat
+from calmjs.parse.exceptions import ECMASyntaxError
 from calmjs.parse.lexers.es5 import Lexer as ES5Lexer
 
 template_token_types = (
@@ -26,11 +29,73 @@ es2015_keywords = (
     'YIELD',
 )
 
+PATT_BROKEN_TEMPLATE = re.compile(r"""
+(?:(?:`|})                         # opening ` or }
+    (?: [^`\\]                     # not `, \; allow
+        | \\(\n|\r(?!\n)|\u2028|\u2029|\r\n)  # line continuation
+        | \\[a-tvwyzA-TVWYZ!-\/:-@\[-`{-~] # escaped chars
+        | \\x[0-9a-fA-F]{2}        # hex_escape_sequence
+        | \\u[0-9a-fA-F]{4}        # unicode_escape_sequence
+        | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # octal_escape_sequence
+        | \\0                      # <NUL> (ECMA-262 6.0 21.2.2.11)
+    )*                             # zero or many times
+)                                  # omit closing ` or ${
+""", flags=re.VERBOSE)
+
+
+def broken_template_token_handler(lexer, token):
+    match = PATT_BROKEN_TEMPLATE.match(token.value)
+    if not match:
+        return
+
+    # update the error token value to only include what was matched here
+    # as this will be the actual token that "failed"
+    token.value = match.group()
+    # calculate colno for current token colno before...
+    colno = lexer._get_colno(token)
+    # updating the newline indexes for the error reporting for raw
+    # lexpos
+    lexer._update_newline_idx(token)
+    # probe for the next values (which no valid rules will match)
+    position = lexer.lexer.lexpos + len(token.value)
+    failure = lexer.lexer.lexdata[position:position + 2]
+    if failure and failure[0] == '\\':
+        type_ = {'x': 'hexadecimal', 'u': 'unicode'}[failure[1]]
+        seq = re.match(
+            r'\\[xu][0-9-a-f-A-F]*', lexer.lexer.lexdata[position:]
+        ).group()
+        raise ECMASyntaxError(
+            "Invalid %s escape sequence '%s' at %s:%s" % (
+                type_, seq, lexer.lineno,
+                lexer._get_colno_lexpos(position)
+            )
+        )
+    tl = 16  # truncate length
+
+    if lexer.current_template_tokens:
+        # join all tokens together
+        tmpl = '...'.join(
+            t.value for t in chain(lexer.current_template_tokens, [token]))
+        lineno = lexer.current_template_tokens[0].lineno
+        colno = lexer.current_template_tokens[0].colno
+    else:
+        tmpl = token.value
+        lineno = token.lineno
+
+    raise ECMASyntaxError('Unterminated template literal %s at %s:%s' % (
+        repr_compat(tmpl[:tl].strip() + (tmpl[tl:] and '...')), lineno, colno))
+
 
 class Lexer(ES5Lexer):
     """
     ES2015 lexer.
     """
+
+    def __init__(self, with_comments=False, yield_comments=False):
+        super(Lexer, self).__init__(
+            with_comments=with_comments, yield_comments=yield_comments)
+        self.error_token_handlers.append(broken_template_token_handler)
+        self.current_template_tokens = []
 
     # Punctuators (ES6)
     # t_DOLLAR_LBRACE  = r'${'
@@ -84,9 +149,27 @@ class Lexer(ES5Lexer):
     (?:`|\${))                         # closing ` or ${
     """
 
+    RBRACE        = r'}'
+
     @ply.lex.TOKEN(template)
     def t_TEMPLATE_RAW(self, token):
         for patt, token_type in template_token_types:
             if patt.match(token.value):
                 token.type = token_type
+                break
+        if token.type == 'TEMPLATE_HEAD':
+            self.current_template_tokens = [token]
+        elif token.type == 'TEMPLATE_MIDDLE':
+            self.current_template_tokens.append(token)
+        else:
+            self.current_template_tokens = []
+
+        return token
+
+    @ply.lex.TOKEN(RBRACE)
+    def t_RBRACE(self, token):
+        if self.current_template_tokens:
+            self.lexer.lexpos = self.lexer.lexpos - 1
+            token.value = self.lexer.lexdata[self.lexer.lexpos:]
+            broken_template_token_handler(self, token)
         return token
