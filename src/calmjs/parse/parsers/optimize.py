@@ -16,7 +16,10 @@ from ply import lex
 from importlib import import_module
 
 # have to do this for every parser modules
-from calmjs.parse.parsers import es5
+from calmjs.parse.parsers import (
+    es5,
+    es2015,
+)
 
 
 def purge_tabs(module):
@@ -67,7 +70,7 @@ def reoptimize(module):
 def reoptimize_all(monkey_patch=False):
     if monkey_patch:
         lex.open = partial(codecs.open, encoding='utf8')
-    modules = (es5,)
+    modules = (es5, es2015,)
     for module in modules:
         reoptimize(module)
 

@@ -157,6 +157,10 @@ class ES5Program(Program):
     pass
 
 
+class ES2015Program(Program):
+    pass
+
+
 class Block(Node):
     pass
 
