@@ -15,8 +15,10 @@ from calmjs.parse.parsers.es2015 import read
 from calmjs.parse.tests.parser import (
     ParserCaseMixin,
     build_node_repr_test_cases,
+    build_es2015_node_repr_test_cases,
     # build_asi_test_cases,
     build_syntax_error_test_cases,
+    build_es2015_syntax_error_test_cases,
     build_regex_syntax_error_test_cases,
     build_comments_test_cases,
 )
@@ -61,12 +63,18 @@ class ParserTestCase(unittest.TestCase, ParserCaseMixin):
 ParsedNodeTypeTestCase = build_node_repr_test_cases(
     'ParsedNodeTypeTestCase', parse, 'ES2015Program')
 
+ParsedES2015NodeTypeTestCase = build_es2015_node_repr_test_cases(
+    'ParsedES2015NodeTypeTestCase', parse, 'ES2015Program')
+
 # ASI - Automatic Semicolon Insertion
 # ParserToECMAASITestCase = build_asi_test_cases(
 #     'ParserToECMAASITestCase', parse, pretty_print)
 
 ECMASyntaxErrorsTestCase = build_syntax_error_test_cases(
     'ECMASyntaxErrorsTestCase', parse)
+
+ECMA2015SyntaxErrorsTestCase = build_es2015_syntax_error_test_cases(
+    'ECMA2015SyntaxErrorsTestCase', parse)
 
 ECMARegexSyntaxErrorsTestCase = build_regex_syntax_error_test_cases(
     'ECMARegexSyntaxErrorsTestCase', parse)

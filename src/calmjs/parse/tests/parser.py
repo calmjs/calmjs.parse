@@ -2729,6 +2729,175 @@ def build_asi_test_cases(clsname, parse, pretty_print):
     )]))
 
 
+def build_es2015_node_repr_test_cases(clsname, parse, program_type):
+
+    def parse_to_repr(value):
+        return repr_walker.walk(parse(value), pos=True)
+
+    return build_equality_testcase(clsname, parse_to_repr, ((
+        label,
+        textwrap.dedent(argument).strip(),
+        singleline(result).replace('<Program', '<' + program_type),
+    ) for label, argument, result in [(
+        'template_literal_nosub',
+        """
+        var t = `some_template`
+        """,
+        """
+        <Program @1:1 ?children=[
+          <VarStatement @1:1 ?children=[
+            <VarDecl @1:5 identifier=<Identifier @1:5 value='t'>,
+              initializer=<TemplateLiteral @1:9 ?children=[
+                <TemplateNoSub @1:9 value='`some_template`'>
+              ]>
+            >
+          ]>
+        ]>
+        """,
+    ), (
+        'template_literal_sub',
+        """
+        var t = `some_template${value}tail`
+        """,
+        """
+        <Program @1:1 ?children=[
+          <VarStatement @1:1 ?children=[
+            <VarDecl @1:5 identifier=<Identifier @1:5 value='t'>,
+              initializer=<TemplateLiteral @1:9 ?children=[
+                <TemplateHead @1:9 value='`some_template${'>,
+                <Identifier @1:25 value='value'>,
+                <TemplateTail @1:30 value='}tail`'>
+              ]>
+            >
+          ]>
+        ]>
+        """,
+    ), (
+        'template_literal_sub_once',
+        """
+        var t = `some_template${value}middle${value}tail`
+        """,
+        """
+        <Program @1:1 ?children=[
+          <VarStatement @1:1 ?children=[
+            <VarDecl @1:5 identifier=<Identifier @1:5 value='t'>,
+              initializer=<TemplateLiteral @1:9 ?children=[
+                <TemplateHead @1:9 value='`some_template${'>,
+                <Identifier @1:25 value='value'>,
+                <TemplateMiddle @1:30 value='}middle${'>,
+                <Identifier @1:39 value='value'>,
+                <TemplateTail @1:44 value='}tail`'>
+              ]>
+            >
+          ]>
+        ]>
+        """,
+    ), (
+        'template_literal_sub_multiple',
+        """
+        var t = `some_template${value}middle${value}another${tail}tail`
+        """,
+        """
+        <Program @1:1 ?children=[
+          <VarStatement @1:1 ?children=[
+            <VarDecl @1:5 identifier=<Identifier @1:5 value='t'>,
+              initializer=<TemplateLiteral @1:9 ?children=[
+                <TemplateHead @1:9 value='`some_template${'>,
+                <Identifier @1:25 value='value'>,
+                <TemplateMiddle @1:30 value='}middle${'>,
+                <Identifier @1:39 value='value'>,
+                <TemplateMiddle @1:44 value='}another${'>,
+                <Identifier @1:54 value='tail'>,
+                <TemplateTail @1:58 value='}tail`'>
+              ]>
+            >
+          ]>
+        ]>
+        """,
+    ), (
+        'template_multiline_between_expressions',
+        """
+        t = `tt${
+        s + s
+        }ttttt`
+        """,
+        """
+        <Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<Assign @1:3 left=<
+              Identifier @1:1 value='t'>,
+            op='=',
+            right=<TemplateLiteral @1:5 ?children=[
+              <TemplateHead @1:5 value='`tt${'>,
+              <BinOp @2:3 left=<Identifier @2:1 value='s'>,
+                op='+', right=<Identifier @2:5 value='s'>>,
+              <TemplateTail @3:1 value='}ttttt`'>
+            ]>
+          >>
+        ]>
+        """,
+    ), (
+        'template_with_regex',
+        """
+        value = `regex is ${/wat/}`
+        """,
+        """
+        <Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<Assign @1:7 left=<
+              Identifier @1:1 value='value'>,
+            op='=',
+            right=<TemplateLiteral @1:9 ?children=[
+              <TemplateHead @1:9 value='`regex is ${'>,
+              <Regex @1:21 value='/wat/'>,
+              <TemplateTail @1:26 value='}`'>
+            ]>
+          >>
+        ]>
+        """,
+    ), (
+        'template_with_string',
+        """
+        value = `string is ${'wat'}`
+        """,
+        """
+        <Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<Assign @1:7 left=<
+              Identifier @1:1 value='value'>,
+            op='=',
+            right=<TemplateLiteral @1:9 ?children=[
+              <TemplateHead @1:9 value='`string is ${'>,
+              <String @1:22 value="'wat'">,
+              <TemplateTail @1:27 value='}`'>
+            ]>
+          >>
+        ]>
+        """,
+    ), (
+        'template_in_template',
+        """
+        value = `template embed ${`another${`template`}`} inside`
+        """,
+        """
+        <Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<Assign @1:7 left=<
+              Identifier @1:1 value='value'>,
+            op='=',
+            right=<TemplateLiteral @1:9 ?children=[
+              <TemplateHead @1:9 value='`template embed ${'>,
+              <TemplateLiteral @1:27 ?children=[
+                <TemplateHead @1:27 value='`another${'>,
+                <TemplateLiteral @1:37 ?children=[
+                  <TemplateNoSub @1:37 value='`template`'>
+                ]>,
+                <TemplateTail @1:47 value='}`'>
+              ]>,
+              <TemplateTail @1:49 value='} inside`'>
+            ]>
+          >>
+        ]>
+        """,
+    )]))
+
+
 def build_syntax_error_test_cases(clsname, parse):
     return build_exception_testcase(clsname, parse, ((
         label,
@@ -2798,6 +2967,22 @@ def build_syntax_error_test_cases(clsname, parse):
           function(arg) {};
         """,
         "Function statement requires a name at 3:11",
+    )]), ECMASyntaxError)
+
+
+def build_es2015_syntax_error_test_cases(clsname, parse):
+    return build_exception_testcase(clsname, parse, ((
+        label,
+        textwrap.dedent(argument).strip(),
+        msg,
+    ) for label, argument, msg in [(
+        'unexpected_if_in_template',
+        '`${if (wat)}`',
+        "Unexpected 'if' at 1:4 between '`${' at 1:1 and '(' at 1:7",
+    ), (
+        'empty_expression_in_template',
+        '`head${}tail`',
+        "Unexpected '}tail`' at 1:8 after '`head${' at 1:1",
     )]), ECMASyntaxError)
 
 

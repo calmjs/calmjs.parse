@@ -181,7 +181,6 @@ class Parser(object):
                    | boolean_literal
                    | numeric_literal
                    | string_literal
-                   | regex_literal
         """
         p[0] = p[1]
 
@@ -211,6 +210,61 @@ class Parser(object):
         """regex_literal : REGEX"""
         p[0] = self.asttypes.Regex(p[1])
         p[0].setpos(p)
+
+    # 11.8.6 Template
+    def p_template_nosub(self, p):
+        """template_nosub : TEMPLATE_NOSUB"""
+        # no_sub_template is called as such here for consistency
+        p[0] = self.asttypes.TemplateNoSub(p[1])
+        p[0].setpos(p)
+
+    def p_template_head(self, p):
+        """template_head : TEMPLATE_HEAD"""
+        p[0] = self.asttypes.TemplateHead(p[1])
+        p[0].setpos(p)
+
+    def p_template_middle(self, p):
+        """template_middle : TEMPLATE_MIDDLE"""
+        p[0] = self.asttypes.TemplateMiddle(p[1])
+        p[0].setpos(p)
+
+    def p_template_tail(self, p):
+        """template_tail : TEMPLATE_TAIL"""
+        p[0] = self.asttypes.TemplateTail(p[1])
+        p[0].setpos(p)
+
+    def p_template_literal(self, p):
+        """template_literal : template_nosub
+                            | template_head expr template_spans
+        """
+        literals = [p[1]]
+        if len(p) > 2:
+            # append the expression and extend with template spans
+            literals.append(p[2])
+            literals.extend(p[3])
+        p[0] = self.asttypes.TemplateLiteral(literals)
+        p[0].setpos(p)
+
+    def p_template_spans(self, p):
+        """template_spans : template_tail
+                          | template_middle_list template_tail
+        """
+        if len(p) == 2:
+            p[0] = [p[1]]
+        else:
+            p[1].append(p[2])
+            p[0] = p[1]
+
+    def p_template_middle_list(self, p):
+        """template_middle_list : template_middle expr
+                                | template_middle_list template_middle \
+                                  expr
+        """
+        if len(p) == 3:
+            p[0] = [p[1], p[2]]
+        else:
+            p[1].extend([p[2], p[3]])
+            p[0] = p[1]
 
     def p_identifier(self, p):
         """identifier : ID"""
@@ -290,6 +344,8 @@ class Parser(object):
     def p_primary_expr_no_brace_3(self, p):
         """primary_expr_no_brace : literal
                                  | array_literal
+                                 | regex_literal
+                                 | template_literal
         """
         p[0] = p[1]
 
