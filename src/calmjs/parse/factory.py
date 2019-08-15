@@ -61,7 +61,10 @@ def RawParserUnparserFactory(parser_name, parse_callable, *unparse_callables):
     def build_unparse(f):
         @wraps(f)
         def unparse(self, source, *a, **kw):
-            node = parse_callable(source)
+            node = parse_callable(
+                source,
+                with_comments=kw.pop('with_comments', False),
+            )
             return f(node, *a, **kw)
         # a dumb and lazy docstring replacement
         unparse.__doc__ = f.__doc__.replace(
