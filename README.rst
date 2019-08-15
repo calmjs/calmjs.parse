@@ -5,12 +5,12 @@ A collection of parsers and helper libraries for understanding
 ECMAScript; a near feature complete fork of |slimit|_.  A CLI front-end
 for this package is shipped separately as |crimp|_.
 
-.. image:: https://travis-ci.org/calmjs/calmjs.parse.svg?branch=1.2.x
+.. image:: https://travis-ci.org/calmjs/calmjs.parse.svg?branch=1.2.0
     :target: https://travis-ci.org/calmjs/calmjs.parse
-.. image:: https://ci.appveyor.com/api/projects/status/5dj8dnu9gmj02msu/branch/1.2.x?svg=true
-    :target: https://ci.appveyor.com/project/metatoaster/calmjs-parse/branch/1.2.x
-.. image:: https://coveralls.io/repos/github/calmjs/calmjs.parse/badge.svg?branch=1.2.x
-    :target: https://coveralls.io/github/calmjs/calmjs.parse?branch=1.2.x
+.. image:: https://ci.appveyor.com/api/projects/status/5dj8dnu9gmj02msu/branch/1.2.0?svg=true
+    :target: https://ci.appveyor.com/project/metatoaster/calmjs-parse/branch/1.2.0
+.. image:: https://coveralls.io/repos/github/calmjs/calmjs.parse/badge.svg?branch=1.2.0
+    :target: https://coveralls.io/github/calmjs/calmjs.parse?branch=1.2.0
 
 .. |calmjs.parse| replace:: ``calmjs.parse``
 .. |crimp| replace:: ``crimp``
