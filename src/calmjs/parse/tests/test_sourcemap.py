@@ -578,7 +578,7 @@ class SourceMapTestCase(unittest.TestCase):
             [[(0, 0, 0, 0)], [(2, 0, 0, 14)], [(0, 0, 0, 28)]], mapping)
         self.assertEqual(sources, ['demo.js'])
 
-    def test_source_map_inferred_trailing_newline(self):
+    def test_source_map_inferred_trailing_newline_calculated(self):
         err = setup_logger(self, sourcemap.logger)
         stream = StringIO()
         # Note the None values, as that signifies inferred elements.
@@ -590,10 +590,46 @@ class SourceMapTestCase(unittest.TestCase):
         self.assertEqual(names, [])
         self.assertEqual([
             [(0, 0, 0, 0)],
-            [(0, 0, 0, 12)],
+            [(0, 0, 1, 0)],
+        ], mapping)
+        self.assertNotIn("WARNING", err.getvalue())
+
+    def test_source_map_inferred_trailing_newline_unknown(self):
+        err = setup_logger(self, sourcemap.logger)
+        stream = StringIO()
+        # Note the None values, as that signifies inferred elements.
+        fragments = [
+            ('console.log(\n  "hello world");', 1, 1, None, None),
+            ('/* foo\nbar */', 0, 0, None, None),
+            (' /* foo\nbar */', None, None, None, 'some_script.js'),
+        ]
+        mapping, _, names = sourcemap.write(fragments, stream)
+        self.assertEqual(
+            stream.getvalue(),
+            'console.log(\n  "hello world");/* foo\nbar */ /* foo\nbar */',
+        )
+        self.assertEqual(names, [])
+        self.assertEqual([
+            [(0, 0, 0, 0)],
+            [(0, 0, 1, 0)],
+            # yeah the comments really came out wrong it looks like
+            [(0, 0, 0, 17), (6,)],
+            [],
         ], mapping)
         self.assertIn(
-            "WARNING text in the generated document at line 2", err.getvalue())
+            "WARNING text in the generated stream at line 3 may be mapped "
+            "incorrectly due to stream fragment containing a trailing newline "
+            "character provided without both lineno and colno defined; "
+            "text fragment originated from: <unknown>",
+            err.getvalue()
+        )
+        self.assertIn(
+            "WARNING text in the generated stream at line 4 may be mapped "
+            "incorrectly due to stream fragment containing a trailing newline "
+            "character provided without both lineno and colno defined; "
+            "text fragment originated from: some_script.js",
+            err.getvalue()
+        )
 
     def test_source_map_renamed(self):
         stream = StringIO()
