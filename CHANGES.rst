@@ -1,6 +1,32 @@
 Changelog
 =========
 
+1.2.0 - 20??-??-??
+------------------
+
+- Partial support for parsing of comments.  Currently not all comments
+  will be captured during parsing, due to the desire to simplify access
+  of them through the ``asttypes.Node`` instances with the generic
+  ``comments`` attribute provided by it.  [
+  `#24 <https://github.com/calmjs/calmjs.parse/issues/24>`_
+  ]
+
+  - Enabled by passing ``with_comments=True`` to the parser..
+  - The limitation lines in the fact that if a node maps to multiple
+    tokens (e.g. ``if...else``), the comments that lie immediate before
+    the first will be captured, while the comments that lie immediate to
+    the subsequent ones will be omitted.  The fix would involve
+    providing a full syntax tree node types, and that the parser rules
+    would need to be implemented in a more amenable manner such that the
+    generation of such could be done.
+  - All comments that lie immediately before the node are accessible
+    using the ``comments`` attribute.
+  - These comments nodes will not be yielded via the children() method.
+  - Various features and methods have been updated to account for
+    comments.  Notably, sourcemap generation will be able to deal with
+    source fragments that contain newlines provided that both colno and
+    lineno are provided.
+
 1.1.4 - 201?-??-??
 ------------------
 

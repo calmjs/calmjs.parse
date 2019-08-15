@@ -304,6 +304,10 @@ def parse_to_repr(value):
     return repr_walker.walk(es5(value), pos=True)
 
 
+def parse_with_comments_to_repr(value):
+    return repr_walker.walk(es5(value, with_comments=True), pos=True)
+
+
 def singleline(s):
     def clean(f):
         r = f.strip()
@@ -2274,6 +2278,111 @@ ParsedNodeTypeTestCase = build_equality_testcase(
           >
         ]>]>
         """
+    )])
+)
+
+
+ParsedNodeTypesWithCommentsTestCase = build_equality_testcase(
+    'ParsedNodeTypeWithCommentsTestCase', parse_with_comments_to_repr, ((
+        label,
+        textwrap.dedent(argument).strip(),
+        singleline(result),
+    ) for label, argument, result in [(
+        'block_without_comments',
+        """
+        {
+          var a = 5;
+        }
+        """,
+        """
+        <ES5Program @1:1 ?children=[
+          <Block @1:1 ?children=[<VarStatement @2:3 ?children=[
+            <VarDecl @2:7 identifier=<Identifier @2:7 value='a'>,
+              initializer=<Number @2:11 value='5'>>
+          ]>]>
+        ]>
+        """,
+    ), (
+        'block_with_comments',
+        """
+        // hi
+        // this is a test
+        {
+          // comment
+          var/* inline block note */a = 5;
+        }
+        """,
+        """
+        <ES5Program @3:1 ?children=[
+          <Block @3:1 ?children=[
+            <VarStatement @5:3 ?children=[
+              <VarDecl @5:29 identifier=<Identifier @5:29 comments=<
+                Comments @5:6 ?children=[
+                  <BlockComment @5:6 value='/* inline block note */'>
+                ]
+              >, value='a'>, initializer=<Number @5:33 value='5'>>
+            ], comments=<Comments @4:3 ?children=[
+              <LineComment @4:3 value='// comment'>
+            ]>>
+          ], comments=<Comments @1:1 ?children=[
+            <LineComment @1:1 value='// hi'>,
+            <LineComment @2:1 value='// this is a test'>
+          ]>>
+        ]>
+        """,
+    ), (
+        'variable_statement',
+        """
+        // hello
+        var a;
+        """,
+        """
+        <ES5Program @2:1 ?children=[
+          <VarStatement @2:1 ?children=[
+            <VarDecl @2:5 identifier=<Identifier @2:5 value='a'>,
+              initializer=None>
+          ],
+          comments=<Comments @1:1 ?children=[
+            <LineComment @1:1 value='// hello'>
+          ]>>
+        ]>
+        """,
+    ), (
+        'if_else_block',
+        """
+         /* blah */
+        if (true) {
+          var x = 100;
+        } else
+         /* foobar */
+        {
+          var y = 200;
+        }
+        """,
+        """
+        <ES5Program @2:1 ?children=[
+          <If @2:1 alternative=<Block @6:1 ?children=[
+              <VarStatement @7:3 ?children=[
+                <VarDecl @7:7 identifier=<Identifier @7:7 value='y'>,
+                  initializer=<Number @7:11 value='200'>>
+              ]>
+            ],
+            comments=<Comments @5:2 ?children=[
+              <BlockComment @5:2 value='/* foobar */'>
+            ]>>,
+
+          comments=<Comments @1:1 ?children=[
+            <BlockComment @1:1 value='/* blah */'>
+          ]>,
+          consequent=<Block @2:11 ?children=[
+            <VarStatement @3:3 ?children=[
+              <VarDecl @3:7 identifier=<Identifier @3:7 value='x'>,
+                initializer=<Number @3:11 value='100'>>
+              ]>
+            ]>,
+          predicate=<Boolean @2:5 value='true'>>
+        ]>
+        """,
     )])
 )
 

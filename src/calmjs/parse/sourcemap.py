@@ -367,24 +367,36 @@ def write(
             # doing this last to update the position for the next line
             # or chunk for the relative values based on what was added
             if line[-1:] in '\r\n':
-                # Note: this HAS to be an edge case and should never
-                # happen, but this has the potential to muck things up.
-                # Since the parent only provided the start, will need
-                # to manually track the chunks internal to here.
-                # This normally shouldn't happen with sane parsers
-                # and lexers, but this assumes that no further symbols
-                # aside from the new lines got inserted.
                 colno = (
                     colno if colno in (0, None) else
                     colno + len(line.rstrip()))
                 book.original_len = book.written_len = 0
                 push_line()
 
+                if lineno and colno:
+                    # naturally, a provided lineno and colno can be
+                    # safely inferred
+                    lineno += 1
+                    colno = 1
+                    continue
+
+                # This normally shouldn't happen with sane parsers
+                # and lexers, but this assumes that no further symbols
+                # aside from the new lines got inserted.  So this is
+                # likely caused by some generated element produced
+                # inferred fragments that include newlines, and without
+                # the exact location the chunk cannot be manually
+                # tracked.  Simply warn about this edge case and
+                # continue processing.
                 if line is not lines[-1]:
                     logger.warning(
-                        'text in the generated document at line %d may be '
-                        'mapped incorrectly due to trailing newline character '
-                        'in provided text fragment.', len(mappings)
+                        'text in the generated stream at line %d may be '
+                        'mapped incorrectly due to stream fragment containing '
+                        'a trailing newline character provided without both '
+                        'lineno and colno defined; '
+                        'text fragment originated from: %s',
+                        len(mappings),
+                        source if source else '<unknown>',
                     )
                     logger.info(
                         'text in stream fragments should not have trailing '

@@ -20,6 +20,9 @@ from calmjs.parse.ruletypes import (
     Dedent,
     Resolve,
     Literal,
+
+    LineComment,
+    BlockComment,
 )
 from calmjs.parse.handlers.core import (
     rule_handler_noop,
@@ -36,6 +39,7 @@ from calmjs.parse.handlers.core import (
     layout_handler_space_minimum,
 
     deferrable_handler_literal_continuation,
+    deferrable_handler_comment,
 
     default_rules,
     minimum_rules,
@@ -152,6 +156,9 @@ def indent(indent_str=None):
             (Space, EndStatement): layout_handler_semicolon,
             (OptionalSpace, EndStatement): layout_handler_semicolon,
             (Indent, Newline, Dedent): rule_handler_noop,
+        }, 'deferrable_handlers': {
+            LineComment: deferrable_handler_comment,
+            BlockComment: deferrable_handler_comment,
         }}
     return indentation_rule
 

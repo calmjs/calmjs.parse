@@ -26,6 +26,7 @@
 __author__ = 'Ruslan Spivak <ruslan.spivak@gmail.com>'
 
 import unittest
+import textwrap
 from functools import partial
 
 from calmjs.parse.lexers.es5 import Lexer
@@ -37,6 +38,7 @@ from calmjs.parse.tests.lexer import (
     run_lexer,
     run_lexer_pos,
     es5_cases,
+    es5_all_cases,
     es5_pos_cases,
     es5_error_cases_str_sq,
     es5_error_cases_str_dq,
@@ -70,6 +72,55 @@ class LexerFailureTestCase(unittest.TestCase):
         self.assertEqual(str(e.exception), "Mismatched ')' at 3:3")
 
 
+class LexerWithCommentsTestCase(unittest.TestCase):
+
+    def test_with_line_comments_before(self):
+        lexer = Lexer(with_comments=True)
+        lexer.input(textwrap.dedent('''
+        // foo
+        // bar
+        baz
+        '''))
+        tokens = [token for token in lexer]
+        self.assertEqual(1, len(tokens))
+        token = tokens[0]
+        self.assertEqual(2, len(token.hidden_tokens))
+        self.assertEqual(token.hidden_tokens[0].value, '// foo')
+        self.assertEqual(token.hidden_tokens[0].type, 'LINE_COMMENT')
+        self.assertEqual(token.hidden_tokens[1].value, '// bar')
+        self.assertEqual(token.hidden_tokens[1].type, 'LINE_COMMENT')
+
+    def test_with_line_comment_trail(self):
+        lexer = Lexer(with_comments=True)
+        lexer.input(textwrap.dedent('''
+        baz // bar
+        foo
+        '''))
+        tokens = [token for token in lexer]
+        self.assertEqual(2, len(tokens))
+        self.assertFalse(hasattr(tokens[0], 'hidden_tokens'))
+        token = tokens[1]
+        self.assertEqual(1, len(token.hidden_tokens))
+        self.assertEqual(token.hidden_tokens[0].value, '// bar')
+        self.assertEqual(token.hidden_tokens[0].type, 'LINE_COMMENT')
+
+    def test_block_comment(self):
+        lexer = Lexer(with_comments=True)
+        lexer.input(textwrap.dedent('''
+        baz /*foo
+        *// // bar
+        '''))
+        tokens = [token for token in lexer]
+        self.assertEqual(2, len(tokens))
+        self.assertFalse(hasattr(tokens[0], 'hidden_tokens'))
+        token = tokens[1]
+        self.assertEqual(1, len(token.hidden_tokens))
+        self.assertEqual(token.hidden_tokens[0].value, '/*foo\n*/')
+        self.assertEqual(token.hidden_tokens[0].type, 'BLOCK_COMMENT')
+        # the remaining comments remain on lexer
+        self.assertEqual(lexer.hidden_tokens[0].value, '// bar')
+
+
 LexerKeywordTestCase = build_equality_testcase(
     'LexerKeywordTestCase', partial(run_lexer, lexer_cls=Lexer), (
         (label, data[0], data[1],) for label, data in [(
@@ -86,6 +137,11 @@ LexerKeywordTestCase = build_equality_testcase(
 LexerTestCase = build_equality_testcase(
     'LexerTestCase', partial(run_lexer, lexer_cls=Lexer), (
         (label, data[0], data[1],) for label, data in es5_cases))
+
+LexerAllTestCase = build_equality_testcase(
+    'LexerAllTestCase', partial(run_lexer, lexer_cls=partial(
+        Lexer, yield_comments=True
+    )), ((label, data[0], data[1],) for label, data in es5_all_cases))
 
 LexerErrorTestCase = build_exception_testcase(
     'LexerErrorTestCase', partial(

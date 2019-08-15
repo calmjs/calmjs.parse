@@ -61,7 +61,7 @@ class Parser(object):
 
     def __init__(self, lex_optimize=True, lextab=lextab,
                  yacc_optimize=True, yacctab=yacctab, yacc_debug=False,
-                 yacc_tracking=True, asttypes=asttypes):
+                 yacc_tracking=True, with_comments=False, asttypes=asttypes):
         # A warning: in order for line numbers and column numbers be
         # tracked correctly, ``yacc_tracking`` MUST be turned ON.  As
         # this parser was initially implemented with a number of manual
@@ -80,7 +80,7 @@ class Parser(object):
         self.yacc_debug = yacc_debug
         self.yacc_tracking = yacc_tracking
 
-        self.lexer = Lexer()
+        self.lexer = Lexer(with_comments=with_comments)
         self.lexer.build(optimize=lex_optimize, lextab=lextab)
         self.tokens = self.lexer.tokens
 
@@ -141,6 +141,8 @@ class Parser(object):
         """program : source_elements"""
         p[0] = self.asttypes.ES5Program(p[1])
         p[0].setpos(p)  # require yacc_tracking
+        # TODO should consume all remaining comment tokens from lexer,
+        # so trailing comments be provided
 
     def p_source_elements(self, p):
         """source_elements : empty
@@ -1463,12 +1465,12 @@ class Parser(object):
         p[0] = p[1]
 
 
-def parse(source):
+def parse(source, with_comments=False):
     """
     Return an AST from the input ES5 source.
     """
 
-    parser = Parser()
+    parser = Parser(with_comments=with_comments)
     return parser.parse(source)
 
 

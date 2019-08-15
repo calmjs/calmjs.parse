@@ -74,10 +74,79 @@ DIVISION_SYNTAX_MARKERS = frozenset([
     'LINE_TERMINATOR', 'LINE_COMMENT', 'BLOCK_COMMENT'
 ])
 
+COMMENTS = frozenset([
+    'LINE_COMMENT', 'BLOCK_COMMENT'
+])
+
 PATT_LINE_TERMINATOR_SEQUENCE = re.compile(
     r'(\n|\r(?!\n)|\u2028|\u2029|\r\n)', flags=re.S)
 PATT_LINE_CONTINUATION = re.compile(
     r'\\(\n|\r(?!\n)|\u2028|\u2029|\r\n)', flags=re.S)
+
+
+PATT_BROKEN_STRING = re.compile(r"""
+(?:
+    # broken double quoted string
+    (?:"                               # opening double quote
+        (?: [^"\\\n\r\u2028\u2029]     # not ", \, line terminators; allow
+            | \\(\n|\r(?!\n)|\u2028|\u2029|\r\n)  # line continuation
+            | \\[a-tvwyzA-TVWYZ!-\/:-@\[-`{-~] # escaped chars
+            | \\x[0-9a-fA-F]{2}        # hex_escape_sequence
+            | \\u[0-9a-fA-F]{4}        # unicode_escape_sequence
+            | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3})  # octal_escape_sequence
+            | \\0                      # <NUL> (15.10.2.11)
+        )*                             # and capture them greedily
+    )                                  # omit closing quote
+    |
+    # broken single quoted string
+    (?:'                               # opening single quote
+        (?: [^'\\\n\r\u2028\u2029]     # not ', \, line terminators; allow
+            | \\(\n|\r(?!\n)|\u2028|\u2029|\r\n)  # line continuation
+            | \\[a-tvwyzA-TVWYZ!-\/:-@\[-`{-~] # escaped chars
+            | \\x[0-9a-fA-F]{2}        # hex_escape_sequence
+            | \\u[0-9a-fA-F]{4}        # unicode_escape_sequence
+            | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # octal_escape_sequence
+            | \\0                      # <NUL> (15.10.2.11)
+        )*                             # and capture them greedily
+    )                                  # omit closing quote
+)
+""", flags=re.VERBOSE)
+
+
+def broken_string_token_handler(lexer, token):
+    match = PATT_BROKEN_STRING.match(token.value)
+    if not match:
+        return
+
+    # update the error token value to only include what was matched here
+    # as this will be the actual token that "failed"
+    token.value = match.group()
+    # calculate colno for current token colno before...
+    colno = lexer._get_colno(token)
+    # updating the newline indexes for the error reporting for raw
+    # lexpos
+    lexer._update_newline_idx(token)
+    # probe for the next values (which no valid rules will match)
+    position = lexer.lexer.lexpos + len(token.value)
+    failure = lexer.lexer.lexdata[position:position + 2]
+    if failure and failure[0] == '\\':
+        type_ = {'x': 'hexadecimal', 'u': 'unicode'}[failure[1]]
+        seq = re.match(
+            r'\\[xu][0-9-a-f-A-F]*', lexer.lexer.lexdata[position:]
+        ).group()
+        raise ECMASyntaxError(
+            "Invalid %s escape sequence '%s' at %s:%s" % (
+                type_, seq, lexer.lineno,
+                lexer._get_colno_lexpos(position)
+            )
+        )
+    tl = 16  # truncate length
+    raise ECMASyntaxError(
+        'Unterminated string literal %s at %s:%s' % (
+            repr_compat(
+                token.value[:tl].strip() + (token.value[tl:] and '...')),
+            token.lineno, colno)
+    )
 
 
 class Lexer(object):
@@ -119,7 +188,7 @@ class Lexer(object):
     For more information see:
     http://www.ecma-international.org/publications/files/ECMA-ST/ECMA-262.pdf
     """
-    def __init__(self):
+    def __init__(self, with_comments=False, yield_comments=False):
         self.lexer = None
         self.prev_token = None
         self.valid_prev_token = None
@@ -128,7 +197,17 @@ class Lexer(object):
         self.next_tokens = []
         self.token_stack = [[None, []]]
         self.newline_idx = [0]
+        self.error_token_handlers = [
+            broken_string_token_handler,
+        ]
+        self.with_comments = with_comments
+        self.yield_comments = yield_comments
+        self.hidden_tokens = []
         self.build()
+
+        if not with_comments:
+            # just reassign the method.
+            self.token = self._token
 
     @property
     def lineno(self):
@@ -165,6 +244,13 @@ class Lexer(object):
         return token
 
     def token(self):
+        token = self._token()
+        if token and self.hidden_tokens:
+            token.hidden_tokens = self.hidden_tokens
+            self.hidden_tokens = []
+        return token
+
+    def _token(self):
         # auto-semi tokens that got added
         if self.next_tokens:
             return self.next_tokens.pop()
@@ -181,6 +267,9 @@ class Lexer(object):
             except IndexError:
                 tok = self._get_update_token()
                 if tok is not None and tok.type == 'LINE_TERMINATOR':
+                    # should this also be implemented?
+                    # if not self.drop_lineterm:
+                    #     self.hidden_tokens.append(tok)
                     continue
                 else:
                     return tok
@@ -188,6 +277,11 @@ class Lexer(object):
             if char != '/' or (char == '/' and next_char in ('/', '*')):
                 tok = self._get_update_token()
                 if tok.type in DIVISION_SYNTAX_MARKERS:
+                    if tok.type in COMMENTS:
+                        if self.yield_comments:
+                            return tok
+                        elif self.with_comments:
+                            self.hidden_tokens.append(tok)
                     continue
                 else:
                     return tok
@@ -475,7 +569,7 @@ class Lexer(object):
     t_XOREQUAL      = r'\^='
     t_OREQUAL       = r'\|='
 
-    t_LINE_COMMENT  = r'//[^\r\n]*'
+    t_LINE_COMMENT  = r'//[^\r\n\u2028\u2029]*'
     t_BLOCK_COMMENT = r'/\*[^*]*\*+([^/*][^*]*\*+)*/'
 
     # 7.3 Line Terminators
@@ -546,62 +640,6 @@ class Lexer(object):
     def t_STRING(self, token):
         return token
 
-    broken_string = r"""
-    (?:
-        # broken double quoted string
-        (?:"                               # opening double quote
-            (?: [^"\\\n\r\u2028\u2029]     # not ", \, line terminators; allow
-                | \\(\n|\r(?!\n)|\u2028|\u2029|\r\n)  # line continuation
-                | \\[a-tvwyzA-TVWYZ!-\/:-@\[-`{-~] # escaped chars
-                | \\x[0-9a-fA-F]{2}        # hex_escape_sequence
-                | \\u[0-9a-fA-F]{4}        # unicode_escape_sequence
-                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3})  # octal_escape_sequence
-                | \\0                      # <NUL> (15.10.2.11)
-            )*                             # and capture them greedily
-        )                                  # omit closing quote
-        |
-        # broken single quoted string
-        (?:'                               # opening single quote
-            (?: [^'\\\n\r\u2028\u2029]     # not ', \, line terminators; allow
-                | \\(\n|\r(?!\n)|\u2028|\u2029|\r\n)  # line continuation
-                | \\[a-tvwyzA-TVWYZ!-\/:-@\[-`{-~] # escaped chars
-                | \\x[0-9a-fA-F]{2}        # hex_escape_sequence
-                | \\u[0-9a-fA-F]{4}        # unicode_escape_sequence
-                | \\(?:[1-7][0-7]{0,2}|[0-7]{2,3}) # octal_escape_sequence
-                | \\0                      # <NUL> (15.10.2.11)
-            )*                             # and capture them greedily
-        )                                  # omit closing quote
-    )
-    """
-
-    @ply.lex.TOKEN(broken_string)
-    def t_BROKEN_STRING(self, token):
-        # calculate colno for current token colno before...
-        colno = self._get_colno(token)
-        # updating the newline indexes for the error reporting for raw
-        # lexpos
-        self._update_newline_idx(token)
-        # probe for the next values (which no valid rules will match)
-        failure = self.lexer.lexdata[self.lexer.lexpos:self.lexer.lexpos + 2]
-        if failure and failure[0] == '\\':
-            type_ = {'x': 'hexadecimal', 'u': 'unicode'}[failure[1]]
-            seq = re.match(
-                r'\\[xu][0-9-a-f-A-F]*', self.lexer.lexdata[self.lexer.lexpos:]
-            ).group()
-            raise ECMASyntaxError(
-                "Invalid %s escape sequence '%s' at %s:%s" % (
-                    type_, seq, self.lineno,
-                    self._get_colno_lexpos(self.lexer.lexpos)
-                )
-            )
-        tl = 16  # truncate length
-        raise ECMASyntaxError(
-            'Unterminated string literal %s at %s:%s' % (
-                repr_compat(
-                    token.value[:tl].strip() + (token.value[tl:] and '...')),
-                token.lineno, colno)
-        )
-
     # XXX: <ZWNJ> <ZWJ> ?
     identifier_start = r'(?:' + r'[a-zA-Z_$]' + r'|' + LETTER + r')+'
     identifier_part = (
@@ -628,6 +666,9 @@ class Lexer(object):
         return token
 
     def t_error(self, token):
+        for handler in self.error_token_handlers:
+            handler(self, token)
+
         if self.cur_token:
             # TODO make use of the extended calling signature when done
             raise ECMASyntaxError(

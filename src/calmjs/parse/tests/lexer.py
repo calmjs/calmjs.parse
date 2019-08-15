@@ -123,29 +123,13 @@ es5_cases = [
         # multiline string (string written across multiple lines
         # of code) https://github.com/rspivak/slimit/issues/24
         'slimit_issue_24_multi_line_code_double',
-        ("var a = 'hello \\\n world'""",
+        ("var a = 'hello \\\n world'",
          ['VAR var', 'ID a', 'EQ =', "STRING 'hello \\\n world'"]),
     ), (
         'slimit_issue_24_multi_line_code_single',
         ('var a = "hello \\\r world"',
          ['VAR var', 'ID a', 'EQ =', 'STRING "hello \\\r world"']),
     ), (
-        # # Comments
-        # ("""
-        # //comment
-        # a = 5;
-        # """, ['LINE_COMMENT //comment', 'ID a', 'EQ =', 'NUMBER 5', 'SEMI ;']
-        #  ),
-        # ('a//comment', ['ID a', 'LINE_COMMENT //comment']),
-        # ('/***/b/=3//line',
-        #  ['BLOCK_COMMENT /***/', 'ID b', 'DIVEQUAL /=',
-        #   'NUMBER 3', 'LINE_COMMENT //line']
-        #  ),
-        # ('/*\n * Copyright LGPL 2011 \n*/\na = 1;',
-        #  ['BLOCK_COMMENT /*\n * Copyright LGPL 2011 \n*/',
-        #   'ID a', 'EQ =', 'NUMBER 1', 'SEMI ;']
-        #  ),
-
         # regex
         'regex_1',
         (r'a=/a*/,1', ['ID a', 'EQ =', 'REGEX /a*/', 'COMMA ,', 'NUMBER 1']),
@@ -347,11 +331,6 @@ es5_cases = [
         ("a = b\n\n\n/hi/s",
          ['ID a', 'EQ =', 'ID b', 'DIV /', 'ID hi', 'DIV /', 'ID s'])
     ), (
-        # okay this is getting ridiculous how bad ECMA is.
-        'section_7_comments',
-        ("a = b\n/** **/\n\n/hi/s",
-         ['ID a', 'EQ =', 'ID b', 'DIV /', 'ID hi', 'DIV /', 'ID s'])
-    ), (
         'slimit_issue_39_and_57',
         (r"f(a, 'hi\01').split('\1').split('\0');",
          ['ID f', 'LPAREN (', 'ID a', 'COMMA ,', r"STRING 'hi\01'", 'RPAREN )',
@@ -362,6 +341,11 @@ es5_cases = [
         'section_7_8_4_string_literal_with_7_3_conformance',
         ("'<LF>\\\n<CR>\\\r<LS>\\\u2028<PS>\\\u2029<CR><LF>\\\r\n'",
          ["STRING '<LF>\\\n<CR>\\\r<LS>\\\u2028<PS>\\\u2029<CR><LF>\\\r\n'"])
+    ), (
+        # okay this is getting ridiculous how bad ECMA is.
+        'section_7_comments',
+        ("a = b\n/** **/\n\n/hi/s",
+         ['ID a', 'EQ =', 'ID b', 'DIV /', 'ID hi', 'DIV /', 'ID s'])
     ),
 ]
 
@@ -412,6 +396,36 @@ es5_error_cases_str = [
         'Unterminated string literal "\'1234567890abcde..." at 1:11',
     )
 ]
+
+es5_comment_cases = [
+    (
+        'line_comment_whole',
+        ('//comment\na = 5;\n',
+         ['LINE_COMMENT //comment', 'ID a', 'EQ =', 'NUMBER 5', 'SEMI ;']),
+    ), (
+        'line_comment_trail',
+        ('a//comment', ['ID a', 'LINE_COMMENT //comment']),
+    ), (
+        'block_comment_single',
+        ('/***/b/=3//line',
+         ['BLOCK_COMMENT /***/', 'ID b', 'DIVEQUAL /=',
+          'NUMBER 3', 'LINE_COMMENT //line']),
+    ), (
+        'block_comment_multiline',
+        ('/*\n * Copyright LGPL 2011 \n*/\na = 1;',
+         ['BLOCK_COMMENT /*\n * Copyright LGPL 2011 \n*/',
+          'ID a', 'EQ =', 'NUMBER 1', 'SEMI ;']),
+    ), (
+        # this will replace the standard test cases
+        'section_7_comments',
+        ("a = b\n/** **/\n\n/hi/s",
+         ['ID a', 'EQ =', 'ID b', 'BLOCK_COMMENT /** **/', 'DIV /', 'ID hi',
+          'DIV /', 'ID s'])
+    )
+]
+
+# replace the section_7_comments test case
+es5_all_cases = es5_cases[:-1] + es5_comment_cases
 
 # double quote version
 es5_error_cases_str_dq = [

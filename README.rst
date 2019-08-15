@@ -70,7 +70,7 @@ The following command may be executed to source the latest stable
 version of |calmjs.parse| wheel from PyPI for installation into the
 current Python environment.
 
-.. code:: sh
+.. code:: console
 
     $ pip install calmjs.parse
 
@@ -99,7 +99,7 @@ Development is still ongoing with |calmjs.parse|, for the latest
 features and bug fixes, the development version may be installed through
 git like so:
 
-.. code:: sh
+.. code:: console
 
     $ pip install git+https://github.com/calmjs/calmjs.parse.git#egg=calmjs.parse
 
@@ -133,7 +133,7 @@ users, as they may not have write privileges at that level.
 To execute the optimizer from the shell, the provided helper script may
 be used like so:
 
-.. code:: sh
+.. code:: console
 
     $ python -m calmjs.parse.parsers.optimize
 
@@ -152,7 +152,7 @@ Testing the installation
 To ensure that the |calmjs.parse| installation is functioning correctly,
 the built-in testsuite can be executed by the following:
 
-.. code:: sh
+.. code:: console
 
     $ python -m unittest calmjs.parse.tests.make_suite
 
@@ -174,7 +174,7 @@ As this is a parser library, no executable shell commands are provided.
 There is however a helper callable object provided at the top level for
 immediate access to the parsing feature.  It may be used like so:
 
-.. code:: python
+.. code:: pycon
 
     >>> from calmjs.parse import es5
     >>> program_source = u'''
@@ -206,9 +206,25 @@ immediate access to the parsing feature.  It may be used like so:
 
     >>>
 
-Please note the change in indentation and the lack of comments, as the
-default printer has its own indentation scheme and the parser currently
-skips over comments.
+Please note the change in indentation as the default printer has its own
+indentation scheme.  If comments are needed, the parser can be called
+using ``with_comments=True``:
+
+.. code:: pycon
+
+    >>> program_wc = es5(program_source, with_comments=True)
+    >>> print(program_wc)
+    // simple program
+    var main = function(greet) {
+      var hello = "hello " + greet;
+      return hello;
+    };
+    console.log(main('world'));
+
+    >>>
+
+Also note that there are limitations with the capturing of comments as
+documented in the `Limitations`_ section.
 
 The parser classes are organized under the ``calmjs.parse.parsers``
 module, with each language being under their own module.  A
@@ -230,7 +246,7 @@ parameters, such as what characters to use for indentation: (note that
 the ``__str__`` call implicitly invoked through ``print`` shown
 previously is implemented through this).
 
-.. code:: python
+.. code:: pycon
 
     >>> from calmjs.parse.unparsers.es5 import pretty_print
     >>> print(pretty_print(program, indent_str='    '))
@@ -245,7 +261,7 @@ previously is implemented through this).
 There is also one for printing without any unneeded whitespaces, works
 as a source minifier:
 
-.. code:: python
+.. code:: pycon
 
     >>> from calmjs.parse.unparsers.es5 import minify_print
     >>> print(minify_print(program))
@@ -260,13 +276,13 @@ library code that is meant to be reused by other packages (other sources
 referencing the original unobfuscated names will be unable to do so).
 
 Alternatively, direct invocation on a raw string can be done using the
-attributes that were provided under the same name as the base object that
-was imported initially.  For instance, it can simply pretty print a
-JavaScript source file without comments, or minify the source file
-directly.
+attributes provided under the same name as the above base objects that
+were imported initially.  Relevant keyword arguments would be diverted
+to the appropriate underlying functions, for example:
 
-.. code:: python
+.. code:: pycon
 
+    >>> # pretty print without comments being parsed
     >>> print(es5.pretty_print(program_source))
     var main = function(greet) {
       var hello = "hello " + greet;
@@ -274,6 +290,16 @@ directly.
     };
     console.log(main('world'));
 
+    >>> # pretty print with comments parsed
+    >>> print(es5.pretty_print(program_source, with_comments=True))
+    // simple program
+    var main = function(greet) {
+      var hello = "hello " + greet;
+      return hello;
+    };
+    console.log(main('world'));
+
+    >>> # minify print
     >>> print(es5.minify_print(program_source, obfuscate=True))
     var main=function(b){var a="hello "+b;return a;};console.log(main('world'));
 
@@ -289,7 +315,7 @@ generation of source maps.  There are helper functions from the
 regenerated source code to some stream, along with processing the
 results into a sourcemap file.  An example:
 
-.. code:: python
+.. code:: pycon
 
     >>> import json
     >>> from io import StringIO
@@ -326,7 +352,7 @@ populating the ``"sources"`` list in the resulting source map.  For the
 following example, assign a value to that attribute on the program
 directly.
 
-.. code:: python
+.. code:: pycon
 
     >>> from calmjs.parse.unparsers.es5 import minify_printer
     >>> program.sourcepath = 'demo.js'  # say this was opened there
@@ -358,7 +384,7 @@ The following example shows how to use the function to read from a
 stream and write out the relevant items back out to the write only
 streams:
 
-.. code:: python
+.. code:: pycon
 
     >>> from calmjs.parse import io
     >>> h4_program_src = open('/tmp/html4.js')
@@ -385,7 +411,7 @@ For a simple concatenation of multiple sources into one file, along with
 inline source map (i.e. where the sourceMappingURL is a ``data:`` URL of
 the base64 encoding of the JSON string), the following may be done:
 
-.. code:: python
+.. code:: pycon
 
     >>> files = [open('/tmp/html4.js'), open('/tmp/legacy.js')]
     >>> combined = open('/tmp/combined.js', 'w+')
@@ -434,7 +460,7 @@ handlers can be set up using existing rule provider functions.  For
 instance, a printer for obfuscating identifier names while maintaining
 indentation for the output of an ES5 AST can be constructed like so:
 
-.. code:: python
+.. code:: pycon
 
     >>> from calmjs.parse.unparsers.es5 import Unparser
     >>> from calmjs.parse.rules import indent
@@ -503,7 +529,7 @@ supplies a collection of generic tree walking methods for a tree of AST
 nodes.  The following is an example usage on how one might extract all
 Object assignments from a given script file:
 
-.. code:: python
+.. code:: pycon
 
     >>> from calmjs.parse import es5
     >>> from calmjs.parse.asttypes import Object, VarDecl, FunctionCall
@@ -553,6 +579,26 @@ Object assignments from a given script file:
 Further details and example usage can be consulted from the various
 docstrings found within the module.
 
+Limitations
+-----------
+
+Comments currently may be incomplete
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Due to the implementation of the lexer/parser along with how the ast
+node types have been implemented, there are restrictions on where the
+comments may be exposed if enabled.  Currently, such limitations exists
+for nodes that are created by production rules that consume multiple
+lexer tokens at once - only comments preceding the first token will be
+captured, with all remaining comments discarded.
+
+For example, this limitation means that any comments before the ``else``
+token will be omitted (as the comment will be provided by the ``if``
+token), as the production rule for an ``If`` node consumes both these
+tokens and the node as implemented only provides a single slot for
+comments.  Likewise, any comments before the ``:`` token in a ternary
+statement will also be discarded as that is the second token consumed
+by the production rule that produces a ``Conditional`` node.
 
 Troubleshooting
 ---------------
@@ -564,7 +610,7 @@ For platforms or systems that do not have utf8 configured as the default
 encoding, the automatic table generation may fail when constructing a
 parser instance.  An example:
 
-.. code::
+.. code:: pycon
 
     >>> from calmjs.parse.parsers import es5
     >>> parser = es5.Parser()
@@ -580,7 +626,7 @@ parser instance.  An example:
 
 A workaround helper script is provided, it may be executed like so:
 
-.. code:: sh
+.. code:: console
 
     $ python -m calmjs.parse.parsers.optimize
 
