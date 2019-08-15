@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.2.0 - 20??-??-??
+1.2.0 - 2019-08-15
 ------------------
 
 - Partial support for parsing of comments.  Currently not all comments
@@ -26,9 +26,6 @@ Changelog
     comments.  Notably, sourcemap generation will be able to deal with
     source fragments that contain newlines provided that both colno and
     lineno are provided.
-
-1.1.4 - 201?-??-??
-------------------
 
 - Correctly fail on incorrect hexadecimal/unicode escape sequences while
   reporting the specific character location; also report on the starting
