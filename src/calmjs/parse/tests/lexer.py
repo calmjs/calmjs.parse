@@ -630,6 +630,18 @@ es2015_cases = [
         (r'`f\`o`',
          [r'TEMPLATE_NOSUB `f\`o`']),
     ), (
+        'template_middle_with_object',
+        ('`object${{1:1}} ${foo}`',
+         ['TEMPLATE_HEAD `object${',
+          'LBRACE {', 'NUMBER 1', 'COLON :', 'NUMBER 1', 'RBRACE }',
+          'TEMPLATE_MIDDLE } ${', 'ID foo', 'TEMPLATE_TAIL }`']),
+    ), (
+        'template_tail_with_object',
+        ('`object${{1:1}}`',
+         ['TEMPLATE_HEAD `object${',
+          'LBRACE {', 'NUMBER 1', 'COLON :', 'NUMBER 1', 'RBRACE }',
+          'TEMPLATE_TAIL }`']),
+    ), (
         'template_literal_assignment',
         ('s = `hello world`',
          ['ID s', 'EQ =', 'TEMPLATE_NOSUB `hello world`']),
@@ -684,6 +696,15 @@ es2015_error_cases_tmpl = [
         "var foo = `${foo}bar${baz}fail",
         # the specific identifiers are not tracked, thus ...
         "Unterminated template literal '`${...}bar${...}...' at 1:11",
+    ), (
+        'unterminated_template_nested',
+        "var foo = `${`${foo}bar${baz}fail`}",
+        # the specific identifiers are not tracked, thus ...
+        "Unterminated template literal '`${...}' at 1:11",
+    ), (
+        'unexpected_template_tail',
+        "var foo = `${value}`}`",
+        "Unexpected '}' at 1:21",
     ), (
         'invalid_hex_sequence',
         "var foo = `fail\\x1`",

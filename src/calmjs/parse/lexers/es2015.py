@@ -3,6 +3,8 @@
 ES2015 (ECMAScript 6th Edition/ES6) lexer.
 """
 
+from __future__ import unicode_literals
+
 import re
 import ply
 from itertools import chain
@@ -75,9 +77,9 @@ def broken_template_token_handler(lexer, token):
     if lexer.current_template_tokens:
         # join all tokens together
         tmpl = '...'.join(
-            t.value for t in chain(lexer.current_template_tokens, [token]))
-        lineno = lexer.current_template_tokens[0].lineno
-        colno = lexer.current_template_tokens[0].colno
+            t.value for t in chain(lexer.current_template_tokens[-1], [token]))
+        lineno = lexer.current_template_tokens[-1][0].lineno
+        colno = lexer.current_template_tokens[-1][0].colno
     else:
         tmpl = token.value
         lineno = token.lineno
@@ -96,6 +98,7 @@ class Lexer(ES5Lexer):
             with_comments=with_comments, yield_comments=yield_comments)
         self.error_token_handlers.append(broken_template_token_handler)
         self.current_template_tokens = []
+        self.current_template_tokens_braces = []
 
     # Punctuators (ES6)
     # t_DOLLAR_LBRACE  = r'${'
@@ -149,6 +152,7 @@ class Lexer(ES5Lexer):
     (?:`|\${))                         # closing ` or ${
     """
 
+    LBRACE        = r'{'
     RBRACE        = r'}'
 
     @ply.lex.TOKEN(template)
@@ -157,13 +161,38 @@ class Lexer(ES5Lexer):
             if patt.match(token.value):
                 token.type = token_type
                 break
-        if token.type == 'TEMPLATE_HEAD':
-            self.current_template_tokens = [token]
-        elif token.type == 'TEMPLATE_MIDDLE':
-            self.current_template_tokens.append(token)
         else:
-            self.current_template_tokens = []
+            raise ValueError("invalid token %r" % token)
 
+        if token.type == 'TEMPLATE_HEAD':
+            self.current_template_tokens.append([token])
+            self.current_template_tokens_braces.append(0)
+            return token
+        elif token.type == 'TEMPLATE_NOSUB':
+            return token
+
+        if not self.current_template_tokens_braces:
+            raise ECMASyntaxError('Unexpected %s at %s:%s' % (
+                repr_compat('}'), token.lineno, self._get_colno(token)))
+        if self.current_template_tokens_braces[-1] > 0:
+            # produce a LBRACE token instead
+            self.current_template_tokens_braces[-1] -= 1
+            self.lexer.lexpos = self.lexer.lexpos - len(token.value) + 1
+            token.value = token.value[0]
+            token.type = 'RBRACE'
+            return token
+
+        if token.type == 'TEMPLATE_MIDDLE':
+            self.current_template_tokens[-1].append(token)
+        elif token.type == 'TEMPLATE_TAIL':
+            self.current_template_tokens_braces.pop()
+            self.current_template_tokens.pop()
+        return token
+
+    @ply.lex.TOKEN(LBRACE)
+    def t_LBRACE(self, token):
+        if self.current_template_tokens_braces:
+            self.current_template_tokens_braces[-1] += 1
         return token
 
     @ply.lex.TOKEN(RBRACE)

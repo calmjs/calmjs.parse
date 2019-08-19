@@ -2872,6 +2872,24 @@ def build_es2015_node_repr_test_cases(clsname, parse, program_type):
         ]>
         """,
     ), (
+        'template_with_many_rbrace',
+        """
+        value = `string is ${wat}}}}`
+        """,
+        """
+        <Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<Assign @1:7 left=<
+              Identifier @1:1 value='value'>,
+            op='=',
+            right=<TemplateLiteral @1:9 ?children=[
+              <TemplateHead @1:9 value='`string is ${'>,
+              <Identifier @1:22 value='wat'>,
+              <TemplateTail @1:25 value='}}}}`'>
+            ]>
+          >>
+        ]>
+        """,
+    ), (
         'template_in_template',
         """
         value = `template embed ${`another${`template`}`} inside`
@@ -2891,6 +2909,88 @@ def build_es2015_node_repr_test_cases(clsname, parse, program_type):
                 <TemplateTail @1:47 value='}`'>
               ]>,
               <TemplateTail @1:49 value='} inside`'>
+            ]>
+          >>
+        ]>
+        """,
+    ), (
+        'template_tail_with_object',
+        """
+        value = `object${{1:1}}}`
+        """,
+        """
+        <Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<Assign @1:7 left=<
+              Identifier @1:1 value='value'>, op='=',
+            right=<TemplateLiteral @1:9 ?children=[
+              <TemplateHead @1:9 value='`object${'>,
+              <Object @1:18 properties=[
+                <Assign @1:20 left=<Number @1:19 value='1'>,
+                  op=':',
+                  right=<Number @1:21 value='1'>>
+              ]>,
+              <TemplateTail @1:23 value='}}`'>
+            ]>
+          >>
+        ]>
+        """,
+    ), (
+        'template_middle_with_object',
+        """
+        value = `object${{1:1}}middle${tail}`
+        """,
+        """
+        <ES2015Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<Assign @1:7 left=<
+              Identifier @1:1 value='value'>,
+            op='=', right=<TemplateLiteral @1:9 ?children=[
+              <TemplateHead @1:9 value='`object${'>,
+              <Object @1:18 properties=[
+                <Assign @1:20 left=<Number @1:19 value='1'>,
+                  op=':', right=<Number @1:21 value='1'>>
+              ]>,
+              <TemplateMiddle @1:23 value='}middle${'>,
+              <Identifier @1:32 value='tail'>,
+              <TemplateTail @1:36 value='}`'>
+            ]>
+          >>
+        ]>
+        """,
+    ), (
+        'template_with_object_with_template_with_object',
+        """
+        value = `object
+        ${{1:`${{
+          2:`${{3:3}}`
+        }}`}}
+        `
+        """,
+        r"""
+        <Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<Assign @1:7 left=<
+              Identifier @1:1 value='value'>,
+            op='=', right=<TemplateLiteral @1:9 ?children=[
+              <TemplateHead @1:9 value='`object\n${'>,
+              <Object @2:3 properties=[
+                <Assign @2:5 left=<Number @2:4 value='1'>, op=':',
+                  right=<TemplateLiteral @2:6 ?children=[
+                    <TemplateHead @2:6 value='`${'>,
+                    <Object @2:9 properties=[
+                      <Assign @3:4 left=<Number @3:3 value='2'>, op=':',
+                        right=<TemplateLiteral @3:5 ?children=[
+                          <TemplateHead @3:5 value='`${'>,
+                        <Object @3:8 properties=[
+                          <Assign @3:10 left=<Number @3:9 value='3'>,
+                            op=':', right=<Number @3:11 value='3'>>
+                        ]>,
+                        <TemplateTail @3:13 value='}`'>
+                      ]>>
+                    ]>,
+                  <TemplateTail @4:2 value='}`'>
+                  ]>
+                >
+              ]>,
+              <TemplateTail @4:5 value='}\n`'>
             ]>
           >>
         ]>
@@ -2983,6 +3083,22 @@ def build_es2015_syntax_error_test_cases(clsname, parse):
         'empty_expression_in_template',
         '`head${}tail`',
         "Unexpected '}tail`' at 1:8 after '`head${' at 1:1",
+    ), (
+        'mismatched_template_termination_eof',
+        "var foo = `${`${foo}bar${baz}fail`",
+        "Unexpected end of input after '}fail`' at 1:29",
+    ), (
+        'mismatched_template_termination',
+        "var foo = `head${`${foo}bar${baz}fail`}",
+        "Unterminated template literal '`head${...}' at 1:11",
+    ), (
+        'unexpected_block',
+        "var foo = `${{11}}`",
+        "Unexpected '}' at 1:17 after '11' at 1:15",
+    ), (
+        'object_no_template_keys',
+        "var foo = {`foo`: `foo`}",
+        "Unexpected '`foo`' at 1:12 between '{' at 1:11 and ':' at 1:17",
     )]), ECMASyntaxError)
 
 

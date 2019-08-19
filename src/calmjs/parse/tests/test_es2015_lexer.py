@@ -29,6 +29,14 @@ class LexerFailureTestCase(unittest.TestCase):
         self.assertEqual(
             str(e.exception), "Unterminated template literal '`' at 1:1")
 
+    def test_invalid_template_token(self):
+        lexer = Lexer()
+        lexer.input('""')
+        token = lexer.next()
+        # force an invalid token into the statement
+        with self.assertRaises(ValueError):
+            lexer.t_TEMPLATE_RAW(token)
+
 
 LexerKeywordTestCase = build_equality_testcase(
     'LexerTestCase', partial(run_lexer, lexer_cls=Lexer), (
