@@ -80,7 +80,7 @@ class ParserCaseMixin(object):
             self.parse(text)
         self.assertEqual(
             str(e.exception),
-            "Unexpected ',' at 2:1 after '\\n' at 1:7")
+            "Unexpected ',' at 2:1 after ';' at 1:6")
 
     def test_bare_start(self):
         text = textwrap.dedent("""
@@ -204,7 +204,7 @@ class ParserCaseMixin(object):
             self.parse(text)
         self.assertEqual(
             str(e.exception),
-            r"Unexpected '}' at 3:1 after '\n' at 2:14")
+            r"Unexpected '}' at 3:1 after ')' at 2:13")
 
     def test_asi_for_truncated_fail(self):
         text = textwrap.dedent("""
@@ -215,7 +215,7 @@ class ParserCaseMixin(object):
             self.parse(text)
         self.assertEqual(
             str(e.exception),
-            r"Unexpected ')' at 2:1 after '\n' at 1:10")
+            r"Unexpected ')' at 2:1 after 'b' at 1:9")
 
     def test_asi_for_bare_fail(self):
         text = textwrap.dedent("""
@@ -236,7 +236,7 @@ class ParserCaseMixin(object):
             self.parse(text)
         self.assertEqual(
             str(e.exception),
-            r"Unexpected 'else' at 2:1 after '\n' at 1:11")
+            r"Unexpected 'else' at 2:1 after ')' at 1:10")
 
 
 repr_walker = ReprWalker()
@@ -271,6 +271,27 @@ def build_node_repr_test_cases(clsname, parse, program_type):
             <VarDecl @2:7 identifier=<Identifier @2:7 value='a'>,
               initializer=<Number @2:11 value='5'>>
           ]>]>
+        ]>
+        """,
+    ), (
+        'block_empty',
+        """
+        {}
+        """,
+        """
+        <Program @1:1 ?children=[
+          <Block @1:1 >
+        ]>
+        """,
+    ), (
+        'block_empty_with_1_after',
+        """
+        {}1
+        """,
+        """
+        <Program @1:1 ?children=[
+          <Block @1:1 >,
+          <ExprStatement @1:3 expr=<Number @1:3 value='1'>>
         ]>
         """,
     ), (
@@ -1658,6 +1679,115 @@ def build_node_repr_test_cases(clsname, parse, program_type):
         """,
 
     ), (
+        'slash_as_regex_after_block',
+        '{}/a/g',
+        r"""
+        <ES5Program @1:1 ?children=[
+          <Block @1:1 >,
+          <ExprStatement @1:3 expr=<Regex @1:3 value='/a/g'>>
+        ]>
+        """,
+
+    ), (
+        'slash_as_div_after_plus_brace',
+        '+{}/a/g',
+        r"""
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:6 left=<BinOp @1:4 left=<
+                UnaryExpr @1:1 op='+', value=<Object @1:2 properties=[]>>,
+              op='/',
+              right=<Identifier @1:5 value='a'>>,
+            op='/', right=<Identifier @1:7 value='g'>>>
+        ]>
+        """,
+
+    ), (
+        'slash_as_regex_after_plus_plus_as_unary',
+        '++/a/.b',
+        r"""
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<UnaryExpr @1:1 op='++',
+            value=<DotAccessor @1:6 identifier=<PropIdentifier @1:7 value='b'>,
+              node=<Regex @1:3 value='/a/'>>>>
+        ]>
+        """,
+    ), (
+        'slash_as_div_after_plus_plus_as_postfix_expr',
+        'i++/a/b',
+        r"""
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:6 left=<BinOp @1:4 left=<
+                PostfixExpr @1:2 op='++', value=<Identifier @1:1 value='i'>>,
+              op='/', right=<Identifier @1:5 value='a'>>,
+            op='/', right=<Identifier @1:7 value='b'>>>
+        ]>
+        """,
+    ), (
+        'slash_as_regex_after_minus_minus_as_unary',
+        '--/a/.b',
+        r"""
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<UnaryExpr @1:1 op='--',
+            value=<DotAccessor @1:6 identifier=<PropIdentifier @1:7 value='b'>,
+              node=<Regex @1:3 value='/a/'>>>>
+        ]>
+        """,
+    ), (
+        'slash_as_div_after_minus_minus_as_postfix_expr',
+        'i--/a/b',
+        r"""
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<BinOp @1:6 left=<BinOp @1:4 left=<
+                PostfixExpr @1:2 op='--', value=<Identifier @1:1 value='i'>>,
+              op='/', right=<Identifier @1:5 value='a'>>,
+            op='/', right=<Identifier @1:7 value='b'>>>
+        ]>
+        """,
+    ), (
+        'slash_as_regex_after_function',
+        """
+        if (0) {
+        }
+        /foo/g
+        """,
+        r"""
+        <ES5Program @1:1 ?children=[
+          <If @1:1 alternative=None, consequent=<Block @1:8 >,
+            predicate=<Number @1:5 value='0'>>,
+          <ExprStatement @3:1 expr=<Regex @3:1 value='/foo/g'>>
+        ]>
+        """,
+
+    ), (
+        'slash_as_regex_after_function_block',
+        """
+        (function() {})()
+        var v = f(5) / f(5);
+        """,
+        r"""
+        <ES5Program @1:1 ?children=[
+          <ExprStatement @1:1 expr=<FunctionCall @1:1 args=<
+             Arguments @1:16 items=[]>,
+            identifier=<GroupingOp @1:1 expr=<FuncExpr @1:2 elements=[],
+                identifier=None, parameters=[]>>>>,
+          <VarStatement @2:1 ?children=[
+            <VarDecl @2:5 identifier=<Identifier @2:5 value='v'>,
+              initializer=<BinOp @2:14 left=<FunctionCall @2:9 args=<
+                  Arguments @2:10 items=[
+                    <Number @2:11 value='5'>
+                  ]>,
+                identifier=<Identifier @2:9 value='f'>>,
+                op='/', right=<FunctionCall @2:16 args=<
+                  Arguments @2:17 items=[
+                    <Number @2:18 value='5'>
+                  ]>, identifier=<Identifier @2:16 value='f'>>
+              >
+            >
+          ]>
+        ]>
+        """,
+
+    ), (
         # https://github.com/rspivak/slimit/issues/42
         'slimit_issue_42',
         """
@@ -2601,7 +2731,7 @@ def build_syntax_error_test_cases(clsname, parse):
     ), (
         'unterminated_comment',  # looks like regex
         's = /****/;',
-        "Unexpected ';' at 1:11 after '/****/' at 1:5",
+        "Unexpected ';' at 1:11 after '=' at 1:3",
     ), (
         # expression is not optional in throw statement
         # ASI at lexer level should insert ';' after throw
@@ -2636,6 +2766,28 @@ def build_syntax_error_test_cases(clsname, parse):
         function(arg) {};
         """,
         "Function statement requires a name at 1:9",
+    ), (
+        # potential to be pathological for backtracking as it will never
+        # form a regex
+        'slash_after_block_incomplete',
+        """
+        {}/
+        """,
+        "Unexpected '/' at 1:3 after '}' at 1:2",
+    ), (
+        'slash_after_block_fail_regex',
+        """
+        {}/function{;
+        """,
+        "Error parsing regular expression '/function{;' at 1:3",
+    ), (
+        'backtrack_not_mess_up_line_locations',
+        """
+        {}
+        /a/
+          function(arg) {};
+        """,
+        "Function statement requires a name at 3:11",
     )]), ECMASyntaxError)
 
 
@@ -2758,6 +2910,18 @@ def build_comments_test_cases(clsname, parse, program_type):
               ]>
             ]>,
           predicate=<Boolean @2:5 value='true'>>
+        ]>
+        """,
+    ), (
+        'slash_as_regex_after_function',
+        """
+        if (0){}/*asdf*//a/
+        """,
+        r"""
+        <ES5Program @1:1 ?children=[
+          <If @1:1 alternative=None, consequent=<Block @1:7 >,
+            predicate=<Number @1:5 value='0'>>,
+          <ExprStatement @1:17 expr=<Regex @1:17 value='/a/'>>
         ]>
         """,
     )]))

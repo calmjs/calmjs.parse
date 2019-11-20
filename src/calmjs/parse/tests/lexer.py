@@ -270,6 +270,33 @@ es5_cases = [
         ('a = /a/ / /b/',
          ['ID a', 'EQ =', 'REGEX /a/', 'DIV /', 'REGEX /b/']),
     ), (
+        'regex_after_plus_brace',
+        ('+{}/a/g',
+         ['PLUS +', 'LBRACE {', 'RBRACE }', 'DIV /', 'ID a', 'DIV /', 'ID g']),
+        # The following pathological cases cannot be tested using the
+        # lexer alone, as the rules can only be addressed in conjunction
+        # with a parser
+        #
+        # 'regex_after_brace',
+        # ('{}/a/g',
+        #  ['LBRACE {', 'RBRACE }', 'REGEX /a/g']),
+        # 'regex_after_if_brace',
+        # ('if (a) { } /a/.test(a)',
+        #  ['IF if', 'LPAREN (', 'ID a', 'RPAREN )', 'LBRACE {', 'RBRACE }',
+        #   'REGEX /a/', "PERIOD .", "ID test", 'LPAREN (', 'ID a',
+        #   'RPAREN )']),
+    ), (
+        'regex_case',
+        ('switch(0){case /a/:}',
+         ['SWITCH switch', 'LPAREN (', 'NUMBER 0', 'RPAREN )', 'LBRACE {',
+          'CASE case', 'REGEX /a/', 'COLON :', 'RBRACE }']),
+    ), (
+        'div_after_valid_statement_function_call',
+        ('if(){} f(a) / f(b)',
+         ['IF if', 'LPAREN (', 'RPAREN )', 'LBRACE {', 'RBRACE }',
+          'ID f', 'LPAREN (', 'ID a', 'RPAREN )', 'DIV /',
+          'ID f', 'LPAREN (', 'ID b', 'RPAREN )']),
+    ), (
         'for_regex_slimit_issue_54',
         ('for (;;) /r/;',
          ['FOR for', 'LPAREN (', 'SEMI ;', 'SEMI ;', 'RPAREN )',

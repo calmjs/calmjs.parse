@@ -191,6 +191,8 @@ class Lexer(object):
     def __init__(self, with_comments=False, yield_comments=False):
         self.lexer = None
         self.prev_token = None
+        # valid_prev_token is for syntax error hint, and also for
+        # tracking real tokens
         self.valid_prev_token = None
         self.cur_token = None
         self.cur_token_real = None
@@ -241,6 +243,15 @@ class Lexer(object):
         if token:
             token.colno = self._get_colno(token)
             self._update_newline_idx(token)
+        return token
+
+    def backtrack_div_token(self):
+        # XXX assumes the current token type is DIV
+        self.lexer.skip(-1)
+        self.next_tokens = []
+        valid_prev_token = self.valid_prev_token
+        token = self.token()
+        self.valid_prev_token = valid_prev_token
         return token
 
     def token(self):
@@ -322,7 +333,8 @@ class Lexer(object):
 
     def _set_tokens(self, new_token):
         self.token_stack[-1][0] = self.prev_token = self.cur_token
-        if self.cur_token:
+        if (self.cur_token and
+                self.cur_token.type not in DIVISION_SYNTAX_MARKERS):
             self.valid_prev_token = self.cur_token
         self.cur_token = new_token
         if (self.cur_token and
