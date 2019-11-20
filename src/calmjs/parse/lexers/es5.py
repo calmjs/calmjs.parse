@@ -245,10 +245,11 @@ class Lexer(object):
             self._update_newline_idx(token)
         return token
 
-    def backtrack_div_token(self):
-        # XXX assumes the current token type is DIV
-        self.lexer.skip(-1)
+    def backtracked_token(self, pos=1):
+        self.lexer.skip(- pos)
+        # clearly the buffer here needs wiping too
         self.next_tokens = []
+        # do the dance to ensure the valid previous tokens are tracked.
         valid_prev_token = self.valid_prev_token
         token = self.token()
         self.valid_prev_token = valid_prev_token

@@ -134,7 +134,7 @@ class Parser(object):
             # below to signal the specific "safe" cases, so we have to
             # wait until such an error to occur for specific tokens and
             # attempt to backtrack here
-            regex_token = self.lexer.backtrack_div_token()
+            regex_token = self.lexer.backtracked_token(pos=1)
             if regex_token.type == 'REGEX':
                 self.parser.errok()
                 return regex_token
