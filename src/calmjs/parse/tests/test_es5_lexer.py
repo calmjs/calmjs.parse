@@ -72,6 +72,34 @@ class LexerFailureTestCase(unittest.TestCase):
         self.assertEqual(str(e.exception), "Mismatched ')' at 3:3")
 
 
+class LexerGeneralTestCase(unittest.TestCase):
+
+    def test_backtracking_div_default(self):
+        # this test emulates what appear to happens when the parser
+        # backtracks upon encountering the `/` that it can't parse.
+        lexer = Lexer()
+        lexer.input('{}/a/')
+        self.assertEqual(lexer.next().type, 'LBRACE')
+        self.assertEqual(lexer.next().type, 'RBRACE')
+        self.assertEqual(lexer.next().type, 'DIV')
+
+        token = lexer.backtracked_token()
+        self.assertEqual(('REGEX', '/a/'), (token.type, token.value))
+
+    def test_backtracking_multiple(self):
+        # Although dealing with additional tokens like comments and
+        # newlines are not done (i.e. they don't get backtracked), it
+        # should not cause additional issues
+        lexer = Lexer()
+        lexer.input('{}\n/a/')
+        self.assertEqual(lexer.next().type, 'LBRACE')
+        self.assertEqual(lexer.next().type, 'RBRACE')
+        self.assertEqual(lexer.next().type, 'DIV')
+
+        token = lexer.backtracked_token(pos=2)
+        self.assertEqual(('REGEX', '/a/'), (token.type, token.value))
+
+
 class LexerWithCommentsTestCase(unittest.TestCase):
 
     def test_with_line_comments_before(self):

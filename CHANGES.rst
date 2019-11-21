@@ -1,6 +1,22 @@
 Changelog
 =========
 
+1.2.1 - 2019-11-21
+------------------
+
+- Fix the issue of failures with regex statement that occur due to lexer
+  being in a state where the disambiguation between REGEX or DIV token
+  types is not immediately possible, as tokens such as RBRACE, PLUSPLUS
+  or MINUSMINUS must be consumed by parser in order to be disambiguated,
+  but due to the lookahead nature done by yacc, the DIV token will be
+  prematurely produced and the only way to achieve this is during the
+  error handling stage.  [
+  `#25 <https://github.com/calmjs/calmjs.parse/issues/25>`_
+  `#26 <https://github.com/calmjs/calmjs.parse/issues/26>`_
+  ]
+- Part of the previous fix also removed newline or comment tokens from
+  being reported as part of parsing error messages.
+
 1.2.0 - 2019-08-15
 ------------------
 
