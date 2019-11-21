@@ -1682,7 +1682,7 @@ def build_node_repr_test_cases(clsname, parse, program_type):
         'slash_as_regex_after_block',
         '{}/a/g',
         r"""
-        <ES5Program @1:1 ?children=[
+        <Program @1:1 ?children=[
           <Block @1:1 >,
           <ExprStatement @1:3 expr=<Regex @1:3 value='/a/g'>>
         ]>
@@ -1692,7 +1692,7 @@ def build_node_repr_test_cases(clsname, parse, program_type):
         'slash_as_div_after_plus_brace',
         '+{}/a/g',
         r"""
-        <ES5Program @1:1 ?children=[
+        <Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<BinOp @1:6 left=<BinOp @1:4 left=<
                 UnaryExpr @1:1 op='+', value=<Object @1:2 properties=[]>>,
               op='/',
@@ -1705,7 +1705,7 @@ def build_node_repr_test_cases(clsname, parse, program_type):
         'slash_as_regex_after_plus_plus_as_unary',
         '++/a/.b',
         r"""
-        <ES5Program @1:1 ?children=[
+        <Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<UnaryExpr @1:1 op='++',
             value=<DotAccessor @1:6 identifier=<PropIdentifier @1:7 value='b'>,
               node=<Regex @1:3 value='/a/'>>>>
@@ -1715,7 +1715,7 @@ def build_node_repr_test_cases(clsname, parse, program_type):
         'slash_as_div_after_plus_plus_as_postfix_expr',
         'i++/a/b',
         r"""
-        <ES5Program @1:1 ?children=[
+        <Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<BinOp @1:6 left=<BinOp @1:4 left=<
                 PostfixExpr @1:2 op='++', value=<Identifier @1:1 value='i'>>,
               op='/', right=<Identifier @1:5 value='a'>>,
@@ -1726,7 +1726,7 @@ def build_node_repr_test_cases(clsname, parse, program_type):
         'slash_as_regex_after_minus_minus_as_unary',
         '--/a/.b',
         r"""
-        <ES5Program @1:1 ?children=[
+        <Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<UnaryExpr @1:1 op='--',
             value=<DotAccessor @1:6 identifier=<PropIdentifier @1:7 value='b'>,
               node=<Regex @1:3 value='/a/'>>>>
@@ -1736,7 +1736,7 @@ def build_node_repr_test_cases(clsname, parse, program_type):
         'slash_as_div_after_minus_minus_as_postfix_expr',
         'i--/a/b',
         r"""
-        <ES5Program @1:1 ?children=[
+        <Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<BinOp @1:6 left=<BinOp @1:4 left=<
                 PostfixExpr @1:2 op='--', value=<Identifier @1:1 value='i'>>,
               op='/', right=<Identifier @1:5 value='a'>>,
@@ -1751,7 +1751,7 @@ def build_node_repr_test_cases(clsname, parse, program_type):
         /foo/g
         """,
         r"""
-        <ES5Program @1:1 ?children=[
+        <Program @1:1 ?children=[
           <If @1:1 alternative=None, consequent=<Block @1:8 >,
             predicate=<Number @1:5 value='0'>>,
           <ExprStatement @3:1 expr=<Regex @3:1 value='/foo/g'>>
@@ -1765,7 +1765,7 @@ def build_node_repr_test_cases(clsname, parse, program_type):
         var v = f(5) / f(5);
         """,
         r"""
-        <ES5Program @1:1 ?children=[
+        <Program @1:1 ?children=[
           <ExprStatement @1:1 expr=<FunctionCall @1:1 args=<
              Arguments @1:16 items=[]>,
             identifier=<GroupingOp @1:1 expr=<FuncExpr @1:2 elements=[],
@@ -2918,7 +2918,7 @@ def build_comments_test_cases(clsname, parse, program_type):
         if (0){}/*asdf*//a/
         """,
         r"""
-        <ES5Program @1:1 ?children=[
+        <Program @1:1 ?children=[
           <If @1:1 alternative=None, consequent=<Block @1:7 >,
             predicate=<Number @1:5 value='0'>>,
           <ExprStatement @1:17 expr=<Regex @1:17 value='/a/'>>
