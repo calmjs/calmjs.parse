@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.2.1 - 20??-??-??
+1.2.1 - 2019-11-21
 ------------------
 
 - Fix the issue of failures with regex statement that occur due to lexer
@@ -12,7 +12,10 @@ Changelog
   prematurely produced and the only way to achieve this is during the
   error handling stage.  [
   `#25 <https://github.com/calmjs/calmjs.parse/issues/25>`_
+  `#26 <https://github.com/calmjs/calmjs.parse/issues/26>`_
   ]
+- Part of the previous fix also removed newline or comment tokens from
+  being reported as part of parsing error messages.
 
 1.2.0 - 2019-08-15
 ------------------
