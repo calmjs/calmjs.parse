@@ -29,6 +29,19 @@ class VLQTestCase(unittest.TestCase):
         self.assertEqual(vlq.encode_vlq(789), 'qxB')
         self.assertEqual(vlq.encode_vlq(-789), 'rxB')
 
+    def test_vlq_decode_various(self):
+        self.assertEqual(vlq.decode_vlq('A'), 0)
+        # should never be encoded to this standalone value, but nothing
+        # stops this from being decoded
+        self.assertEqual(vlq.decode_vlq('B'), 0)
+        self.assertEqual(vlq.decode_vlq('C'), 1)
+        self.assertEqual(vlq.decode_vlq('D'), -1)
+        self.assertEqual(vlq.decode_vlq('E'), 2)
+        self.assertEqual(vlq.decode_vlq('/f'), -511)
+        self.assertEqual(vlq.decode_vlq('ggB'), 512)
+        # won't decode more than one
+        self.assertEqual(vlq.decode_vlq('ABCDE'), 0)
+
     def test_encode_vlqs(self):
         self.assertEqual(vlq.encode_vlqs((0, 1, 2, 3, 4)), 'ACEGI')
         self.assertEqual(vlq.encode_vlqs((123, 456, 789)), '2HwcqxB')
