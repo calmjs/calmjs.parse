@@ -3,5 +3,6 @@ recursive-include docs *.txt
 recursive-include docs *.rst
 include *.txt
 include *.rst
+include LICENSE
 recursive-exclude src *.pyc
 recursive-exclude src *.pyo
