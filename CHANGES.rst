@@ -1,6 +1,16 @@
 Changelog
 =========
 
+1.2.2 - 2020-01-18
+------------------
+
+- Correctly include LICENSE file in sdist.  [
+  `#27 <https://github.com/calmjs/calmjs.parse/issues/27>`_
+  `#28 <https://github.com/calmjs/calmjs.parse/issues/28>`_
+  ]
+- Include the correct test data general form for some previously added
+  test cases to better accommodate already planned future features.
+
 1.2.1 - 2019-11-21
 ------------------
 
