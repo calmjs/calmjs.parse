@@ -87,6 +87,7 @@ install:
   - python setup.py develop
 script:
   - flake8
+  - python -OO -m unittest calmjs.parse.tests.make_suite
   - coverage run --include=src/* -m unittest calmjs.parse.tests.make_suite
   - coverage report -m
 after_success:
