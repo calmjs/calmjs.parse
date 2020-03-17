@@ -1,13 +1,15 @@
 Changelog
 =========
 
-1.2.3 - 2020-03-17
+1.2.4 - 2020-03-17
 ------------------
 
 - Correct usage of ``__doc__`` to support level 2 optimized mode.  [
   `#29 <https://github.com/calmjs/calmjs.parse/issues/29>`_
   `#30 <https://github.com/calmjs/calmjs.parse/issues/30>`_
   ]
+- Corrected some minor string definition syntax, where raw string prefix
+  should be used but was not previously.
 
 1.2.2 - 2020-01-18
 ------------------
@@ -46,8 +48,8 @@ Changelog
   ]
 
   - Enabled by passing ``with_comments=True`` to the parser..
-  - The limitation lines in the fact that if a node maps to multiple
-    tokens (e.g. ``if...else``), the comments that lie immediate before
+  - The limitation lies in the fact that if a node has multiple token
+    slots (e.g. ``if...else``), the comments that lie immediate before
     the first will be captured, while the comments that lie immediate to
     the subsequent ones will be omitted.  The fix would involve
     providing a full syntax tree node types, and that the parser rules

@@ -1664,7 +1664,7 @@ def build_node_repr_test_cases(clsname, parse, program_type):
         """,
     ), (
         'regex_test',
-        'return (/h\d/i).test(elem.nodeName);',
+        r'return (/h\d/i).test(elem.nodeName);',
         r"""
         <Program @1:1 ?children=[<Return @1:1 expr=<FunctionCall @1:8 args=<
           Arguments @1:21 items=[
@@ -2803,7 +2803,7 @@ def build_regex_syntax_error_test_cases(clsname, parse):
     ), (
         'unmatched_backslash',
         r'var x = /\/;',
-        "Error parsing regular expression '/\/;' at 1:9",
+        r"Error parsing regular expression '/\/;' at 1:9",
     )]), ECMARegexSyntaxError)
 
 
