@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.2.3 - 2020-03-??
+1.2.3 - 2020-03-17
 ------------------
 
 - Correct usage of ``__doc__`` to support level 2 optimized mode.  [
