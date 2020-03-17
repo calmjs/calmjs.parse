@@ -1,19 +1,15 @@
 Changelog
 =========
 
-1.?.? - 202?-??-??
-------------------
-
-- Corrected some minor string definition syntax, where raw string prefix
-  should be used but was not previously.
-
-1.2.3 - 2020-03-17
+1.2.4 - 2020-03-17
 ------------------
 
 - Correct usage of ``__doc__`` to support level 2 optimized mode.  [
   `#29 <https://github.com/calmjs/calmjs.parse/issues/29>`_
   `#30 <https://github.com/calmjs/calmjs.parse/issues/30>`_
   ]
+- Corrected some minor string definition syntax, where raw string prefix
+  should be used but was not previously.
 
 1.2.2 - 2020-01-18
 ------------------
