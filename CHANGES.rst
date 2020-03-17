@@ -1,6 +1,14 @@
 Changelog
 =========
 
+1.2.3 - 2020-03-17
+------------------
+
+- Correct usage of ``__doc__`` to support level 2 optimized mode.  [
+  `#29 <https://github.com/calmjs/calmjs.parse/issues/29>`_
+  `#30 <https://github.com/calmjs/calmjs.parse/issues/30>`_
+  ]
+
 1.2.2 - 2020-01-18
 ------------------
 

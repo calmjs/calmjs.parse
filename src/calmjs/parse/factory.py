@@ -67,10 +67,11 @@ def RawParserUnparserFactory(parser_name, parse_callable, *unparse_callables):
             )
             return f(node, *a, **kw)
         # a dumb and lazy docstring replacement
-        unparse.__doc__ = f.__doc__.replace(
-            'ast\n        The AST ',
-            'source\n        The source ',
-        )
+        if f.__doc__:
+            unparse.__doc__ = f.__doc__.replace(
+                'ast\n        The AST ',
+                'source\n        The source ',
+            )
         return unparse
 
     def build_parse(f):
