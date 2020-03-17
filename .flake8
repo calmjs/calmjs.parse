@@ -1,21 +1,7 @@
 [flake8]
-ignore =
-    # W503: default ignore for some reason not applied;
-    W503,
-
-    # E221 multiple spaces before operator
-    # - src/calmjs/parse/lexer.py,
-    E221,
-
-    # E501 line too long
-    # - src/calmjs/parse/tests/test_es5_lexer.py
-    E501,
-
-    # various files/rules, was not a problem flake in 3.5.0
-    W504,
-    # not even sure what is this one is about, because it's pointing to
-    # locations that made no sense.
-    W605,
+per-file-ignores =
+    src/calmjs/parse/tests/lexer.py:E501
+    src/calmjs/parse/lexers/es5.py:E221
 
 include =
     src/

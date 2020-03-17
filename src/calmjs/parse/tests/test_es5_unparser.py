@@ -1455,7 +1455,7 @@ ES5IdentityTestCase = build_equality_testcase(
 
     ), (
         'function_definition',
-        """
+        r"""
         String.prototype.foo = function(data) {
           var tmpl = this.toString();
           return tmpl.replace(/{{\s*(.*?)\s*}}/g, function(a, b) {
@@ -1501,7 +1501,7 @@ ES5IdentityTestCase = build_equality_testcase(
 
     ), (
         'regex_test',
-        """
+        r"""
         return (/h\d/i).test(elem.nodeName);
         """,
 
