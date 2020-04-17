@@ -1,6 +1,16 @@
 Changelog
 =========
 
+1.2.5 - 202?-??-??
+------------------
+
+- Will now import Iterable from the Python 3.3+ location as the previous
+  location is marked for removal in Python 3.9.  The import will still
+  have a fallback to the previous location in order to maintain support
+  for Python 2.7.  [
+  `#31 <https://github.com/calmjs/calmjs.parse/issues/31>`_
+  ]
+
 1.2.4 - 2020-03-17
 ------------------
 
