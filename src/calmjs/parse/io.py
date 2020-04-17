@@ -4,7 +4,7 @@ Generic io functions for use with parsers.
 """
 
 from itertools import chain
-from collections import Iterable
+from collections.abc import Iterable
 from calmjs.parse.asttypes import Node
 from calmjs.parse import sourcemap
 from calmjs.parse.exceptions import ECMASyntaxError
