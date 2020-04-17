@@ -4,7 +4,10 @@ Generic io functions for use with parsers.
 """
 
 from itertools import chain
-from collections import Iterable
+try:
+    from collections.abc import Iterable
+except ImportError:  # pragma: no cover
+    from collections import Iterable
 from calmjs.parse.asttypes import Node
 from calmjs.parse import sourcemap
 from calmjs.parse.exceptions import ECMASyntaxError
