@@ -1,6 +1,24 @@
 Changelog
 =========
 
+1.2.5 - 2020-07-03
+------------------
+
+- Will now import Iterable from the Python 3.3+ location as the previous
+  location is marked for removal in Python 3.9.  The import will still
+  have a fallback to the previous location in order to maintain support
+  for Python 2.7.  [
+  `#31 <https://github.com/calmjs/calmjs.parse/issues/31>`_
+  ]
+- Provide a test case helper to ensure that the generic ``Program`` repr
+  signature is provided to assist with test case portability.  [
+  `#33 <https://github.com/calmjs/calmjs.parse/issues/33>`_
+  ]
+- In the ``calmjs.parse.vlq`` module, implemented the ``decode_vlq``
+  helper for completeness/symmetry to the ``encode_vlq`` helper.  [
+  `#33 <https://github.com/calmjs/calmjs.parse/issues/33>`_
+  ]
+
 1.2.4 - 2020-03-17
 ------------------
 
