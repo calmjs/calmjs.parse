@@ -1,6 +1,14 @@
 Changelog
 =========
 
+1.2.x - 20??-??-??
+------------------
+
+- Have the test cases validate against the generic ``repr`` signature to
+  ensure portability across different ``Program`` types.
+- Implement ``decode_vlq`` in the ``calmjs.parse.vlq`` module for
+  completeness/symmetry to the ``encode_vlq`` module.
+
 1.2.1 - 2019-11-21
 ------------------
 
