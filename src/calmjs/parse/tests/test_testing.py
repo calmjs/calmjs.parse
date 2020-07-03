@@ -7,6 +7,8 @@ from calmjs.parse.testing.util import build_equality_testcase
 from calmjs.parse.testing.util import build_exception_testcase
 from calmjs.parse.testing.util import setup_logger
 
+from calmjs.parse.tests.parser import format_repr_program_type
+
 
 def run(self):
     """
@@ -90,3 +92,27 @@ class SetupLoggerTestCase(unittest.TestCase):
         testcase.doCleanups()
         self.assertEqual(original_level, logger.level)
         self.assertEqual(original_handlers, len(logger.handlers))
+
+
+class ParserTestSetupTestCase(unittest.TestCase):
+
+    def test_match(self):
+        result = format_repr_program_type('foo', '<Program>', 'ES4Program')
+        self.assertEqual(result, '<ES4Program>')
+
+    def test_fail(self):
+        with self.assertRaises(ValueError) as e:
+            format_repr_program_type('foo', '<ES4Program>', 'ES4Program')
+
+        self.assertEqual(
+            e.exception.args[0], "repr test result for 'foo' did not start "
+            "with generic '<Program', got: <ES4Program>"
+        )
+
+        with self.assertRaises(ValueError) as e:
+            format_repr_program_type('foo', '<ES5Program>', 'ES4Program')
+
+        self.assertEqual(
+            e.exception.args[0], "repr test result for 'foo' did not start "
+            "with generic '<Program', got: <ES5Program>"
+        )

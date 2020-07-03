@@ -249,6 +249,16 @@ def singleline(s):
     return ''.join(clean(t) for t in textwrap.dedent(s).splitlines())
 
 
+def format_repr_program_type(label, repr_output, program_type):
+    result = singleline(repr_output)
+    if not result.startswith('<Program'):
+        raise ValueError(
+            "repr test result for '%s' did not start with generic '<Program', "
+            "got: %s" % (label, repr_output)
+        )
+    return result.replace('<Program', '<' + program_type)
+
+
 def build_node_repr_test_cases(clsname, parse, program_type):
 
     def parse_to_repr(value):
@@ -257,7 +267,7 @@ def build_node_repr_test_cases(clsname, parse, program_type):
     return build_equality_testcase(clsname, parse_to_repr, ((
         label,
         textwrap.dedent(argument).strip(),
-        singleline(result).replace('<Program', '<' + program_type),
+        format_repr_program_type(label, result, program_type),
     ) for label, argument, result in [(
         'block',
         """
@@ -2815,7 +2825,7 @@ def build_comments_test_cases(clsname, parse, program_type):
     return build_equality_testcase(clsname, parse_with_comments_to_repr, ((
         label,
         textwrap.dedent(argument).strip(),
-        singleline(result).replace('<Program', '<' + program_type),
+        format_repr_program_type(label, result, program_type),
     ) for label, argument, result in [(
         'block_without_comments',
         """
