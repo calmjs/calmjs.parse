@@ -302,8 +302,11 @@ class JoinAttr(Attr):
 
         for target_node in nodes:
             # note that self.value is to be defined in the definition
-            # format also.
-            for value_node in walk(dispatcher, node, self.value):
+            # format also - if it is None, the default lookup will be
+            # done again which would effectively repeat the previous
+            # walk as it will trigger a lookup!
+            definition = self.value if self.value else ()
+            for value_node in walk(dispatcher, node, definition=definition):
                 yield value_node
             for chunk in walk(dispatcher, target_node, token=self):
                 yield chunk

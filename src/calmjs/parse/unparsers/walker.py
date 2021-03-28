@@ -187,7 +187,7 @@ class Dispatcher(object):
         """
 
         # The reason why the types were not used simply performance of
-        # isisntance is bad, that the types are uniquely named, and that
+        # isinstance is bad, that the types are uniquely named, and that
         # they are always subclassed through the factory.  While working
         # at the type level is the correct method, the performance
         # penalties that it attracts however make this naive approach
