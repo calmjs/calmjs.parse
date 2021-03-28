@@ -330,10 +330,18 @@ class GroupAs(Token):
     of all the tokens being yielded, instead of being flattened.
     """
 
+    def _getattr(self, dispatcher, node):
+        if isinstance(self.attr, Deferrable):
+            return self.attr(dispatcher, node)
+        else:
+            return getattr(node, self.attr)
+
     def __call__(self, walk, dispatcher, node):
         yield [
             item
-            for attr in self.attr
+            # TODO the name argument should really be the name of the
+            # type of this node... to help with debugging.
+            for attr in dispatcher.optimize_definition('', self.attr)
             for item in attr(walk, dispatcher, node)
         ]
 
@@ -349,8 +357,21 @@ class GroupAsMap(GroupAs):
     """
 
     def __call__(self, walk, dispatcher, node):
-        yield dict(
-            next(super(GroupAsMap, self).__call__(walk, dispatcher, node)))
+        result = {}
+        for item in next(
+                super(GroupAsMap, self).__call__(walk, dispatcher, node)):
+            if len(item) != 2:
+                continue
+            key, value = item
+            try:
+                # TODO need to figure out how sometimes optional
+                # identifiers for the map might not percolate to the
+                # generator...
+                hash(key)
+            except TypeError:
+                continue
+            result[key] = value
+        yield result
 
 
 class ElisionToken(Attr, Text):

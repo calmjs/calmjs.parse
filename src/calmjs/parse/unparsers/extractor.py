@@ -177,19 +177,21 @@ definitions = {
     ),
     'FuncDecl': (
         # TODO DeclareAsFunc?
-        Attr(Declare('identifier')),
-        PushScope,
         GroupAsMap((
-            Optional('identifier', (ResolveFuncName,)),
-            JoinAttr(Declare('parameters'),),
-            JoinAttr('elements'),
+            Attr(Declare('identifier')),
+            GroupAsList((
+                PushScope,
+                Optional('identifier', (ResolveFuncName,)),
+                JoinAttr(Declare('parameters'),),
+                JoinAttr('elements'),
+                PopScope,
+            ),),
         ),),
-        PopScope,
     ),
     'FuncExpr': (
         Attr(Declare('identifier')),
         PushScope,
-        GroupAsMap((
+        GroupAsList((
             Optional('identifier', (ResolveFuncName,)),
             JoinAttr(Declare('parameters'),),
             JoinAttr('elements'),
