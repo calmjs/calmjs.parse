@@ -16,6 +16,10 @@ from calmjs.parse.ruletypes import (
     Optional,
     JoinAttr,
     Operator,
+
+    LiteralEval,
+    RawBoolean,
+    Raw,
 )
 from calmjs.parse.ruletypes import (
     Literal,
@@ -74,7 +78,9 @@ definitions = {
             PopScope,
         ),),
     ),
-    'Number': value,  # FIXME
+    'Number': (
+        LiteralEval('value'),
+    ),
     'Comma': (
         Attr('left'), Attr('right'),
     ),
@@ -84,7 +90,9 @@ definitions = {
         Attr('consequent'),
         Optional('alternative', (Attr('alternative'),),),
     ),
-    'Boolean': value,  # FIXME
+    'Boolean': (
+        RawBoolean('value'),
+    ),
     'For': (
         Attr('init'),
         Attr('cond'),
@@ -117,10 +125,10 @@ definitions = {
         Attr('statement'),
     ),
     'Null': (
-        Text(value='null'),  # FIXME Null()
+        Raw(value=None),
     ),
     'String': (
-        Attr(Literal()),
+        LiteralEval(Literal()),
     ),
     'Continue': (
         Optional('identifier', (Attr(attr='identifier'),),),
@@ -198,12 +206,15 @@ definitions = {
         Attr('identifier'), Attr('args'),
     ),
     'DotAccessor': (
-        # TODO
+        # The current way may simply result in a binding that has a dot,
+        # this may be desirable now, however an alternative manner is to
+        # implement registration and update of the value within the
+        # scope...
         Attr('node'), Text(value='.'), Attr('identifier'),
     ),
     'BracketAccessor': (
-        # TODO token for dealing with reassignment??
-        Attr('node'), Attr('expr'),
+        # Likewise similar as above
+        Attr('node'), Text(value='['), Attr('expr'), Text(value=']'),
     ),
     'FunctionCall': (
         GroupAsCall((Attr('identifier'), Attr('args'),),),
