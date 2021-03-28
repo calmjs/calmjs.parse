@@ -6,9 +6,6 @@ Description for the extractor unparser
 from __future__ import unicode_literals
 
 from calmjs.parse.ruletypes import (
-    StreamFragment,
-)
-from calmjs.parse.ruletypes import (
     PushScope,
     PopScope,
 )
@@ -223,7 +220,7 @@ def token_handler_basic(
     The basic token handler that will return the value and nothing else.
     """
 
-    yield StreamFragment(subnode, None, None, None, None)
+    yield subnode
 
 
 class Unparser(BaseUnparser):
@@ -267,4 +264,4 @@ def build_dict(ast):
     """
 
     for chunk in Unparser()(ast):
-        yield chunk.text
+        yield chunk
