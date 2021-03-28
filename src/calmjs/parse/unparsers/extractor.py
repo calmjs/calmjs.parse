@@ -23,6 +23,11 @@ from calmjs.parse.ruletypes import (
     Resolve,
     ResolveFuncName,
 )
+from calmjs.parse.ruletypes import (
+    GroupAsList,
+    GroupAsMap,
+    GroupAsCall,
+)
 from calmjs.parse.unparsers.base import BaseUnparser
 
 value = (
@@ -38,10 +43,10 @@ definitions = {
     'Block': values,
     'VarStatement': values,
     'VarDecl': (
-        Attr(Declare('identifier')), Attr('initializer'),
+        GroupAsList((Attr(Declare('identifier')), Attr('initializer'),),),
     ),
     'VarDeclNoIn': (
-        Attr(Declare('identifier')), Attr('initializer'),
+        GroupAsList((Attr(Declare('identifier')), Attr('initializer'),),),
     ),
     'GroupingOp': (
         Attr('expr'),
@@ -51,19 +56,23 @@ definitions = {
     ),
     'PropIdentifier': value,
     'Assign': (
-        Attr('left'), Attr('right'),
+        GroupAsList((Attr('left'), Attr('right'),),),
     ),
     'GetPropAssign': (
-        Attr('prop_name'),
-        PushScope,
-        JoinAttr(attr='elements'),
-        PopScope,
+        GroupAsList((
+            Attr('prop_name'),
+            PushScope,
+            JoinAttr(attr='elements'),
+            PopScope,
+        ),),
     ),
     'SetPropAssign': (
-        Attr('prop_name'),
-        PushScope,
-        JoinAttr(attr='elements'),
-        PopScope,
+        GroupAsList((
+            Attr('prop_name'),
+            PushScope,
+            JoinAttr(attr='elements'),
+            PopScope,
+        ),),
     ),
     'Number': value,  # FIXME
     'Comma': (
@@ -88,7 +97,7 @@ definitions = {
         Attr('statement'),
     ),
     'BinOp': (
-        Attr('left'), Attr('right'),
+        GroupAsList((Attr('left'), Attr('right'),),),
     ),
     'UnaryExpr': (
         Attr('value'),
@@ -162,17 +171,21 @@ definitions = {
         # TODO DeclareAsFunc?
         Attr(Declare('identifier')),
         PushScope,
-        Optional('identifier', (ResolveFuncName,)),
-        JoinAttr(Declare('parameters'),),
-        JoinAttr('elements'),
+        GroupAsMap((
+            Optional('identifier', (ResolveFuncName,)),
+            JoinAttr(Declare('parameters'),),
+            JoinAttr('elements'),
+        ),),
         PopScope,
     ),
     'FuncExpr': (
         Attr(Declare('identifier')),
         PushScope,
-        Optional('identifier', (ResolveFuncName,)),
-        JoinAttr(Declare('parameters'),),
-        JoinAttr('elements'),
+        GroupAsMap((
+            Optional('identifier', (ResolveFuncName,)),
+            JoinAttr(Declare('parameters'),),
+            JoinAttr('elements'),
+        ),),
         PopScope,
     ),
     'Conditional': (
@@ -193,16 +206,16 @@ definitions = {
         Attr('node'), Attr('expr'),
     ),
     'FunctionCall': (
-        Attr('identifier'), Attr('args'),
+        GroupAsCall((Attr('identifier'), Attr('args'),),),
     ),
     'Arguments': (
-        JoinAttr('items',),
+        GroupAsList((JoinAttr('items',),),),
     ),
     'Object': (
-        Optional('properties', (JoinAttr('properties'),)),
+        GroupAsMap((JoinAttr('properties'),)),
     ),
     'Array': (
-        JoinAttr('items'),
+        GroupAsList((JoinAttr('items'),),),
     ),
     'Elision': (),
     'This': (

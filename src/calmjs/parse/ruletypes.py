@@ -322,6 +322,36 @@ class JoinAttr(Attr):
                 yield chunk
 
 
+class GroupAs(Token):
+    """
+    A special token where the provided attr must be a tuple of tokens
+    or rules, such that those rules will result in a discrete container
+    of all the tokens being yielded, instead of being flattened.
+    """
+
+    def __call__(self, walk, dispatcher, node):
+        yield [
+            item
+            for attr in self.attr
+            for item in attr(walk, dispatcher, node)
+        ]
+
+
+GroupAsList = GroupAsMap = GroupAsCall = GroupAs
+
+
+class GroupAsMap(GroupAs):
+    """
+    Leverage the parent GroupAs.__call__ to produce a list of maps and
+    assume that the produced output will be 2-tuples, which is passed
+    directly to the dict constructor.
+    """
+
+    def __call__(self, walk, dispatcher, node):
+        yield dict(
+            next(super(GroupAsMap, self).__call__(walk, dispatcher, node)))
+
+
 class ElisionToken(Attr, Text):
     """
     The special snowflake token just for Elision, simply because of how
