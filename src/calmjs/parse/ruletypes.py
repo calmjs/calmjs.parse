@@ -6,6 +6,7 @@ regenerating for a given type of AST back into a string.
 
 from __future__ import unicode_literals
 
+from ast import literal_eval
 from collections import namedtuple
 from functools import partial
 
@@ -453,6 +454,44 @@ class Operator(Attr):
             return getattr(node, self.attr)
         else:
             return self.value
+
+
+class LiteralEval(Attr):
+    """
+    Assume the handler will produce a chunk of type string, and use
+    literal_eval to turn it into some underlying value
+    """
+
+    def __call__(self, walk, dispatcher, node):
+        value = self._getattr(dispatcher, node)
+        if is_empty(value):
+            return
+        for chunk in walk(dispatcher, value, token=self):
+            yield literal_eval(chunk)
+
+
+class Raw(Token):
+    """
+    Simply yield the raw value as required.
+    """
+
+    def __call__(self, walk, dispatcher, node):
+        yield self.value
+
+
+class RawBoolean(Attr):
+    """
+    Simple yield the raw boolean value from the attribute.
+    """
+
+    def __call__(self, walk, dispatcher, node):
+        value = self._getattr(dispatcher, node)
+        if value == 'true':
+            yield True
+        elif value == 'false':
+            yield False
+        else:
+            raise ValueError('%r is not a JavaScript boolean value' % value)
 
 
 class Iter(Deferrable):
