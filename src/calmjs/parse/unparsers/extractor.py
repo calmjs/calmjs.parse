@@ -31,6 +31,7 @@ from calmjs.parse.ruletypes import (
     GroupAsList,
     GroupAsMap,
     GroupAsCall,
+    GroupAsStr,
 )
 from calmjs.parse.unparsers.base import BaseUnparser
 
@@ -105,7 +106,13 @@ definitions = {
         Attr('statement'),
     ),
     'BinOp': (
-        GroupAsList((Attr('left'), Attr('right'),),),
+        # Note that this can be replaced with an statement evaluator to
+        # calculate/derived/evaluate the inputs into a result.
+        GroupAsStr((
+            Attr('left'), Text(value=' '),
+            Operator(attr='op'),
+            Text(value=' '), Attr('right'),
+        ),),
     ),
     'UnaryExpr': (
         Attr('value'),
@@ -212,11 +219,17 @@ definitions = {
         # this may be desirable now, however an alternative manner is to
         # implement registration and update of the value within the
         # scope...
-        Attr('node'), Text(value='.'), Attr('identifier'),
+        GroupAsStr(
+            (Attr('node'), Text(value='.'), Attr('identifier'),),
+            value='',
+        ),
     ),
     'BracketAccessor': (
         # Likewise similar as above
-        Attr('node'), Text(value='['), Attr('expr'), Text(value=']'),
+        GroupAsStr(
+            (Attr('node'), Text(value='['), Attr('expr'), Text(value=']'),),
+            value='',
+        ),
     ),
     'FunctionCall': (
         GroupAsCall((Attr('identifier'), Attr('args'),),),
