@@ -330,12 +330,6 @@ class GroupAs(Token):
     of all the tokens being yielded, instead of being flattened.
     """
 
-    def _getattr(self, dispatcher, node):
-        if isinstance(self.attr, Deferrable):
-            return self.attr(dispatcher, node)
-        else:
-            return getattr(node, self.attr)
-
     def __call__(self, walk, dispatcher, node):
         yield [
             item
@@ -346,14 +340,11 @@ class GroupAs(Token):
         ]
 
 
-GroupAsList = GroupAsMap = GroupAsCall = GroupAs
-
-
 class GroupAsMap(GroupAs):
     """
     Leverage the parent GroupAs.__call__ to produce a list of maps and
-    assume that the produced output will be 2-tuples, which is passed
-    directly to the dict constructor.
+    assume that the produced output will be list of 2-tuples, which is
+    then passed directly to the dict constructor.
     """
 
     def __call__(self, walk, dispatcher, node):
@@ -372,6 +363,24 @@ class GroupAsMap(GroupAs):
                 continue
             result[key] = value
         yield result
+
+
+class GroupAsStr(GroupAs):
+    """
+    Leverage the parent GroupAs.__call__ to produce a str, assuming
+    that the produced output will be a list of str, which is then passed
+    to the string joiner, the value.
+    """
+
+    def __call__(self, walk, dispatcher, node):
+        joiner = self.value if self.value else ''
+        yield joiner.join(
+            str(s) for s in
+            next(super(GroupAsStr, self).__call__(walk, dispatcher, node))
+        )
+
+
+GroupAsList = GroupAsCall = GroupAs
 
 
 class ElisionToken(Attr, Text):
