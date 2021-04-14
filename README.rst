@@ -5,8 +5,8 @@ A collection of parsers and helper libraries for understanding
 ECMAScript; a near feature complete fork of |slimit|_.  A CLI front-end
 for this package is shipped separately as |crimp|_.
 
-.. image:: https://travis-ci.org/calmjs/calmjs.parse.svg?branch=master
-    :target: https://travis-ci.org/calmjs/calmjs.parse
+.. image:: https://github.com/calmjs/calmjs.parse/actions/workflows/build.yml/badge.svg?branch=testing
+    :target: https://github.com/calmjs/calmjs.parse/actions/workflows/build.yml?query=branch:testing
 .. image:: https://ci.appveyor.com/api/projects/status/5dj8dnu9gmj02msu/branch/master?svg=true
     :target: https://ci.appveyor.com/project/metatoaster/calmjs-parse/branch/master
 .. image:: https://coveralls.io/repos/github/calmjs/calmjs.parse/badge.svg?branch=master
