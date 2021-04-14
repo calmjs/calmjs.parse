@@ -210,6 +210,30 @@ class DispatcherWalkTestCase(unittest.TestCase):
         n3 = Block([Node([])] * 3)
         self.assertEqual(' nn', ''.join(c.text for c in walk(dispatcher, n3)))
 
+    def test_join_attr_issue_36(self):
+        # JoinAttr defined with parameter `value=None` resulted in
+        # infinite recursion due to the walker will assume that no rule
+        # is provided, triggering rule lookup which would repeat the
+        # work that was done.
+
+        class Block(Node):
+            pass
+
+        token_handler, layout_handlers, deferrable_handlers, declared_vars = (
+            setup_handlers(self))
+        dispatcher = Dispatcher(
+            definitions={
+                'Block': (JoinAttr(Iter(), value=None),),
+                'Node': (Text(value='',),),
+            },
+            token_handler=token_handler,
+            layout_handlers={},
+            deferrable_handlers={},
+        )
+
+        nodes = Block([Node([])] * 3)
+        self.assertEqual(3, len(list(walk(dispatcher, nodes))))
+
 
 class DispatcherTestcase(unittest.TestCase):
 
