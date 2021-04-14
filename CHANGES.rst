@@ -1,6 +1,13 @@
 Changelog
 =========
 
+?.?.? - ????-??-??
+------------------
+
+- Correct the JoinAttr ruletype such that the intended empty definition
+  value is passed to walk if it was defined as such to avoid an
+  unintended infinite recursion.
+
 1.2.5 - 2020-07-03
 ------------------
 
