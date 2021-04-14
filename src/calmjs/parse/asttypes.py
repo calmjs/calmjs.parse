@@ -157,6 +157,10 @@ class ES5Program(Program):
     pass
 
 
+class ES2015Program(Program):
+    pass
+
+
 class Block(Node):
     pass
 
@@ -194,6 +198,43 @@ class PropIdentifier(Identifier):
 class String(Node):
     def __init__(self, value):
         self.value = value
+
+
+class Template(Node):
+    """
+    All template subclasses.
+    """
+
+
+class TemplateLiteral(Template):
+    """
+    The top level template literal object
+    """
+
+
+class TemplateFragment(Template):
+    """
+    All template fragments
+    """
+
+    def __init__(self, value):
+        self.value = value
+
+
+class TemplateNoSub(TemplateFragment):
+    pass
+
+
+class TemplateHead(TemplateFragment):
+    pass
+
+
+class TemplateMiddle(TemplateFragment):
+    pass
+
+
+class TemplateTail(TemplateFragment):
+    pass
 
 
 class Regex(Node):
