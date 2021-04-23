@@ -6,7 +6,6 @@ regenerating for a given type of AST back into a string.
 
 from __future__ import unicode_literals
 
-from ast import literal_eval
 from collections import namedtuple
 from functools import partial
 
@@ -323,66 +322,6 @@ class JoinAttr(Attr):
                 yield chunk
 
 
-class GroupAs(Token):
-    """
-    A special token where the provided attr must be a tuple of tokens
-    or rules, such that those rules will result in a discrete container
-    of all the tokens being yielded, instead of being flattened.
-    """
-
-    def __call__(self, walk, dispatcher, node):
-        yield [
-            item
-            # TODO the name argument should really be the name of the
-            # type of this node... to help with debugging.
-            for attr in dispatcher.optimize_definition('', self.attr)
-            for item in attr(walk, dispatcher, node)
-        ]
-
-
-class GroupAsMap(GroupAs):
-    """
-    Leverage the parent GroupAs.__call__ to produce a list of maps and
-    assume that the produced output will be list of 2-tuples, which is
-    then passed directly to the dict constructor.
-    """
-
-    def __call__(self, walk, dispatcher, node):
-        result = {}
-        for item in next(
-                super(GroupAsMap, self).__call__(walk, dispatcher, node)):
-            if len(item) != 2:
-                continue
-            key, value = item
-            try:
-                # TODO need to figure out how sometimes optional
-                # identifiers for the map might not percolate to the
-                # generator...
-                hash(key)
-            except TypeError:
-                continue
-            result[key] = value
-        yield result
-
-
-class GroupAsStr(GroupAs):
-    """
-    Leverage the parent GroupAs.__call__ to produce a str, assuming
-    that the produced output will be a list of str, which is then passed
-    to the string joiner, the value.
-    """
-
-    def __call__(self, walk, dispatcher, node):
-        joiner = self.value if self.value else ''
-        yield joiner.join(
-            str(s) for s in
-            next(super(GroupAsStr, self).__call__(walk, dispatcher, node))
-        )
-
-
-GroupAsList = GroupAsCall = GroupAs
-
-
 class ElisionToken(Attr, Text):
     """
     The special snowflake token just for Elision, simply because of how
@@ -484,44 +423,6 @@ class Operator(Attr):
             return getattr(node, self.attr)
         else:
             return self.value
-
-
-class LiteralEval(Attr):
-    """
-    Assume the handler will produce a chunk of type string, and use
-    literal_eval to turn it into some underlying value
-    """
-
-    def __call__(self, walk, dispatcher, node):
-        value = self._getattr(dispatcher, node)
-        if is_empty(value):
-            return
-        for chunk in walk(dispatcher, value, token=self):
-            yield literal_eval(chunk)
-
-
-class Raw(Token):
-    """
-    Simply yield the raw value as required.
-    """
-
-    def __call__(self, walk, dispatcher, node):
-        yield self.value
-
-
-class RawBoolean(Attr):
-    """
-    Simple yield the raw boolean value from the attribute.
-    """
-
-    def __call__(self, walk, dispatcher, node):
-        value = self._getattr(dispatcher, node)
-        if value == 'true':
-            yield True
-        elif value == 'false':
-            yield False
-        else:
-            raise ValueError('%r is not a JavaScript boolean value' % value)
 
 
 class Iter(Deferrable):
