@@ -7,6 +7,9 @@ from __future__ import unicode_literals
 
 from ast import literal_eval
 
+from calmjs.parse.asttypes import (
+    Assign,
+)
 from calmjs.parse.ruletypes import (
     # Space,
     PushScope,
@@ -32,11 +35,18 @@ from calmjs.parse.ruletypes import (
 from calmjs.parse.unparsers.base import BaseUnparser
 
 
-# Defining custom tokens that do not fit with the existing ruletypes;
-# simply due to the fact that what is being yielded is currently not
-# compatible at all with the text chunks, and while formalizng this API
-# will be useful, it is quite a lot of work and rather difficult without
-# very strict pre-compile static typing - i.e. not possible in Python.
+class AssignmentChunk(list):
+    """
+    Marker list type for an assignment chunk.
+    """
+
+
+# Defining custom ruletype tokens in this module instead of the main
+# ruletypes module, simply due to the fact that what is being yielded is
+# currently not compatible at all with the text chunks, and while
+# formalizng this API will be useful, it is quite a lot of work and
+# rather difficult without very strict pre-compile static typing - i.e.
+# not possible in Python.
 
 class GroupAs(Token):
     """
@@ -95,13 +105,46 @@ class GroupAsStr(GroupAs):
         )
 
 
+class GroupAssign(GroupAs):
+    """
+    Special grouping for assignment.  If the RHS is an assignment, the
+    RHS of the value will be yielded.
+
+    The attr in this case should be a 2-tuple, first element being the
+    attribute name of the LHS, second element being the same for RHS.
+    """
+
+    def __call__(self, walk, dispatcher, node):
+        lhs = getattr(node, self.attr[0])
+        rhs = getattr(node, self.attr[1])
+
+        def standard_walk():
+            for chunk in walk(dispatcher, lhs, token=self):
+                yield chunk
+            for chunk in walk(dispatcher, rhs, token=self):
+                yield chunk
+
+        chunks = AssignmentChunk(standard_walk())
+
+        if isinstance(rhs, Assign):
+            # if RHS is an assign node, yield LHS with the final chunk
+            # value produced with the RHS through the walk, then the
+            # rest of the chunks produced by the walk.
+            yield AssignmentChunk([chunks[0], chunks[-1][1]])
+            for chunk in chunks[1:]:
+                yield chunk
+        else:
+            yield chunks
+
+
 GroupAsList = GroupAsCall = GroupAs
 
 
 class LiteralEval(Attr):
     """
     Assume the handler will produce a chunk of type string, and use
-    literal_eval to turn it into some underlying value
+    literal_eval to turn it into some underlying value; current intended
+    usage is for strings and numbers.
     """
 
     def __call__(self, walk, dispatcher, node):
@@ -136,20 +179,44 @@ class RawBoolean(Attr):
             raise ValueError('%r is not a JavaScript boolean value' % value)
 
 
+class TopLevelAttrs(Attr):
+    """
+    Denotes a top level attribute generator; should ensure all yielded
+    values are all in the form of 2-tuple, otherwise collate them into
+    the "default" NotImplemented key.
+    """
+
+    def __call__(self, walk, dispatcher, node):
+        misc_chunks = []
+        nodes = iter(node)
+        for target_node in nodes:
+            for chunk in walk(dispatcher, target_node, token=self):
+                if isinstance(chunk, AssignmentChunk):
+                    yield chunk
+                else:
+                    misc_chunks.append(chunk)
+
+        if misc_chunks:
+            yield AssignmentChunk([NotImplemented, misc_chunks])
+
+
 value = (
     Attr('value'),
 )
 values = (
     JoinAttr(Iter()),
 )
+top_level_values = (
+    TopLevelAttrs(),
+)
 
 # definitions of all the rules for all the types for an ES5 program.
 definitions = {
-    'ES5Program': values,
-    'Block': values,
+    'ES5Program': top_level_values,
+    'Block': top_level_values,
     'VarStatement': values,
     'VarDecl': (
-        GroupAsList((Attr(Declare('identifier')), Attr('initializer'),),),
+        GroupAssign(['identifier', 'initializer']),
     ),
     'VarDeclNoIn': (
         GroupAsList((Attr(Declare('identifier')), Attr('initializer'),),),
@@ -162,13 +229,15 @@ definitions = {
     ),
     'PropIdentifier': value,
     'Assign': (
-        GroupAsList((Attr('left'), Attr('right'),),),
+        GroupAssign(['left', 'right']),
     ),
     'GetPropAssign': (
         GroupAsList((
             Attr('prop_name'),
             PushScope,
-            JoinAttr(attr='elements'),
+            GroupAsMap((
+                JoinAttr(attr='elements'),
+            )),
             PopScope,
         ),),
     ),
@@ -176,7 +245,9 @@ definitions = {
         GroupAsList((
             Attr('prop_name'),
             PushScope,
-            JoinAttr(attr='elements'),
+            GroupAsMap((
+                JoinAttr(attr='elements'),
+            )),
             PopScope,
         ),),
     ),
@@ -245,8 +316,10 @@ definitions = {
         Optional('identifier', (Attr(attr='identifier'),),),
     ),
     'Return': (
-        Text(value='return'),
-        Optional('expr', (Attr(attr='expr'),),),
+        GroupAsList((
+            Text(value='return'),
+            Optional('expr', (Attr(attr='expr'),),),
+        )),
     ),
     'With': (
         Attr('expr'),
@@ -360,6 +433,10 @@ def token_handler_basic(
     The basic token handler that will return the value and nothing else.
     """
 
+    # Ideally, some kind of simplified bytecode should be generated to
+    # instruct how things are assigned by the above rules, such that the
+    # origin node can then be encoded as part of the process, but this
+    # is a rather huge pain to do so this is ignored for now...
     yield subnode
 
 
