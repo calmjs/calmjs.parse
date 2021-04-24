@@ -222,6 +222,10 @@ class Dispatcher(object):
     def newline_str(self):
         return self.__newline_str
 
+    @property
+    def has_layout(self):
+        return len(self.__layout_handlers) > 0
+
 
 def walk(dispatcher, node, definition=None):
     """
@@ -256,6 +260,7 @@ def walk(dispatcher, node, definition=None):
 
     nodes = []
     sourcepath_stack = [NotImplemented]
+    has_layout = dispatcher.has_layout
 
     def _walk(dispatcher, node, definition=None, token=None):
         if not isinstance(node, Node):
@@ -348,18 +353,20 @@ def walk(dispatcher, node, definition=None):
             if isinstance(chunk, LayoutChunk):
                 layout_rule_chunks.append(chunk)
             else:
-                # process layout rule chunks that had been cached.
-                for chunk_from_layout in process_layouts(
-                        layout_rule_chunks, last_chunk, chunk):
-                    yield chunk_from_layout
+                if has_layout:
+                    # process layout rule chunks that had been cached.
+                    for chunk_from_layout in process_layouts(
+                            layout_rule_chunks, last_chunk, chunk):
+                        yield chunk_from_layout
                 layout_rule_chunks[:] = []
                 yield chunk
                 last_chunk = chunk
 
-        # process the remaining layout rule chunks.
-        for chunk_from_layout in process_layouts(
-                layout_rule_chunks, last_chunk, None):
-            yield chunk_from_layout
+        if has_layout:
+            # process the remaining layout rule chunks.
+            for chunk_from_layout in process_layouts(
+                    layout_rule_chunks, last_chunk, None):
+                yield chunk_from_layout
 
     for chunk in walk():
         yield chunk

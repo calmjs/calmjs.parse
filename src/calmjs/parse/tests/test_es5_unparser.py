@@ -32,7 +32,7 @@ def quad(items):
     return [i[:4] for i in items]
 
 
-class BaseVisitorTestCase(unittest.TestCase):
+class BaseUnparserTestCase(unittest.TestCase):
     # Many of these tests are here are for showing individual fixes that
     # were done to other classes in order to properly support the source
     # map feature.
