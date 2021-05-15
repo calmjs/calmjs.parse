@@ -134,16 +134,19 @@ class GroupAs(Token):
     A special token where the provided attr must be a tuple of tokens
     or rules, such that those rules will result in a discrete container
     of all the tokens being yielded, instead of being flattened.
+
+    Provides a common build_items method which may be used to produce
+    the list of items.
     """
 
-    def __call__(self, walk, dispatcher, node):
-        yield next(dispatcher.token(None, node, [
+    def build_items(self, walk, dispatcher, node):
+        return (
             item
             # TODO the name argument should really be the name of the
             # type of this node... to help with debugging.
             for attr in dispatcher.optimize_definition('', self.attr)
             for item in attr(walk, dispatcher, node)
-        ], None))
+        )
 
 
 class GroupAsAssignment(GroupAs):
@@ -154,39 +157,34 @@ class GroupAsAssignment(GroupAs):
     """
 
     def __call__(self, walk, dispatcher, node):
-        items = next(super(GroupAsAssignment, self).__call__(
-            walk, dispatcher, node)).value
-        yield next(
-            dispatcher.token(None, node, AssignmentList(items), None))
+        yield next(dispatcher.token(None, node, AssignmentList(
+            list(self.build_items(walk, dispatcher, node))), None))
 
 
 class GroupAsList(GroupAs):
     """
-    Leverage the parent GroupAs.__call__ to yield a list as is, with all
-    elements reprocessed to strip out the chunk token to finalize the
-    resulting value.
+    Take the processed chunks and remove the context information by
+    taking the stored values and return a list.
     """
 
     def __call__(self, walk, dispatcher, node):
-        items = next(
-            super(GroupAsList, self).__call__(walk, dispatcher, node)).value
-        yield next(
-            dispatcher.token(None, node, [v.value for v in items], None))
+        yield next(dispatcher.token(None, node, [
+            v.value for v in self.build_items(walk, dispatcher, node)], None))
 
 
 class GroupAsMap(GroupAs):
     """
-    Leverage the parent GroupAs.__call__ to produce a list of maps and
-    assume that the produced output will be list of 2-tuples, which is
-    then passed directly to the dict constructor.
+    Take the processed chunks and remove the context information by
+    taking the stored values and return a mapping.  Ensure that the
+    AssignmentList types are processed for the Assignment entries, and
+    extract the unmatched entries into its own list under the
+    NotImplemented key.
     """
 
     def __call__(self, walk, dispatcher, node):
         result = {}
         misc = []
-        items = next(
-            super(GroupAsMap, self).__call__(walk, dispatcher, node)).value
-        for item in items:
+        for item in self.build_items(walk, dispatcher, node):
             if isinstance(item.value, AssignmentList):
                 # in the case of certain in place statement that yielded
                 # multiple assignments within the same scope
@@ -204,30 +202,30 @@ class GroupAsMap(GroupAs):
 
 class GroupAsStr(GroupAs):
     """
-    Leverage the parent GroupAs.__call__ to produce a str, assuming
-    that the produced output will be a list of str, which is then passed
-    to the string joiner, the value.
+    Take the processed chunks and extract the value, conver them to text
+    and join them together.
     """
 
     def __call__(self, walk, dispatcher, node):
         joiner = self.value if self.value else ''
         yield next(dispatcher.token(None, node, joiner.join(
-            str(s.value) for s in
-            next(super(GroupAsStr, self).__call__(
-                walk, dispatcher, node)).value
+            str(s.value) for s in self.build_items(walk, dispatcher, node)
         ), None))
 
 
-class GroupAssign(GroupAs):
+class AttrListAssignment(Attr):
     """
-    Special grouping for assignment.  If the RHS is an assignment, the
-    RHS of the value will be yielded.
+    Specialized attr to produce a ListAssignment.
 
-    The attr in this case should be a 2-tuple, first element being the
-    attribute name of the LHS, second element being the same for RHS.
+    The attr argument for the constructor in this case should be a
+    2-tuple, first element being the attribute name of the LHS, second
+    element being the same for RHS.  Hence LHS becomes the "key", and
+    RHS becomes the "value".
 
-    This also commit the assignment as a single yield of a raw custom
-    type out the walker.
+    During the production of the yielded Assignmentlist, if the RHS is
+    an assignment, the value of the rightmost RHS value will be yielded,
+    with the key produced from LHS, along with any other assignment that
+    was produced from RHS.
     """
 
     def __call__(self, walk, dispatcher, node):
@@ -358,7 +356,7 @@ definitions = {
     ),
     'VarStatement': values,
     'VarDecl': (
-        GroupAssign(['identifier', 'initializer']),
+        AttrListAssignment(['identifier', 'initializer']),
     ),
     'VarDeclNoIn': (
         GroupAsList((Attr(Declare('identifier')), Attr('initializer'),),),
@@ -371,7 +369,7 @@ definitions = {
     ),
     'PropIdentifier': value,
     'Assign': (
-        GroupAssign(['left', 'right']),
+        AttrListAssignment(['left', 'right']),
     ),
     'GetPropAssign': (
         GroupAsList((
