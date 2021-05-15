@@ -6,6 +6,14 @@ possible.
 
 from __future__ import unicode_literals
 
+try:
+    from functools import lru_cache
+except ImportError:  # pragma: no cover
+    def lru_cache(*a, **kw):
+        def wrapper(f):
+            return f
+        return wrapper
+
 from calmjs.parse.asttypes import Node
 from calmjs.parse.ruletypes import Token
 from calmjs.parse.ruletypes import Structure
@@ -147,6 +155,7 @@ class Dispatcher(object):
 
         self.__optimized_definitions = self.optimize()
 
+    @lru_cache(maxsize=None)
     def optimize_definition(self, name, definition):
         rules = []
         for rule in definition:
