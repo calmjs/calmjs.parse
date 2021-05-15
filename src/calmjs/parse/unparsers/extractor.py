@@ -6,6 +6,11 @@ Description for the extractor unparser
 from __future__ import unicode_literals
 
 from ast import literal_eval
+from collections import namedtuple
+try:
+    from collections.abc import MutableSequence
+except ImportError:  # pragma: no cover
+    from collections import MutableSequence
 
 from calmjs.parse.asttypes import (
     Assign,
@@ -16,7 +21,7 @@ from calmjs.parse.ruletypes import (
     PopScope,
 )
 from calmjs.parse.ruletypes import (
-    is_empty,
+    # is_empty,
 
     Attr,
     Token,
@@ -33,18 +38,94 @@ from calmjs.parse.ruletypes import (
     ResolveFuncName,
 )
 from calmjs.parse.unparsers.base import BaseUnparser
+from calmjs.parse.utils import str
 
 
-class AssignmentChunk(list):
+ExtractedFragment = namedtuple('ExtractedFragment', ['value', 'node'])
+
+
+class Assignment(tuple):
     """
-    Marker list type for an assignment chunk.
+    Denote a thing to be assigned.
     """
+
+    def __new__(_cls, key, value):
+        return tuple.__new__(_cls, (key, value))
+
+    @property
+    def key(self):
+        return (
+            self[0].value
+            if isinstance(self[0], ExtractedFragment) else
+            self[0]
+        )
+
+    @property
+    def value(self):
+        return (
+            self[1].value
+            if isinstance(self[1], ExtractedFragment) else
+            self[1]
+        )
+
+    def __iter__(self):
+        yield self.key
+        yield self.value
+
+    def __repr__(self):
+        return '(%r, %r)' % (self.key, self.value)
+
+
+class AssignmentList(MutableSequence):
+    """
+    A mapping for a list of assignments.
+    """
+
+    def __init__(self, *a):
+        self.__seq = []
+        if len(a) == 1 and isinstance(a[0], AssignmentList):
+            self.__seq.extend(a[0])
+        else:
+            self.extend(a)
+
+    def normalize(self, value):
+        if isinstance(value, Assignment):
+            return value
+        elif isinstance(value, list):
+            if len(value) == 2:
+                return Assignment(value[0], value[1])
+            elif len(value) > 2:
+                return Assignment(value[0], value[1:])
+        raise ValueError('%r cannot be converted to an Assignment' % (value,))
+
+    def __getitem__(self, index):
+        return self.__seq[index]
+
+    def __setitem__(self, index, value):
+        self.__seq[index] = self.normalize(value)
+
+    def __delitem__(self, index):
+        self.__seq.__delitem__(index)
+
+    def insert(self, index, value):
+        self.__seq.insert(index, self.normalize(value))
+
+    # def __iter__(self):
+    #     return iter(self.__seq)
+
+    def __len__(self):
+        return len(self.__seq)
+
+    def __repr__(self):
+        return repr(self.__seq)
 
 
 # Defining custom ruletype tokens in this module instead of the main
 # ruletypes module, simply due to the fact that what is being yielded is
-# currently not compatible at all with the text chunks, and while
-# formalizng this API will be useful, it is quite a lot of work and
+# currently not compatible at all with the default token handler that
+# yields stream fragments or layout chunks.
+#
+# Formalizng this API will be useful, it will be quite a lot of work and
 # rather difficult without very strict pre-compile static typing - i.e.
 # not possible in Python.
 
@@ -56,13 +137,41 @@ class GroupAs(Token):
     """
 
     def __call__(self, walk, dispatcher, node):
-        yield [
+        yield next(dispatcher.token(None, node, [
             item
             # TODO the name argument should really be the name of the
             # type of this node... to help with debugging.
             for attr in dispatcher.optimize_definition('', self.attr)
             for item in attr(walk, dispatcher, node)
-        ]
+        ], None))
+
+
+class GroupAsAssignment(GroupAs):
+    """
+    Simply group what was produced by the token as a single assignment.
+
+    There must be two distinct elements, otherwise it will fail.
+    """
+
+    def __call__(self, walk, dispatcher, node):
+        items = next(super(GroupAsAssignment, self).__call__(
+            walk, dispatcher, node)).value
+        yield next(
+            dispatcher.token(None, node, AssignmentList(items), None))
+
+
+class GroupAsList(GroupAs):
+    """
+    Leverage the parent GroupAs.__call__ to yield a list as is, with all
+    elements reprocessed to strip out the chunk token to finalize the
+    resulting value.
+    """
+
+    def __call__(self, walk, dispatcher, node):
+        items = next(
+            super(GroupAsList, self).__call__(walk, dispatcher, node)).value
+        yield next(
+            dispatcher.token(None, node, [v.value for v in items], None))
 
 
 class GroupAsMap(GroupAs):
@@ -74,20 +183,23 @@ class GroupAsMap(GroupAs):
 
     def __call__(self, walk, dispatcher, node):
         result = {}
-        for item in next(
-                super(GroupAsMap, self).__call__(walk, dispatcher, node)):
-            if len(item) != 2:
-                continue
-            key, value = item
-            try:
-                # TODO need to figure out how sometimes optional
-                # identifiers for the map might not percolate to the
-                # generator...
-                hash(key)
-            except TypeError:
-                continue
-            result[key] = value
-        yield result
+        misc = []
+        items = next(
+            super(GroupAsMap, self).__call__(walk, dispatcher, node)).value
+        for item in items:
+            if isinstance(item.value, AssignmentList):
+                # in the case of certain in place statement that yielded
+                # multiple assignments within the same scope
+                result.update(item.value)
+            else:
+                # if what was produced was not already a list of
+                # assignments, chuck it in with the misc list.
+                misc.append(item.value)
+
+        if misc:
+            result[NotImplemented] = misc
+
+        yield next(dispatcher.token(None, node, result, None))
 
 
 class GroupAsStr(GroupAs):
@@ -99,10 +211,11 @@ class GroupAsStr(GroupAs):
 
     def __call__(self, walk, dispatcher, node):
         joiner = self.value if self.value else ''
-        yield joiner.join(
-            str(s) for s in
-            next(super(GroupAsStr, self).__call__(walk, dispatcher, node))
-        )
+        yield next(dispatcher.token(None, node, joiner.join(
+            str(s.value) for s in
+            next(super(GroupAsStr, self).__call__(
+                walk, dispatcher, node)).value
+        ), None))
 
 
 class GroupAssign(GroupAs):
@@ -112,6 +225,9 @@ class GroupAssign(GroupAs):
 
     The attr in this case should be a 2-tuple, first element being the
     attribute name of the LHS, second element being the same for RHS.
+
+    This also commit the assignment as a single yield of a raw custom
+    type out the walker.
     """
 
     def __call__(self, walk, dispatcher, node):
@@ -119,25 +235,38 @@ class GroupAssign(GroupAs):
         rhs = getattr(node, self.attr[1])
 
         def standard_walk():
+            # discard all chunk information here?
+            # TODO probably should track them to aid with debugging?
             for chunk in walk(dispatcher, lhs, token=self):
-                yield chunk
+                yield chunk.value
             for chunk in walk(dispatcher, rhs, token=self):
-                yield chunk
+                yield chunk.value
 
-        chunks = AssignmentChunk(standard_walk())
+        chunks = list(standard_walk())
 
         if isinstance(rhs, Assign):
             # if RHS is an assign node, yield LHS with the final chunk
             # value produced with the RHS through the walk, then the
             # rest of the chunks produced by the walk.
-            yield AssignmentChunk([chunks[0], chunks[-1][1]])
-            for chunk in chunks[1:]:
-                yield chunk
+            yield next(dispatcher.token(None, node, AssignmentList(
+                Assignment(chunks[0], chunks[1][-1][1]), *chunks[1]), None))
         else:
-            yield chunks
+            yield next(dispatcher.token(None, node, AssignmentList(
+                Assignment(*chunks)), None))
 
 
-GroupAsList = GroupAsCall = GroupAs
+class AttrSink(Attr):
+    """
+    Used to consume everything declared in the Attr.
+
+    This is used to adapt the Deferrable types such that they get
+    processed, but no elements are actually yielded.
+    """
+
+    def __call__(self, walk, dispatcher, node):
+        list(super(AttrSink, self).__call__(walk, dispatcher, node))
+        return
+        yield  # pragma: no cover
 
 
 class LiteralEval(Attr):
@@ -149,10 +278,9 @@ class LiteralEval(Attr):
 
     def __call__(self, walk, dispatcher, node):
         value = self._getattr(dispatcher, node)
-        if is_empty(value):
-            return
         for chunk in walk(dispatcher, value, token=self):
-            yield literal_eval(chunk)
+            yield next(dispatcher.token(
+                None, node, literal_eval(chunk.value), None))
 
 
 class Raw(Token):
@@ -161,7 +289,7 @@ class Raw(Token):
     """
 
     def __call__(self, walk, dispatcher, node):
-        yield self.value
+        yield next(dispatcher.token(None, node, self.value, None))
 
 
 class RawBoolean(Attr):
@@ -172,32 +300,42 @@ class RawBoolean(Attr):
     def __call__(self, walk, dispatcher, node):
         value = self._getattr(dispatcher, node)
         if value == 'true':
-            yield True
+            yield next(dispatcher.token(None, node, True, None))
         elif value == 'false':
-            yield False
-        else:
-            raise ValueError('%r is not a JavaScript boolean value' % value)
+            yield next(dispatcher.token(None, node, False, None))
+        # else:
+        #     raise ValueError('%r is not a JavaScript boolean value' % value)
 
 
 class TopLevelAttrs(Attr):
     """
     Denotes a top level attribute generator; should ensure all yielded
-    values are all in the form of 2-tuple, otherwise collate them into
+    values are all in the form of Assignment, otherwise collate them into
     the "default" NotImplemented key.
+
+    Do note that by yielding naked `Assignment` type, in effect finalizes
+    the walker as this type is not handled by other Attr types in this
+    module.
     """
 
     def __call__(self, walk, dispatcher, node):
+        # TODO this is getting similar with AsDict
         misc_chunks = []
         nodes = iter(node)
         for target_node in nodes:
             for chunk in walk(dispatcher, target_node, token=self):
-                if isinstance(chunk, AssignmentChunk):
-                    yield chunk
+                if isinstance(chunk, ExtractedFragment):
+                    if isinstance(chunk.value, AssignmentList):
+                        for assignment in chunk.value:
+                            yield assignment
+                    else:
+                        misc_chunks.append(chunk.value)
                 else:
-                    misc_chunks.append(chunk)
+                    raise ValueError(
+                        "unknown type %r for map grouping" % chunk)
 
         if misc_chunks:
-            yield AssignmentChunk([NotImplemented, misc_chunks])
+            yield Assignment(NotImplemented, misc_chunks)
 
 
 value = (
@@ -213,7 +351,11 @@ top_level_values = (
 # definitions of all the rules for all the types for an ES5 program.
 definitions = {
     'ES5Program': top_level_values,
-    'Block': top_level_values,
+    'Block': (
+        GroupAsMap((
+            JoinAttr(Iter()),
+        )),
+    ),
     'VarStatement': values,
     'VarDecl': (
         GroupAssign(['identifier', 'initializer']),
@@ -309,24 +451,27 @@ definitions = {
     'String': (
         LiteralEval(Literal()),
     ),
-    'Continue': (
-        Optional('identifier', (Attr(attr='identifier'),),),
-    ),
-    'Break': (
-        Optional('identifier', (Attr(attr='identifier'),),),
-    ),
+    'Continue': (),
+    'Break': (),
     'Return': (
-        GroupAsList((
-            Text(value='return'),
-            Optional('expr', (Attr(attr='expr'),),),
-        )),
+        Optional('expr', (
+            GroupAsAssignment((
+                Text(value='return'),
+                Attr(attr='expr'),
+            )),
+        ),),
     ),
     'With': (
         Attr('expr'),
         Attr('statement'),
     ),
     'Label': (
-        Attr('identifier'), Attr('statement'),
+        GroupAsAssignment((
+            Attr(attr='identifier'),
+            GroupAsMap((
+                Attr(attr='statement'),
+            )),
+        )),
     ),
     'Switch': (
         Attr('expr'),
@@ -358,35 +503,45 @@ definitions = {
     ),
     'FuncDecl': (
         # TODO DeclareAsFunc?
-        GroupAsMap((
+        GroupAsAssignment((
             Attr(Declare('identifier')),
+            PushScope,
             GroupAsList((
-                PushScope,
                 Optional('identifier', (ResolveFuncName,)),
-                JoinAttr(Declare('parameters'),),
-                JoinAttr('elements'),
-                PopScope,
+                GroupAsList((
+                    JoinAttr(Declare('parameters'),),
+                )),
+                GroupAsMap((
+                    JoinAttr('elements'),
+                )),
             ),),
+            PopScope,
         ),),
     ),
     'FuncExpr': (
-        Attr(Declare('identifier')),
+        AttrSink(Declare('identifier')),
         PushScope,
         GroupAsList((
             Optional('identifier', (ResolveFuncName,)),
-            JoinAttr(Declare('parameters'),),
-            JoinAttr('elements'),
+            GroupAsList((
+                JoinAttr(Declare('parameters'),),
+            )),
+            GroupAsMap((
+                JoinAttr('elements'),
+            )),
         ),),
         PopScope,
     ),
     'Conditional': (
-        Attr('predicate'),
-        Attr('consequent'),
-        Attr('alternative'),
+        GroupAsList((
+            Attr('predicate'),
+            Attr('consequent'),
+            Attr('alternative'),
+        )),
     ),
     'Regex': value,
     'NewExpr': (
-        Attr('identifier'), Attr('args'),
+        GroupAsList((Attr('identifier'), Attr('args'),),),
     ),
     'DotAccessor': (
         # The current way may simply result in a binding that has a dot,
@@ -406,7 +561,7 @@ definitions = {
         ),
     ),
     'FunctionCall': (
-        GroupAsCall((Attr('identifier'), Attr('args'),),),
+        GroupAsList((Attr('identifier'), Attr('args'),),),
     ),
     'Arguments': (
         GroupAsList((JoinAttr('items',),),),
@@ -427,17 +582,19 @@ definitions = {
 }
 
 
-def token_handler_basic(
+def token_handler_extractor(
         token, dispatcher, node, subnode, sourcepath_stack=None):
     """
-    The basic token handler that will return the value and nothing else.
+    The token handler that will yield the ExtractedFragment type.
     """
 
     # Ideally, some kind of simplified bytecode should be generated to
     # instruct how things are assigned by the above rules, such that the
     # origin node can then be encoded as part of the process, but this
-    # is a rather huge pain to do so this is ignored for now...
-    yield subnode
+    # is a rather huge pain to do (approaching the work of building a
+    # proper language interpreter/bytecode compiler, so this shortcut is
+    # taken instead.
+    yield ExtractedFragment(subnode, node)
 
 
 class Unparser(BaseUnparser):
@@ -445,7 +602,7 @@ class Unparser(BaseUnparser):
     def __init__(
             self,
             definitions=definitions,
-            token_handler=token_handler_basic,
+            token_handler=token_handler_extractor,
             rules=(),
             layout_handlers=None,
             deferrable_handlers=None,
@@ -453,7 +610,7 @@ class Unparser(BaseUnparser):
 
         super(Unparser, self).__init__(
             definitions=definitions,
-            token_handler=token_handler_basic,
+            token_handler=token_handler_extractor,
             rules=rules,
             layout_handlers=layout_handlers,
             deferrable_handlers=deferrable_handlers,
