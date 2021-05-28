@@ -610,3 +610,16 @@ class BlockComment(Comment):
 
 class LineComment(Comment):
     pass
+
+
+def nodetype(inst):
+    """
+    Find the base node type defined in this module for the provided
+    instance or class.
+
+    This helper will find the base class from this module for any
+    identically named subclasses generated from the factory.
+    """
+
+    t = type(inst)
+    return globals().get(t.__name__, t)

@@ -7,6 +7,7 @@ from __future__ import unicode_literals
 
 from ast import literal_eval
 from collections import namedtuple
+from collections import defaultdict
 try:
     from collections.abc import MutableSequence
 except ImportError:  # pragma: no cover
@@ -14,6 +15,7 @@ except ImportError:  # pragma: no cover
 
 from calmjs.parse.asttypes import (
     Assign,
+    nodetype,
 )
 from calmjs.parse.ruletypes import (
     # Space,
@@ -183,7 +185,7 @@ class GroupAsMap(GroupAs):
 
     def __call__(self, walk, dispatcher, node):
         result = {}
-        misc = []
+        misc = defaultdict(list)
         for item in self.build_items(walk, dispatcher, node):
             if isinstance(item.value, AssignmentList):
                 # in the case of certain in place statement that yielded
@@ -192,11 +194,9 @@ class GroupAsMap(GroupAs):
             else:
                 # if what was produced was not already a list of
                 # assignments, chuck it in with the misc list.
-                misc.append(item.value)
+                misc[nodetype(item.node)].append(item.value)
 
-        if misc:
-            result[NotImplemented] = misc
-
+        result.update(misc)
         yield next(dispatcher.token(None, node, result, None))
 
 
@@ -318,7 +318,7 @@ class TopLevelAttrs(Attr):
 
     def __call__(self, walk, dispatcher, node):
         # TODO this is getting similar with AsDict
-        misc_chunks = []
+        misc_chunks = defaultdict(list)
         nodes = iter(node)
         for target_node in nodes:
             for chunk in walk(dispatcher, target_node, token=self):
@@ -327,13 +327,14 @@ class TopLevelAttrs(Attr):
                         for assignment in chunk.value:
                             yield assignment
                     else:
-                        misc_chunks.append(chunk.value)
+                        misc_chunks[nodetype(chunk.node)].append(chunk.value)
                 else:
-                    raise ValueError(
+                    raise TypeError(
                         "unknown type %r for map grouping" % chunk)
 
         if misc_chunks:
-            yield Assignment(NotImplemented, misc_chunks)
+            for key, value in misc_chunks.items():
+                yield Assignment(key, value)
 
 
 value = (
@@ -359,7 +360,8 @@ definitions = {
         AttrListAssignment(['identifier', 'initializer']),
     ),
     'VarDeclNoIn': (
-        GroupAsList((Attr(Declare('identifier')), Attr('initializer'),),),
+        # GroupAsList((Attr(Declare('identifier')), Attr('initializer'),),),
+        AttrListAssignment(['identifier', 'initializer']),
     ),
     'GroupingOp': (
         Attr('expr'),
@@ -408,8 +410,10 @@ definitions = {
     ),
     'For': (
         Attr('init'),
-        Attr('cond'),
-        Attr('count'),
+        GroupAsList((
+            Attr('cond'),
+            Attr('count'),
+        )),
         Attr('statement'),
     ),
     'ForIn': (

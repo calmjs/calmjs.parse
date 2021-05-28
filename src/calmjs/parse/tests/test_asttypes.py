@@ -1,9 +1,11 @@
 # -*- coding: utf-8 -*-
 import unittest
 
+from calmjs.parse import asttypes
 from calmjs.parse.asttypes import Comments
 from calmjs.parse.asttypes import BlockComment
 from calmjs.parse.asttypes import LineComment
+from calmjs.parse.asttypes import nodetype
 
 
 class CommentNodesTestCase(unittest.TestCase):
@@ -30,3 +32,23 @@ class CommentNodesTestCase(unittest.TestCase):
             LineComment(u'// test2'),
         ])
         self.assertEqual("// test1\n// test2", str(node))
+
+
+class MiscTestCase(unittest.TestCase):
+
+    def test_nodetype(self):
+        class Node(asttypes.Node):
+            """
+            Dummy Node
+            """
+
+        class Unsupported(asttypes.Node):
+            """
+            Unsupported Node
+            """
+
+        node = Node()
+        unsupported = Unsupported()
+        self.assertIs(asttypes.Node, nodetype(node))
+        self.assertIs(Unsupported, nodetype(unsupported))
+        self.assertIs(object, nodetype(object()))

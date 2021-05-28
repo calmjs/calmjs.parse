@@ -5,7 +5,12 @@ import textwrap
 import unittest
 
 from calmjs.parse.asttypes import (
+    Block,
+    For,
+    FunctionCall,
     Number,
+    GetPropAssign,
+    SetPropAssign,
 )
 from calmjs.parse.parsers import es5
 from calmjs.parse.unparsers.extractor import (
@@ -83,7 +88,7 @@ class ExtractorUnparserTestCase(unittest.TestCase):
         unparser = Unparser()
         ast = parse('0;')
         self.assertEqual(dict(unparser(ast)), {
-            NotImplemented: [0],
+            Number: [0],
         })
 
     def test_singular_assignment_pair(self):
@@ -209,8 +214,10 @@ class ExtractorUnparserTestCase(unittest.TestCase):
         self.assertEqual(dict(unparser(ast)), {
             'obj_a': {
                 'foo': 1,
-                NotImplemented: [
+                GetPropAssign: [
                     ['bar', {'x': 1, 'return': 'x'}],
+                ],
+                SetPropAssign: [
                     ['bar', {'x': 2}],
                 ],
             },
@@ -345,7 +352,7 @@ class ExtractorUnparserTestCase(unittest.TestCase):
         # The result is due the grouping operator and the nested nature
         # of the anonymous call.
         self.assertEqual(dict(unparser(ast)), {
-            NotImplemented: [[[[], {'foo': 1}], []]]
+            FunctionCall: [[[[], {'foo': 1}], []]]
         })
 
     def test_label(self):
@@ -360,4 +367,39 @@ class ExtractorUnparserTestCase(unittest.TestCase):
             'foo': None,
             'labela': {'foo': 'bar'},
             'bar': 'baz',
+        })
+
+    def test_for_basic(self):
+        unparser = Unparser()
+        ast = parse("""
+        a = 0
+        for (; a < 1;) {
+          a = a + 1
+        }
+        for (;;) {
+        }
+        for (i = 0, j = 10; i < j && j < 15; i++, j++) {
+          x = i * j;
+        }
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            For: [['a < 1'], [], ['i < j && j < 15', 'i', 'j']],
+            Block: [{'a': 'a + 1'}, {}, {'x': 'i * j'}],
+            'a': 0,
+            'i': 0,
+            'j': 10,
+        })
+
+    def test_for_var(self):
+        unparser = Unparser()
+        ast = parse("""
+        for (var i = 0, j = 10; i < j && j < 15; i++, j++) {
+          x = i * j;
+        }
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            For: [['i < j && j < 15', 'i', 'j']],
+            Block: [{'x': 'i * j'}],
+            'i': 0,
+            'j': 10,
         })
