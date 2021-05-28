@@ -7,7 +7,9 @@ import unittest
 from calmjs.parse.asttypes import (
     Block,
     For,
+    ForIn,
     FunctionCall,
+    Identifier,
     Number,
     GetPropAssign,
     SetPropAssign,
@@ -406,4 +408,19 @@ class ExtractorUnparserTestCase(unittest.TestCase):
             ],
             'i': 0,
             'j': 10,
+        })
+
+    def test_for_in_various(self):
+        unparser = Unparser()
+        ast = parse("""
+        for (index in [1,2,3]) index
+        for (index in [1,2,3]) {
+            i = index;
+        }
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            ForIn: [
+                ['index', [1, 2, 3], {Identifier: ['index']}],
+                ['index', [1, 2, 3], {Block: [{'i': 'index'}]}],
+            ],
         })

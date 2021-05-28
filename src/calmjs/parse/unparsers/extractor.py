@@ -419,9 +419,13 @@ definitions = {
         )),
     ),
     'ForIn': (
-        Attr('item'),
-        Attr('iterable'),
-        Attr('statement'),
+        GroupAsList((
+            Attr('item'),
+            Attr('iterable'),
+            GroupAsMap((
+                Attr('statement'),
+            ),),
+        ),),
     ),
     'BinOp': (
         # Note that this can be replaced with an statement evaluator to
