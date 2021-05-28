@@ -383,8 +383,11 @@ class ExtractorUnparserTestCase(unittest.TestCase):
         }
         """)
         self.assertEqual(dict(unparser(ast)), {
-            For: [['a < 1'], [], ['i < j && j < 15', 'i', 'j']],
-            Block: [{'a': 'a + 1'}, {}, {'x': 'i * j'}],
+            For: [
+                ['a < 1', {Block: [{'a': 'a + 1'}]}],
+                [{Block: [{}]}],
+                ['i < j && j < 15', 'i', 'j', {Block: [{'x': 'i * j'}]}],
+            ],
             'a': 0,
             'i': 0,
             'j': 10,
@@ -398,8 +401,9 @@ class ExtractorUnparserTestCase(unittest.TestCase):
         }
         """)
         self.assertEqual(dict(unparser(ast)), {
-            For: [['i < j && j < 15', 'i', 'j']],
-            Block: [{'x': 'i * j'}],
+            For: [
+                ['i < j && j < 15', 'i', 'j', {Block: [{'x': 'i * j'}]}],
+            ],
             'i': 0,
             'j': 10,
         })

@@ -413,8 +413,10 @@ definitions = {
         GroupAsList((
             Attr('cond'),
             Attr('count'),
+            GroupAsMap((
+                Attr('statement'),
+            ),),
         )),
-        Attr('statement'),
     ),
     'ForIn': (
         Attr('item'),
