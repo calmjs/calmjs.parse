@@ -6,6 +6,7 @@ import unittest
 
 from calmjs.parse.asttypes import (
     Block,
+    DoWhile,
     For,
     ForIn,
     FunctionCall,
@@ -14,6 +15,7 @@ from calmjs.parse.asttypes import (
     Number,
     GetPropAssign,
     SetPropAssign,
+    While,
 )
 from calmjs.parse.parsers import es5
 from calmjs.parse.unparsers.extractor import (
@@ -473,4 +475,56 @@ class ExtractorUnparserTestCase(unittest.TestCase):
                     ]]
                 }]
             ]
+        })
+
+    def test_while(self):
+        unparser = Unparser()
+        ast = parse("""
+        while (false) {
+          x = 1;
+          y = 2;
+        }
+
+        while (true) {
+          x = 2;
+          y = 4;
+        }
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            While: [
+                [False, {Block: [{
+                    'x': 1,
+                    'y': 2,
+                }]}],
+                [True, {Block: [{
+                    'x': 2,
+                    'y': 4,
+                }]}],
+            ],
+        })
+
+    def test_do_while(self):
+        unparser = Unparser()
+        ast = parse("""
+        do {
+          x = 1;
+          y = 2;
+        } while (false);
+
+        do {
+          x = 2;
+          y = 4;
+        } while (true);
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            DoWhile: [
+                [{Block: [{
+                    'x': 1,
+                    'y': 2,
+                }]}, False],
+                [{Block: [{
+                    'x': 2,
+                    'y': 4,
+                }]}, True],
+            ],
         })

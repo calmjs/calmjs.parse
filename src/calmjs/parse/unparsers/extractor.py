@@ -451,12 +451,16 @@ definitions = {
         Attr('expr'),
     ),
     'DoWhile': (
-        Attr('statement'),
-        Attr('predicate'),
+        GroupAsList((
+            GroupAsMap((Attr('statement'),),),
+            Attr('predicate'),
+        ),),
     ),
     'While': (
-        Attr('predicate'),
-        Attr('statement'),
+        GroupAsList((
+            Attr('predicate'),
+            GroupAsMap((Attr('statement'),),),
+        ),),
     ),
     'Null': (
         Raw(value=None),
