@@ -83,14 +83,26 @@ class ExtractorUnparserTestCase(unittest.TestCase):
     def test_empty_program(self):
         unparser = Unparser()
         ast = parse('')
-        self.assertEqual(list(unparser(ast)), [
-        ])
+        self.assertEqual(dict(unparser(ast)), {})
+
+    def test_empty_statements(self):
+        unparser = Unparser()
+        ast = parse(";;;")
+        self.assertEqual(dict(unparser(ast)), {})
 
     def test_singular_atom(self):
         unparser = Unparser()
         ast = parse('0;')
         self.assertEqual(dict(unparser(ast)), {
             Number: [0],
+        })
+
+    def test_multiple_atoms(self):
+        unparser = Unparser()
+        ast = parse('{}0;{}1;{}2;')
+        self.assertEqual(dict(unparser(ast)), {
+            Number: [0, 1, 2],
+            Block: [{}, {}, {}],
         })
 
     def test_singular_assignment_pair(self):
@@ -397,8 +409,9 @@ class ExtractorUnparserTestCase(unittest.TestCase):
 
     def test_for_var(self):
         unparser = Unparser()
+        # this includes Comma, PostfixExpr, UnaryExpr
         ast = parse("""
-        for (var i = 0, j = 10; i < j && j < 15; i++, j++) {
+        for (var i = 0, j = 10; i < j && j < 15; i++, ++j) {
           x = i * j;
         }
         """)
