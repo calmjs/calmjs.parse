@@ -360,7 +360,6 @@ definitions = {
         AttrListAssignment(['identifier', 'initializer']),
     ),
     'VarDeclNoIn': (
-        # GroupAsList((Attr(Declare('identifier')), Attr('initializer'),),),
         AttrListAssignment(['identifier', 'initializer']),
     ),
     'GroupingOp': (
@@ -401,9 +400,15 @@ definitions = {
     ),
     'EmptyStatement': (),
     'If': (
-        Attr('predicate'),
-        Attr('consequent'),
-        Optional('alternative', (Attr('alternative'),),),
+        GroupAsList((
+            Attr('predicate'),
+            GroupAsMap((
+                Attr('consequent'),
+            ),),
+            GroupAsMap((
+                Attr('alternative'),
+            ),),
+        ),),
     ),
     'Boolean': (
         RawBoolean('value'),

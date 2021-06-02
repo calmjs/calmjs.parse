@@ -10,6 +10,7 @@ from calmjs.parse.asttypes import (
     ForIn,
     FunctionCall,
     Identifier,
+    If,
     Number,
     GetPropAssign,
     SetPropAssign,
@@ -436,4 +437,40 @@ class ExtractorUnparserTestCase(unittest.TestCase):
                 ['index', [1, 2, 3], {Identifier: ['index']}],
                 ['index', [1, 2, 3], {Block: [{'i': 'index'}]}],
             ],
+        })
+
+    def test_if_statement_various(self):
+        unparser = Unparser()
+        ast = parse("""
+        if (true)
+            var x = 100;
+        else
+            var x = 200;
+
+        if (x < 100) {
+            y = 1;
+            z = 2;
+        }
+        else if (x < 200) {
+            x = 2;
+            y = 4;
+        }
+        else {
+            x = 0;
+            y = 0;
+        }
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            If: [
+                [True, {'x': 100}, {'x': 200}],
+                ['x < 100', {
+                    Block: [{'y': 1, 'z': 2}],
+                }, {
+                    If: [[
+                        'x < 200',
+                        {Block: [{'x': 2, 'y': 4}]},
+                        {Block: [{'x': 0, 'y': 0}]},
+                    ]]
+                }]
+            ]
         })
