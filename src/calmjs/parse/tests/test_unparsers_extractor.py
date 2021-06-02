@@ -15,6 +15,7 @@ from calmjs.parse.asttypes import (
     Number,
     GetPropAssign,
     SetPropAssign,
+    With,
     While,
 )
 from calmjs.parse.parsers import es5
@@ -526,5 +527,20 @@ class ExtractorUnparserTestCase(unittest.TestCase):
                     'x': 2,
                     'y': 4,
                 }]}, True],
+            ],
+        })
+
+    def test_with_statements(self):
+        unparser = Unparser()
+        ast = parse("""
+        with (x) {
+          x = x * 2;
+        }
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            With: [
+                ['x', {Block: [{
+                    'x': 'x * 2',
+                }]}],
             ],
         })

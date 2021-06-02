@@ -479,8 +479,10 @@ definitions = {
         ),),
     ),
     'With': (
-        Attr('expr'),
-        Attr('statement'),
+        GroupAsList((
+            Attr('expr'),
+            GroupAsMap((Attr('statement'),),),
+        ),),
     ),
     'Label': (
         GroupAsAssignment((
