@@ -493,16 +493,30 @@ definitions = {
         )),
     ),
     'Switch': (
-        Attr('expr'),
-        Attr('case_block'),
+        GroupAsList((
+            Attr('expr'),
+            Attr('case_block'),
+        ),),
     ),
-    'CaseBlock': values,
+    'CaseBlock': (
+        GroupAsMap((
+            JoinAttr(Iter()),
+        )),
+    ),
     'Case': (
-        Attr('expr'),
-        JoinAttr('elements'),
+        GroupAsList((
+            Attr('expr'),
+            GroupAsMap((
+                JoinAttr('elements'),
+            ),),
+        ),),
     ),
     'Default': (
-        JoinAttr('elements',),
+        GroupAsList((
+            GroupAsMap((
+                JoinAttr('elements'),
+            ),),
+        ),),
     ),
     'Throw': (
         Attr('expr'),

@@ -6,6 +6,8 @@ import unittest
 
 from calmjs.parse.asttypes import (
     Block,
+    Case,
+    Default,
     DoWhile,
     For,
     ForIn,
@@ -15,6 +17,7 @@ from calmjs.parse.asttypes import (
     Number,
     GetPropAssign,
     SetPropAssign,
+    Switch,
     With,
     While,
 )
@@ -543,4 +546,34 @@ class ExtractorUnparserTestCase(unittest.TestCase):
                     'x': 'x * 2',
                 }]}],
             ],
+        })
+
+    def test_switch_case_blocks(self):
+        unparser = Unparser()
+        ast = parse("""
+        switch (result) {
+          case 'good':
+            gooder = 1;
+          case 'poor':
+            poorer = 2;
+            break;
+          default:
+            unexpected = 3;
+          case 'errored':
+            error = 4;
+        }
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            Switch: [[
+                'result', {
+                    Case: [
+                        ['good', {'gooder': 1}],
+                        ['poor', {'poorer': 2}],
+                        ['errored', {'error': 4}],
+                    ],
+                    Default: [
+                        [{'unexpected': 3}],
+                    ],
+                },
+            ]],
         })
