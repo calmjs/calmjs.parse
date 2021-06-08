@@ -100,6 +100,16 @@ class ExtractorUnparserTestCase(unittest.TestCase):
         ast = parse(";;;")
         self.assertEqual(dict(unparser(ast)), {})
 
+    def test_ignoreed_statements(self):
+        unparser = Unparser()
+        ast = parse("""
+        ;
+        debugger;
+        continue;
+        break;
+        """)
+        self.assertEqual(dict(unparser(ast)), {})
+
     def test_singular_atom(self):
         unparser = Unparser()
         ast = parse('0;')
@@ -163,6 +173,7 @@ class ExtractorUnparserTestCase(unittest.TestCase):
         ast = parse('''
         a = b = c = d = 'hello';
         var x = y = z = 42;
+        var r = s = /abc/;
         ''')
         self.assertEqual(dict(unparser(ast)), {
             'a': 'hello',
@@ -172,6 +183,8 @@ class ExtractorUnparserTestCase(unittest.TestCase):
             'x': 42,
             'y': 42,
             'z': 42,
+            'r': '/abc/',
+            's': '/abc/',
         })
 
     def test_multiple_assignment_pairs(self):
@@ -212,10 +225,12 @@ class ExtractorUnparserTestCase(unittest.TestCase):
             a: 1,
             'b': 2,
             'c': [1, 2],
+            d: /a/,
+            e: /a/i,
         }
         ''')
         self.assertEqual(dict(unparser(ast)), {
-            'obj_a': {'a': 1, 'b': 2, 'c': [1, 2]}
+            'obj_a': {'a': 1, 'b': 2, 'c': [1, 2], 'd': '/a/', 'e': '/a/i'}
         })
 
     def test_object_assignment_getter_setter(self):
@@ -490,11 +505,13 @@ class ExtractorUnparserTestCase(unittest.TestCase):
         while (false) {
           x = 1;
           y = 2;
+          continue;
         }
 
         while (true) {
           x = 2;
           y = 4;
+          continue foo;
         }
         """)
         self.assertEqual(dict(unparser(ast)), {
@@ -650,3 +667,30 @@ class ExtractorUnparserTestCase(unittest.TestCase):
                 }]],
             }]],
         })
+
+    def test_unary_expr(self):
+        unparser = Unparser()
+        ast = parse("""
+        ++obj;
+        delete obj;
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            Identifier: ['obj', 'obj'],
+        })
+
+    def test_postfix_op(self):
+        unparser = Unparser()
+        ast = parse("""
+        i++;
+        j--;
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            Identifier: ['i', 'j'],
+        })
+
+    def test_elision(self):
+        unparser = Unparser()
+        ast = parse("""
+        i = [,,,]
+        """)
+        self.assertEqual(dict(unparser(ast)), {'i': []})
