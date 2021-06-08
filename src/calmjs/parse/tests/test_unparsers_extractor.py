@@ -7,8 +7,10 @@ import unittest
 from calmjs.parse.asttypes import (
     Block,
     Case,
+    Catch,
     Default,
     DoWhile,
+    Finally,
     For,
     ForIn,
     FunctionCall,
@@ -18,6 +20,7 @@ from calmjs.parse.asttypes import (
     GetPropAssign,
     SetPropAssign,
     Switch,
+    Try,
     With,
     While,
 )
@@ -576,4 +579,74 @@ class ExtractorUnparserTestCase(unittest.TestCase):
                     ],
                 },
             ]],
+        })
+
+    def test_try_catch_finally_statement(self):
+        unparser = Unparser()
+        ast = parse("""
+        try {
+            var x = 100;
+            y = 111;
+        }
+        catch (e) {
+            var x = 200;
+            y = 222;
+        }
+        finally {
+            z = 1;
+        }
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            Try: [[{
+                'x': 100,
+                'y': 111,
+            }, {
+                Catch: [['e', {
+                    'x': 200,
+                    'y': 222,
+                }]],
+            }, {
+                Finally: [[{
+                    'z': 1,
+                }]],
+            }]],
+        })
+
+    def test_try_catch_try_finally_statement(self):
+        unparser = Unparser()
+        ast = parse("""
+        try {
+            var x = 100;
+            y = 111;
+        }
+        catch (e) {
+            var x = 200;
+            y = 222;
+        }
+
+        try {
+            var x = 10;
+            y = 11;
+        }
+        finally {
+            z = 3;
+        }
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            Try: [[{
+                'x': 100,
+                'y': 111,
+            }, {
+                Catch: [['e', {
+                    'x': 200,
+                    'y': 222,
+                }]],
+            }], [{
+                'x': 10,
+                'y': 11,
+            }, {
+                Finally: [[{
+                    'z': 3,
+                }]],
+            }]],
         })

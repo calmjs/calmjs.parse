@@ -523,16 +523,26 @@ definitions = {
     ),
     'Debugger': (),
     'Try': (
-        Attr('statements'),
-        Optional('catch', (Attr('catch'),),),
-        Optional('fin', (Attr('fin'),),),
+        GroupAsList((
+            Attr('statements'),
+            Attr('catch'),
+            Attr('fin'),
+        ),),
     ),
     'Catch': (
-        Attr('identifier'),
-        Attr('elements'),
+        GroupAsMap((
+            GroupAsList((
+                Attr('identifier'),
+                Attr('elements'),
+            ),),
+        ),),
     ),
     'Finally': (
-        Attr('elements'),
+        GroupAsMap((
+            GroupAsList((
+                Attr('elements'),
+            ),),
+        ),),
     ),
     'FuncDecl': (
         # TODO DeclareAsFunc?
