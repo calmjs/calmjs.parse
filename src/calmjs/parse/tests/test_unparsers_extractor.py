@@ -39,7 +39,7 @@ def parse(src):
 
 class SupportTestCase(unittest.TestCase):
 
-    def test_repr(self):
+    def test_assignment_repr(self):
         assignment = Assignment(
             ExtractedFragment(1, Number(value=1)),
             ExtractedFragment(1, Number(value=1)),
@@ -86,6 +86,10 @@ class SupportTestCase(unittest.TestCase):
         del assignmentlist[0]
         self.assertEqual(Assignment(4, 5), assignmentlist[0])
         self.assertEqual(1, len(assignmentlist))
+
+    def test_assignment_list_generic_equality(self):
+        assignmentlist = AssignmentList(Assignment(1, 2), Assignment(3, 4))
+        self.assertEqual([(1, 2), (3, 4)], assignmentlist)
 
 
 class ExtractorUnparserTestCase(unittest.TestCase):
@@ -553,7 +557,23 @@ class ExtractorUnparserTestCase(unittest.TestCase):
             ],
         })
 
-    def test_with_statements(self):
+    def test_while_assign(self):
+        unparser = Unparser()
+        ast = parse("""
+        while (x = x + 1) {
+          y = 2;
+          break;
+        }
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            While: [
+                [[('x', 'x + 1')], {Block: [{
+                    'y': 2,
+                }]}],
+            ],
+        })
+
+    def test_with_statement(self):
         unparser = Unparser()
         ast = parse("""
         with (x) {
@@ -563,6 +583,21 @@ class ExtractorUnparserTestCase(unittest.TestCase):
         self.assertEqual(dict(unparser(ast)), {
             With: [
                 ['x', {Block: [{
+                    'x': 'x * 2',
+                }]}],
+            ],
+        })
+
+    def test_with_statement_with_assign(self):
+        unparser = Unparser()
+        ast = parse("""
+        with (x = 3) {
+          x = x * 2;
+        }
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            With: [
+                [[('x', 3)], {Block: [{
                     'x': 'x * 2',
                 }]}],
             ],

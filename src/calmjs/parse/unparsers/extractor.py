@@ -121,6 +121,9 @@ class AssignmentList(MutableSequence):
     def __repr__(self):
         return repr(self.__seq)
 
+    def __eq__(self, other):
+        return self.__seq == other
+
 
 # Defining custom ruletype tokens in this module instead of the main
 # ruletypes module, simply due to the fact that what is being yielded is
