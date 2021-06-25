@@ -114,6 +114,7 @@ class Token(Rule):
         """
 
         raise NotImplementedError
+        yield  # pragma: no cover
 
 
 class Deferrable(Rule):

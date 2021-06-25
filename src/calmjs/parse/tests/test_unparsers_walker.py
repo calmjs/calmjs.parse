@@ -11,6 +11,7 @@ from calmjs.parse.asttypes import VarDecl
 from calmjs.parse.unparsers.walker import Dispatcher
 from calmjs.parse.unparsers.walker import walk
 from calmjs.parse.ruletypes import (
+    Token,
     Attr,
     JoinAttr,
     Text,
@@ -131,7 +132,7 @@ class DispatcherWalkTestCase(unittest.TestCase):
 
     def test_bad_definition_rule(self):
         (token_handler, layout_handlers, deferrable_handlers,
-            self.declared_vars) = setup_handlers(self)
+            declared_vars) = setup_handlers(self)
         with self.assertRaises(TypeError) as e:
             Dispatcher(
                 definitions={'Node': (object(),)},
@@ -209,6 +210,50 @@ class DispatcherWalkTestCase(unittest.TestCase):
         self.assertEqual(' n', ''.join(c.text for c in walk(dispatcher, n2)))
         n3 = Block([Node([])] * 3)
         self.assertEqual(' nn', ''.join(c.text for c in walk(dispatcher, n3)))
+
+    def test_dispatcher_error_trap(self):
+        class Block(Node):
+            pass
+
+        token_handler, layout_handlers, deferrable_handlers, declared_vars = (
+            setup_handlers(self))
+        dispatcher = Dispatcher(
+            definitions={
+                'Block': (
+                    Text(value='['),
+                    JoinAttr(Iter(), value=(Text(value=','),)),
+                    Text(value=']'),
+                ),
+                'Node': (Token(),),  # Token will raise NotImplemented
+            },
+            token_handler=token_handler,
+            layout_handlers={},
+            deferrable_handlers={},
+        )
+
+        nodes = [Node([])] * 4
+        block = Block(Block(nodes))
+        with self.assertRaises(NotImplementedError):
+            list(walk(dispatcher, block))
+
+        err_rules = []
+        err_nodes = []
+
+        def ignore_handler(exception, rule, node):
+            # Generally speaking, standalone handler functions like this
+            # one wouldn't directly access the dispatcher instance, as
+            # it is cumbersomem to set it up like so; typically the use
+            # case would be to log the error.
+            err_rules.append(rule)
+            err_nodes.append(node)
+            return next(dispatcher.token(rule, node, '', []))
+
+        dispatcher.error_handler = ignore_handler
+        self.assertEqual('[,,,]', ''.join(
+            c.text for c in walk(dispatcher, block)))
+        # the only nodes that should have errored out are the base Node
+        # with the unimplemented token types.
+        self.assertEqual(err_nodes, nodes)
 
     def test_join_attr_issue_36(self):
         # JoinAttr defined with parameter `value=None` resulted in

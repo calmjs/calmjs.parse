@@ -17,8 +17,9 @@ class PPTypesTestCase(unittest.TestCase):
     def test_token(self):
         token = Token()
         self.assertTrue(callable(token))
+        rule = token(None, None, None)
         with self.assertRaises(NotImplementedError):
-            token(None, None, None)
+            next(rule)
 
     def test_deferrable(self):
         deferrable = Deferrable()
