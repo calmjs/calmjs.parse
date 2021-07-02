@@ -8,6 +8,7 @@ from __future__ import unicode_literals
 from ast import literal_eval
 from collections import namedtuple
 from collections import defaultdict
+from logging import getLogger
 try:
     from collections.abc import MutableSequence
 except ImportError:  # pragma: no cover
@@ -40,9 +41,11 @@ from calmjs.parse.ruletypes import (
     ResolveFuncName,
 )
 from calmjs.parse.unparsers.base import BaseUnparser
+from calmjs.parse.unparsers import walker
 from calmjs.parse.utils import str
 
 
+logger = getLogger(__name__)
 ExtractedFragment = namedtuple('ExtractedFragment', ['value', 'node'])
 
 
@@ -304,8 +307,8 @@ class RawBoolean(Attr):
             yield next(dispatcher.token(None, node, True, None))
         elif value == 'false':
             yield next(dispatcher.token(None, node, False, None))
-        # else:
-        #     raise ValueError('%r is not a JavaScript boolean value' % value)
+        else:
+            raise ValueError('%r is not a JavaScript boolean value' % value)
 
 
 class TopLevelAttrs(Attr):
@@ -643,6 +646,16 @@ def token_handler_extractor(
     yield ExtractedFragment(subnode, node)
 
 
+class Dispatcher(walker.Dispatcher):
+
+    def error_handler(self, exception, rule=None, node=None):
+        logger.error(
+            "failed to process node %r with rule %r to an extracted value",
+            node, type(rule).__name__,
+        )
+        return next(self.token(rule, node, '', []))
+
+
 class Unparser(BaseUnparser):
 
     def __init__(
@@ -652,7 +665,8 @@ class Unparser(BaseUnparser):
             rules=(),
             layout_handlers=None,
             deferrable_handlers=None,
-            prewalk_hooks=()):
+            prewalk_hooks=(),
+            dispatcher_cls=walker.Dispatcher):
 
         super(Unparser, self).__init__(
             definitions=definitions,
@@ -661,27 +675,37 @@ class Unparser(BaseUnparser):
             layout_handlers=layout_handlers,
             deferrable_handlers=deferrable_handlers,
             prewalk_hooks=prewalk_hooks,
+            dispatcher_cls=dispatcher_cls,
         )
 
 
-def extractor():
+def extractor(ignore_errors=False):
     """
-    Construct the default extractor unparser
+    A helper to construct an instance of the extractor Unparser
+
+    arguments
+
+    ignore_errors
+        Attempt to continue through errors triggered through processing
+        of the input ast through the unparser.
     """
 
-    return Unparser()
+    dispatcher_cls = Dispatcher if ignore_errors else walker.Dispatcher
+    return Unparser(dispatcher_cls=dispatcher_cls)
 
 
-def build_dict(ast):
+def ast_to_dict(ast, ignore_errors=False):
     """
     Simple dictionary building function - return a dictionary for the
-    source tree for the program.
+    source abstract syntax tree for the parsed program.
 
     arguments
 
     ast
-        The AST to pretty print
+        The AST to convert to a dictionary.
+    ignore_errors
+        Attempt to continue through errors triggered through processing
+        of the input ast through the unparser.
     """
 
-    for chunk in Unparser()(ast):
-        yield chunk
+    return dict(extractor(ignore_errors=ignore_errors)(ast))

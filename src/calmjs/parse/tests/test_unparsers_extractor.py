@@ -30,7 +30,11 @@ from calmjs.parse.unparsers.extractor import (
     AssignmentList,
     ExtractedFragment,
     Unparser,
+    extractor,
+    ast_to_dict,
+    logger as extractor_logger,
 )
+from calmjs.parse.testing.util import setup_logger
 
 
 def parse(src):
@@ -90,6 +94,21 @@ class SupportTestCase(unittest.TestCase):
     def test_assignment_list_generic_equality(self):
         assignmentlist = AssignmentList(Assignment(1, 2), Assignment(3, 4))
         self.assertEqual([(1, 2), (3, 4)], assignmentlist)
+
+
+class ExtractorUnparserErrorTestCase(unittest.TestCase):
+
+    def test_bad_boolean(self):
+        unparser = Unparser()
+        ast = parse('thing = false;')
+        # mangle the type such that the lookup fails
+        ast.children()[0].expr.right.value = 'none'
+        with self.assertRaises(ValueError) as e:
+            list(unparser(ast))
+        self.assertIn(
+            "'none' is not a JavaScript boolean value",
+            e.exception.args[0],
+        )
 
 
 class ExtractorUnparserTestCase(unittest.TestCase):
@@ -729,3 +748,27 @@ class ExtractorUnparserTestCase(unittest.TestCase):
         i = [,,,]
         """)
         self.assertEqual(dict(unparser(ast)), {'i': []})
+
+
+class ExtractorTestCase(unittest.TestCase):
+    """
+    Simply test via the simplified constructor
+    """
+
+    def test_extractor_empty(self):
+        ast = parse('')
+        self.assertEqual({}, dict(extractor()(ast)))
+
+    def test_bad_boolean_skipped(self):
+        err = setup_logger(self, extractor_logger)
+        ast = parse('thing = false;')
+        # mangle the type such that the lookup fails
+        ast.children()[0].expr.right.value = 'none'
+        # use the ast_to_dict function
+        result = ast_to_dict(ast, ignore_errors=True)
+        self.assertIn(
+            "failed to process node <Boolean @1:9 value='none'> with rule "
+            "'RawBoolean' to an extracted value", err.getvalue(),
+        )
+        # default value current an empty string.
+        self.assertEqual(result, {'thing': ''})
