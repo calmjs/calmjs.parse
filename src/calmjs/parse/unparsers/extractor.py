@@ -99,8 +99,6 @@ class AssignmentList(MutableSequence):
         elif isinstance(value, list):
             if len(value) == 2:
                 return Assignment(value[0], value[1])
-            elif len(value) > 2:
-                return Assignment(value[0], value[1:])
         raise ValueError('%r cannot be converted to an Assignment' % (value,))
 
     def __getitem__(self, index):

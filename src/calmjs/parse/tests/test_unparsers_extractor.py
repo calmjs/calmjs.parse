@@ -72,8 +72,8 @@ class SupportTestCase(unittest.TestCase):
         assignmentlist2 = AssignmentList(assignmentlist)
         self.assertIs(assignmentlist[0], assignmentlist2[0])
 
-        assignmentlist3 = AssignmentList([1, 2, 3])
-        self.assertEqual(Assignment(1, [2, 3]), assignmentlist3[0])
+        with self.assertRaises(ValueError) as e:
+            AssignmentList([1, 2, 3])
 
         with self.assertRaises(ValueError) as e:
             AssignmentList([1])
