@@ -25,11 +25,14 @@ from calmjs.parse.asttypes import (
     While,
 )
 from calmjs.parse.parsers import es5
+from calmjs.parse.ruletypes import Attr
 from calmjs.parse.unparsers.extractor import (
     Assignment,
     AssignmentList,
     ExtractedFragment,
+    Dispatcher,
     Unparser,
+    definitions,
     extractor,
     ast_to_dict,
     logger as extractor_logger,
@@ -108,6 +111,47 @@ class ExtractorUnparserErrorTestCase(unittest.TestCase):
         self.assertIn(
             "'none' is not a JavaScript boolean value",
             e.exception.args[0],
+        )
+
+    def test_unsupported_definitions(self):
+        class BadAttr(Attr):
+            def __call__(self, walk, dispatcher, node):
+                # rather than going through dispatcher.walk, yield this
+                # unwrapped type (i.e. not via walk or dispatcher.token
+                yield self._getattr(dispatcher, node)
+
+        mismatched = {}
+        mismatched.update(definitions)
+        mismatched['Assign'] = (Attr('left'), BadAttr('op'), Attr('right'),)
+
+        unparser = Unparser(definitions=mismatched)
+        ast = parse('a = 1')
+        with self.assertRaises(TypeError) as e:
+            dict(unparser(ast))
+        self.assertIn(
+            "'=' is not an instance of ExtractedFragment",
+            str(e.exception),
+        )
+
+        # now with the soft error version with logger
+        err = setup_logger(self, extractor_logger)
+        mismatched['Assign'] = (Attr('left'), BadAttr('op'), Attr('right'),)
+        unparser = Unparser(definitions=mismatched, dispatcher_cls=Dispatcher)
+        # the additional block is a sentinel
+        ast = parse('a = 1;{};')
+        # the bad pair fully omitted; with Attr it would yield normally
+        # the commented key-value.
+        self.assertEqual({
+            Identifier: ['a'],
+            # Assign: ['='],
+            Number: [1],
+
+            # sentinel node to ensure no other premature termination
+            Block: [{}],
+        }, dict(unparser(ast)))
+        self.assertIn(
+            "'=' is not an instance of ExtractedFragment",
+            err.getvalue(),
         )
 
 
@@ -768,7 +812,12 @@ class ExtractorTestCase(unittest.TestCase):
         result = ast_to_dict(ast, ignore_errors=True)
         self.assertIn(
             "failed to process node <Boolean @1:9 value='none'> with rule "
-            "'RawBoolean' to an extracted value", err.getvalue(),
+            "'RawBoolean' to an extracted value; cause: ValueError: ",
+            err.getvalue(),
+        )
+        self.assertIn(
+            "'none' is not a JavaScript boolean value",
+            err.getvalue(),
         )
         # default value current an empty string.
         self.assertEqual(result, {'thing': ''})

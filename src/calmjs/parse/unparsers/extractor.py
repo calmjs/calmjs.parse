@@ -333,8 +333,28 @@ class TopLevelAttrs(Attr):
                     else:
                         misc_chunks[nodetype(chunk.node)].append(chunk.value)
                 else:
-                    raise TypeError(
-                        "unknown type %r for map grouping" % chunk)
+                    # ideally, walk.throw() be called instead as the
+                    # exception would propagate to the real ruletype
+                    # responsible, but would also completely kill this
+                    # generator; so instead just invoke the dispatcher
+                    # error_handler.
+                    dispatcher.error_handler(
+                        TypeError(
+                            "generated value %r is not an instance of "
+                            "ExtractedFragment, thus it cannot be yielded by "
+                            "instances of %r; check that all ruletypes "
+                            "specified for target node type %r such that "
+                            "the values generate by them are done through "
+                            "walk or dispatcher.token, or yield instances of "
+                            "ExtractedFragment." % (
+                                chunk,
+                                type(self),
+                                target_node,
+                            )
+                        ),
+                        rule=self,
+                        node=target_node,
+                    )
 
         if misc_chunks:
             for key, value in misc_chunks.items():
@@ -648,8 +668,9 @@ class Dispatcher(walker.Dispatcher):
 
     def error_handler(self, exception, rule=None, node=None):
         logger.error(
-            "failed to process node %r with rule %r to an extracted value",
-            node, type(rule).__name__,
+            "failed to process node %r with rule %r to an extracted value; "
+            "cause: %s: %s",
+            node, type(rule).__name__, type(exception).__name__, exception
         )
         return next(self.token(rule, node, '', []))
 
