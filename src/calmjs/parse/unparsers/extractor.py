@@ -16,6 +16,8 @@ except ImportError:  # pragma: no cover
 
 from calmjs.parse.asttypes import (
     Assign,
+    BinOp,
+    Number,
     nodetype,
 )
 from calmjs.parse.ruletypes import (
@@ -257,6 +259,60 @@ class AttrListAssignment(Attr):
                 Assignment(*chunks)), None))
 
 
+class OpDisambiguate(Token):
+    """
+    A special token that deals with nodes with an `op` attribute, such
+    that it will be used to determine the handling to use through the
+    mapping specified with the value provided for the construction of
+    this token.
+
+    A default token should be specified with the key `NotImplemented`.
+    """
+
+    def __call__(self, walk, dispatcher, node):
+        definition = dispatcher.optimize_definition('', self.value.get(
+            node.op, self.value.get(NotImplemented, ())))
+        for rule in definition:
+            for chunk in rule(walk, dispatcher, node):
+                yield chunk
+
+
+class GroupAsBinOpPlus(GroupAs):
+    """
+    For BinOp with op = '+'
+    """
+
+    def _next_one(self, walk, dispatcher, node):
+        gen = walk(dispatcher, node, definition=None)
+        result = next(gen)
+        try:
+            fail = next(gen)
+        except StopIteration:
+            return result
+        else:
+            # TODO exception type
+            raise ValueError(
+                "Token %r used with %r has a definition that will yield "
+                "more than one fragment (first two values are %r and %r)" % (
+                    self, node, result, fail)
+            )
+
+    def __call__(self, walk, dispatcher, node):
+        if not isinstance(node, BinOp):
+            raise TypeError("Token %r expects an asttypes.BinOp, got %r" % (
+                type(self), node))
+
+        lhs = self._next_one(walk, dispatcher, node.left)
+        rhs = self._next_one(walk, dispatcher, node.right)
+        # assumes to be ExtractedFragments
+        if isinstance(node.left, Number) and isinstance(node.right, Number):
+            value = lhs.value + rhs.value
+        else:
+            # assume everything else is to be casted to a string
+            value = str(lhs.value) + str(rhs.value)
+        yield next(dispatcher.token(None, node, value, None))
+
+
 class AttrSink(Attr):
     """
     Used to consume everything declared in the Attr.
@@ -456,15 +512,11 @@ definitions = {
             ),),
         ),),
     ),
-    'BinOp': (
-        # Note that this can be replaced with an statement evaluator to
-        # calculate/derived/evaluate the inputs into a result.
-        GroupAsStr((
-            Attr('left'), Text(value=' '),
-            Operator(attr='op'),
-            Text(value=' '), Attr('right'),
-        ),),
-    ),
+    'BinOp': (GroupAsStr((
+        Attr('left'), Text(value=' '),
+        Operator(attr='op'),
+        Text(value=' '), Attr('right'),
+    ),),),
     'UnaryExpr': (
         Attr('value'),
     ),
@@ -698,22 +750,63 @@ class Unparser(BaseUnparser):
         )
 
 
-def extractor(ignore_errors=False):
+def extractor(fold_ops=False, ignore_errors=False):
     """
     A helper to construct an instance of the extractor Unparser
 
     arguments
 
+    fold_ops
+        Apply an update to a clone of the definitions defined at the
+        root of this module such that the definition fo BinOp will be
+        modified with a default set of GroupAsBinOp tokens that will
+        process the operand with the associated operator token.
+
+        This would result in constants (such as Numbers and Strings)
+        being evaluated with the associated operator, yielding an
+        evaluated expression or concatenated strings.  For other
+        identifiers and types encountered, they are simply replaced with
+        a string format replacement fields and are simply treated as if
+        they are strings (i.e. result will be a concatenation).
+
+        This flag has significant limitations and the resulting values
+        of limited value, given that no JavaScript engine or real
+        execution of the code is done.  It WILL produce wild and
+        unexpected results.  Use with caution.
+
+        Default: false (operators will simply be concatenated together
+        with the operands as a string to produce values).
+
     ignore_errors
         Attempt to continue through errors triggered through processing
         of the input ast through the unparser.
+
+        Default: false (exceptions will be thrown on error).
     """
 
     dispatcher_cls = Dispatcher if ignore_errors else walker.Dispatcher
-    return Unparser(dispatcher_cls=dispatcher_cls)
+    new_definitions = {}
+    new_definitions.update(definitions)
+    if fold_ops:
+        new_definitions.update({
+            'BinOp': (
+                OpDisambiguate(
+                    value={
+                        NotImplemented: (GroupAsStr((
+                            Attr('left'), Text(value=' '),
+                            Operator(attr='op'),
+                            Text(value=' '), Attr('right'),
+                        ),),),
+                        '+': (GroupAsBinOpPlus(),),
+                    }
+                ),
+            ),
+        })
+
+    return Unparser(definitions=new_definitions, dispatcher_cls=dispatcher_cls)
 
 
-def ast_to_dict(ast, ignore_errors=False):
+def ast_to_dict(ast, fold_ops=False, ignore_errors=False):
     """
     Simple dictionary building function - return a dictionary for the
     source abstract syntax tree for the parsed program.
@@ -722,9 +815,33 @@ def ast_to_dict(ast, ignore_errors=False):
 
     ast
         The AST to convert to a dictionary.
+
+    fold_ops
+        Apply an update to a clone of the definitions defined at the
+        root of this module such that the definition fo BinOp will be
+        modified with a default set of GroupAsBinOp tokens that will
+        process the operand with the associated operator token.
+
+        This would result in constants (such as Numbers and Strings)
+        being evaluated with the associated operator, yielding an
+        evaluated expression or concatenated strings.  For other
+        identifiers and types encountered, they are simply replaced with
+        a string format replacement fields and are simply treated as if
+        they are strings (i.e. result will be a concatenation).
+
+        This flag has significant limitations and the resulting values
+        of limited value, given that no JavaScript engine or real
+        execution of the code is done.  It WILL produce wild and
+        unexpected results.  Use with caution.
+
+        Default: false (operators will simply be concatenated together
+        with the operands as a string to produce values).
+
     ignore_errors
         Attempt to continue through errors triggered through processing
         of the input ast through the unparser.
+
+        Default: false (exceptions will be thrown on error).
     """
 
-    return dict(extractor(ignore_errors=ignore_errors)(ast))
+    return dict(extractor(fold_ops=fold_ops, ignore_errors=ignore_errors)(ast))

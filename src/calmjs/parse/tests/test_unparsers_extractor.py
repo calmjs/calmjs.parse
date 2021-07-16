@@ -821,3 +821,16 @@ class ExtractorTestCase(unittest.TestCase):
         )
         # default value current an empty string.
         self.assertEqual(result, {'thing': ''})
+
+    def test_basic_binop_folding(self):
+        ast = parse("""
+        greetings = 'Hello, ' + 'World!';
+        three = 1 + 2;
+        _x1 = 'x' + 1;
+        _1x = 1 + 'x';
+        """)
+        result = ast_to_dict(ast, fold_ops=True)
+        self.assertEqual(result['greetings'], 'Hello, World!')
+        self.assertEqual(result['three'], 3)
+        self.assertEqual(result['_x1'], 'x1')
+        self.assertEqual(result['_1x'], '1x')
