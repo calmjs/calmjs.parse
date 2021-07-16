@@ -338,6 +338,23 @@ class GroupAsBinOpPlus(GroupAsBinOp):
             return FoldedFragment(str(lhs.value) + str(rhs.value), String)
 
 
+class GroupAsBinOpMult(GroupAsBinOp):
+    """
+    For BinOp with op = '*'
+    """
+
+    def binop(self, lhs, rhs):
+        # assumes to be ExtractedFragments
+        if (issubclass(lhs.folded_type, Number) and
+                issubclass(rhs.folded_type, Number) and
+                isinstance(lhs.value, (int, float)) and
+                isinstance(rhs.value, (int, float))):
+            return FoldedFragment(lhs.value * rhs.value, Number)
+        else:
+            # unsupported; ECMAScript assumes this to result in a NaN
+            return FoldedFragment('NaN', Number)
+
+
 class AttrSink(Attr):
     """
     Used to consume everything declared in the Attr.
@@ -827,6 +844,7 @@ def extractor(fold_ops=False, ignore_errors=False):
                             Text(value=' '), Attr('right'),
                         ),),),
                         '+': (GroupAsBinOpPlus(),),
+                        '*': (GroupAsBinOpMult(),),
                     }
                 ),
             ),

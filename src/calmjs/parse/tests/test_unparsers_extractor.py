@@ -822,7 +822,7 @@ class ExtractorTestCase(unittest.TestCase):
         # default value current an empty string.
         self.assertEqual(result, {'thing': ''})
 
-    def test_basic_binop_folding(self):
+    def test_binop_plus(self):
         ast = parse("""
         greetings = 'Hello, ' + 'World!';
         three = 1 + 2;
@@ -836,3 +836,39 @@ class ExtractorTestCase(unittest.TestCase):
         self.assertEqual(result['_x1'], 'x1')
         self.assertEqual(result['_1x'], '1x')
         self.assertEqual(result['six'], 6)
+
+    def test_binop_mult(self):
+        ast = parse("""
+        twelve = 3 * 4;
+        sixty = 3 * 4 * 5;
+        wot = 'x' * 'x';
+        wut = 'x' * 'x' * 'x';
+        // currently not working because NaN is treated as an identifier
+        // check = NaN * NaN
+        // currently done via grouping test
+        """)
+        result = ast_to_dict(ast, fold_ops=True)
+        self.assertEqual(result['twelve'], 12)
+        self.assertEqual(result['sixty'], 60)
+        self.assertEqual(result['wot'], 'NaN')
+        self.assertEqual(result['wut'], 'NaN')
+
+    def test_binop_folding_various(self):
+        ast = parse("""
+        ten = 1 + 2 + 3 + 4;
+        eleven = 1 + 2 * 3 + 4;
+        lel = 'x' * 'x' + 'x'
+        """)
+        result = ast_to_dict(ast, fold_ops=True)
+        self.assertEqual(result['ten'], 10)
+        self.assertEqual(result['eleven'], 11)
+        self.assertEqual(result['lel'], 'NaNx')
+
+    def test_binop_folding_with_grouping(self):
+        ast = parse("""
+        twentysix = (1 + 2) * (3 + 4) + 5;
+        check = ('x' * 'x') * ('x' * 'x');
+        """)
+        result = ast_to_dict(ast, fold_ops=True)
+        self.assertEqual(result['twentysix'], 26)
+        self.assertEqual(result['check'], 'NaN')
