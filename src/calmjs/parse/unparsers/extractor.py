@@ -48,7 +48,19 @@ from calmjs.parse.utils import str
 
 
 logger = getLogger(__name__)
-ExtractedFragment = namedtuple('ExtractedFragment', ['value', 'node'])
+
+# The primary fragment type; token_handler_extractor yields these
+ExtractedFragment = namedtuple('ExtractedFragment', [
+    'value',
+    'node',
+    'folded_type',
+])
+# The secondary fragment type; may be used as value so that the
+# token_handler_extractor be able to produce a folded_type
+FoldedFragment = namedtuple('FoldedFragment', [
+    'value',
+    'folded_type',
+])
 
 
 class Assignment(tuple):
@@ -305,8 +317,9 @@ class GroupAsBinOpPlus(GroupAs):
         lhs = self._next_one(walk, dispatcher, node.left)
         rhs = self._next_one(walk, dispatcher, node.right)
         # assumes to be ExtractedFragments
-        if isinstance(node.left, Number) and isinstance(node.right, Number):
-            value = lhs.value + rhs.value
+        if issubclass(lhs.folded_type, Number) and issubclass(
+                rhs.folded_type, Number):
+            value = FoldedFragment(lhs.value + rhs.value, Number)
         else:
             # assume everything else is to be casted to a string
             value = str(lhs.value) + str(rhs.value)
@@ -713,7 +726,11 @@ def token_handler_extractor(
     # is a rather huge pain to do (approaching the work of building a
     # proper language interpreter/bytecode compiler, so this shortcut is
     # taken instead.
-    yield ExtractedFragment(subnode, node)
+    if isinstance(subnode, FoldedFragment):
+        value, folded_type = subnode
+    else:
+        value, folded_type = subnode, nodetype(node)
+    yield ExtractedFragment(value, node, folded_type)
 
 
 class Dispatcher(walker.Dispatcher):

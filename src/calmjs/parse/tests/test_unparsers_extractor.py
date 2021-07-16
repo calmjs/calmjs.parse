@@ -48,8 +48,8 @@ class SupportTestCase(unittest.TestCase):
 
     def test_assignment_repr(self):
         assignment = Assignment(
-            ExtractedFragment(1, Number(value=1)),
-            ExtractedFragment(1, Number(value=1)),
+            ExtractedFragment(1, Number(value=1), None),
+            ExtractedFragment(1, Number(value=1), None),
         )
         self.assertEqual('(1, 1)', repr(assignment))
 
@@ -62,8 +62,8 @@ class SupportTestCase(unittest.TestCase):
         self.assertEqual(assignment.value, 2)
 
         assignment_frag = Assignment(
-            ExtractedFragment(1, Number(value=1)),
-            ExtractedFragment(2, Number(value=2)),
+            ExtractedFragment(1, Number(value=1), None),
+            ExtractedFragment(2, Number(value=2), None),
         )
         self.assertEqual(assignment_frag.key, 1)
         self.assertEqual(assignment_frag.value, 2)
@@ -828,9 +828,11 @@ class ExtractorTestCase(unittest.TestCase):
         three = 1 + 2;
         _x1 = 'x' + 1;
         _1x = 1 + 'x';
+        six = 1 + 2 + 3;
         """)
         result = ast_to_dict(ast, fold_ops=True)
         self.assertEqual(result['greetings'], 'Hello, World!')
         self.assertEqual(result['three'], 3)
         self.assertEqual(result['_x1'], 'x1')
         self.assertEqual(result['_1x'], '1x')
+        self.assertEqual(result['six'], 6)
