@@ -18,6 +18,7 @@ from calmjs.parse.asttypes import (
     Assign,
     BinOp,
     Number,
+    String,
     nodetype,
 )
 from calmjs.parse.ruletypes import (
@@ -289,9 +290,9 @@ class OpDisambiguate(Token):
                 yield chunk
 
 
-class GroupAsBinOpPlus(GroupAs):
+class GroupAsBinOp(GroupAs):
     """
-    For BinOp with op = '+'
+    The generic binop
     """
 
     def _next_one(self, walk, dispatcher, node):
@@ -316,14 +317,25 @@ class GroupAsBinOpPlus(GroupAs):
 
         lhs = self._next_one(walk, dispatcher, node.left)
         rhs = self._next_one(walk, dispatcher, node.right)
+        yield next(dispatcher.token(None, node, self.binop(lhs, rhs), None))
+
+    def binop(self, lhs, rhs):
+        raise NotImplementedError
+
+
+class GroupAsBinOpPlus(GroupAsBinOp):
+    """
+    For BinOp with op = '+'
+    """
+
+    def binop(self, lhs, rhs):
         # assumes to be ExtractedFragments
         if issubclass(lhs.folded_type, Number) and issubclass(
                 rhs.folded_type, Number):
-            value = FoldedFragment(lhs.value + rhs.value, Number)
+            return FoldedFragment(lhs.value + rhs.value, Number)
         else:
             # assume everything else is to be casted to a string
-            value = str(lhs.value) + str(rhs.value)
-        yield next(dispatcher.token(None, node, value, None))
+            return FoldedFragment(str(lhs.value) + str(rhs.value), String)
 
 
 class AttrSink(Attr):
