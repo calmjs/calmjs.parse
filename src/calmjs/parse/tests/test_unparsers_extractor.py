@@ -5,7 +5,9 @@ import textwrap
 import unittest
 
 from calmjs.parse.asttypes import (
+    Array,
     Block,
+    Boolean,
     Case,
     Catch,
     Default,
@@ -16,9 +18,12 @@ from calmjs.parse.asttypes import (
     FunctionCall,
     Identifier,
     If,
+    Object,
+    Null,
     Number,
     GetPropAssign,
     SetPropAssign,
+    String,
     Switch,
     Try,
     With,
@@ -30,12 +35,18 @@ from calmjs.parse.unparsers.extractor import (
     Assignment,
     AssignmentList,
     ExtractedFragment,
+    FoldedFragment,
     Dispatcher,
     Unparser,
     definitions,
     extractor,
     ast_to_dict,
     logger as extractor_logger,
+    to_boolean,
+    to_number,
+    to_primitive,
+    to_string,
+    value_to_str,
 )
 from calmjs.parse.testing.util import setup_logger
 
@@ -97,6 +108,107 @@ class SupportTestCase(unittest.TestCase):
     def test_assignment_list_generic_equality(self):
         assignmentlist = AssignmentList(Assignment(1, 2), Assignment(3, 4))
         self.assertEqual([(1, 2), (3, 4)], assignmentlist)
+
+
+class TypeConversionTestCase(unittest.TestCase):
+
+    def test_value_to_str(self):
+        with self.assertRaises(TypeError):
+            value_to_str(object())
+
+    def test_to_primitive_various_lists(self):
+        def assertArrayToPrimitive(hint, left, right):
+            # local test helper; move out when appropriate.
+            self.assertEqual(
+                FoldedFragment(left, hint),
+                to_primitive(FoldedFragment(right, Array), hint),
+            )
+
+        assertArrayToPrimitive(String, '', [])
+        assertArrayToPrimitive(String, '1', [1])
+        assertArrayToPrimitive(String, '1,2', [1, 2])
+        assertArrayToPrimitive(String, '1,2,3', [1, 2, 3])
+        assertArrayToPrimitive(
+            String, '1,2,3,4,5,6,7,8', [1, 2, [3, 4], 5, [[[6], 7], 8]])
+        assertArrayToPrimitive(
+            String, '[object Object],[object Object]', [{}, {}])
+        assertArrayToPrimitive(
+            String,
+            '0,1,,true,false,hello', [0, 1, None, True, False, 'hello'])
+
+        assertArrayToPrimitive(Number, 0, [])
+        assertArrayToPrimitive(Number, 0, [0])
+        assertArrayToPrimitive(Number, 1, [1])
+        assertArrayToPrimitive(Number, 1, ['1'])
+        assertArrayToPrimitive(Number, 'NaN', [1, 2])
+        assertArrayToPrimitive(Number, 1, [[[1]]])
+
+        assertArrayToPrimitive(Number, 'NaN', [True])
+        assertArrayToPrimitive(Number, 'NaN', [False])
+        assertArrayToPrimitive(Number, 2748, ['  0002748 '])
+        assertArrayToPrimitive(Number, 2748, ['  0xabc  '])
+        assertArrayToPrimitive(Number, 'NaN', ['  00xabc  '])
+
+    def test_to_primitive_object(self):
+        # TODO validate that all the folded_type returned is expected
+        self.assertEqual('[object Object]', to_primitive(
+            FoldedFragment({}, Object), String).value)
+        self.assertEqual('NaN', to_primitive(
+            FoldedFragment({}, Object), Number).value)
+
+    def test_to_primitive_other(self):
+        # TODO validate that all the folded_type returned is expected
+        fragments = [
+            FoldedFragment(0, Number),
+            FoldedFragment('hello', String),
+            FoldedFragment(True, Boolean),
+            FoldedFragment(None, Null),
+        ]
+        for fragment in fragments:
+            self.assertIs(fragment, to_primitive(fragment, String))
+        for fragment in fragments:
+            self.assertIs(fragment, to_primitive(fragment, Number))
+
+    def test_to_boolean(self):
+        self.assertTrue(to_boolean(FoldedFragment([], Array)))
+        self.assertTrue(to_boolean(FoldedFragment({}, Object)))
+        self.assertFalse(to_boolean(FoldedFragment(None, Null)))
+        self.assertTrue(to_boolean(FoldedFragment(True, Boolean)))
+        self.assertFalse(to_boolean(FoldedFragment(False, Boolean)))
+        self.assertTrue(to_boolean(FoldedFragment(1, Number)))
+        self.assertFalse(to_boolean(FoldedFragment(0, Number)))
+        self.assertFalse(to_boolean(FoldedFragment('NaN', Number)))
+        self.assertTrue(to_boolean(FoldedFragment('hello', String)))
+        self.assertFalse(to_boolean(FoldedFragment('', String)))
+
+    def test_to_number(self):
+        self.assertEqual(0, to_number(FoldedFragment([], Array)))
+        self.assertEqual(1, to_number(FoldedFragment([[['1']]], Array)))
+        self.assertEqual(1, to_number(FoldedFragment(True, Boolean)))
+        self.assertEqual(0, to_number(FoldedFragment(False, Boolean)))
+        value = 5343
+        self.assertIs(value, to_number(FoldedFragment(value, Number)))
+        self.assertEqual(0, to_number(FoldedFragment(None, Null)))
+        self.assertEqual(1234, to_number(FoldedFragment('1234', Array)))
+        self.assertEqual('NaN', to_number(FoldedFragment({}, Object)))
+
+        # for completeness, no idea how might other asttypes slip through
+        self.assertEqual('NaN', to_number(FoldedFragment([], Block)))
+
+    def test_to_string(self):
+        self.assertEqual('', to_string(FoldedFragment([], Array)))
+        self.assertEqual('true', to_string(FoldedFragment(True, Boolean)))
+        self.assertEqual('false', to_string(FoldedFragment(False, Boolean)))
+        self.assertEqual('null', to_string(FoldedFragment(None, Null)))
+        self.assertEqual(
+            '12345.67', to_string(FoldedFragment(12345.67, Number)))
+        value = 'hello world'
+        self.assertIs(value, to_string(FoldedFragment(value, String)))
+        self.assertEqual(
+            '[object Object]', to_string(FoldedFragment({}, Object)))
+
+        # for completeness, no idea how might other asttypes slip through
+        self.assertEqual('', to_string(FoldedFragment([], Block)))
 
 
 class ExtractorUnparserErrorTestCase(unittest.TestCase):

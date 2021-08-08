@@ -15,9 +15,13 @@ except ImportError:  # pragma: no cover
     from collections import MutableSequence
 
 from calmjs.parse.asttypes import (
+    Array,
     Assign,
     BinOp,
+    Boolean,
     Number,
+    Null,
+    Object,
     String,
     nodetype,
 )
@@ -62,6 +66,122 @@ FoldedFragment = namedtuple('FoldedFragment', [
     'value',
     'folded_type',
 ])
+
+
+# See ECMA-262 5.1 Edition, Section 9
+# Note that this parser does not provide an undefined token or global
+# binding, it's currently not handled.
+# The hint argument is the PreferredType
+
+def value_to_str(value):
+    """
+    Since the design eagerly convert and discard because it was felt
+    that tracking everything all at once being too cumbersome, there
+    will be situations where this conversion from Python values back
+    to JavaScript equivalent string expression...
+
+    This is currently used for converting converted values enclosed in
+    Array back to the JavaScript string converted types; not to be used
+    in subsequent methods due to subtle differences with the conversion
+    of null.
+    """
+
+    if value is None:  # null
+        return ''
+    elif value is True:  # true
+        return 'true'
+    elif value is False:  # false
+        return 'false'
+    elif isinstance(value, (int, float)):
+        return str(value)
+    elif isinstance(value, str):
+        return value
+    elif isinstance(value, list):
+        return ','.join([value_to_str(v) for v in value])
+    elif isinstance(value, dict):
+        return '[object Object]'
+    raise TypeError(
+        '%r cannot be converted to a value in the base ECMAScript '
+        'language type' % value)
+
+
+def to_primitive(fragment, hint):
+    # TODO implement the correct return value for either Object/Array
+    if (issubclass(fragment.folded_type, Array) or
+            issubclass(fragment.folded_type, Object)):
+        value = value_to_str(fragment.value)
+        if issubclass(hint, Number):
+            return FoldedFragment(
+                to_number(FoldedFragment(value, String)), Number)
+        # everything else?
+        return FoldedFragment(value, String)
+    # no conversion for other types.
+    return fragment
+
+
+def to_boolean(fragment):
+    if issubclass(fragment.folded_type, Array):
+        return True
+    elif issubclass(fragment.folded_type, Boolean):
+        return fragment.value
+    elif issubclass(fragment.folded_type, Number):
+        return fragment.value not in (0, 'NaN')
+    elif issubclass(fragment.folded_type, String):
+        return bool(fragment.value)
+    elif issubclass(fragment.folded_type, Object):
+        return True
+    return False
+
+
+def to_number(fragment):
+    def from_str(value):
+        # probably not exactly spec conformant, but close enough.
+        maybe_hex = value.strip()
+        if maybe_hex.startswith('0x'):
+            cleaned = maybe_hex
+        else:
+            cleaned = maybe_hex.lstrip('0')
+        if cleaned == '':
+            return 0
+        try:
+            number = literal_eval(cleaned)
+        except (ValueError, SyntaxError):
+            return 'NaN'
+        if not isinstance(number, (int, float)):
+            return 'NaN'
+        return number
+
+    if issubclass(fragment.folded_type, Array):
+        return to_primitive(fragment, Number).value
+    elif issubclass(fragment.folded_type, Boolean):
+        return int(fragment.value)
+    elif issubclass(fragment.folded_type, Number):
+        return fragment.value
+    elif issubclass(fragment.folded_type, Null):
+        return 0
+    elif issubclass(fragment.folded_type, String):
+        return from_str(fragment.value)
+    elif issubclass(fragment.folded_type, Object):
+        return to_primitive(fragment, Number).value
+    return 'NaN'
+
+
+def to_string(fragment):
+    # can't quite use value_to_str because that's for values enclosed in
+    # another object.
+    if issubclass(fragment.folded_type, Array):
+        return to_string(to_primitive(fragment, String))
+    elif issubclass(fragment.folded_type, Boolean):
+        return 'true' if fragment.value else 'false'
+    elif issubclass(fragment.folded_type, Number):
+        return str(fragment.value)
+    elif issubclass(fragment.folded_type, Null):
+        return 'null'
+    elif issubclass(fragment.folded_type, String):
+        return fragment.value
+    elif issubclass(fragment.folded_type, Object):
+        return to_string(to_primitive(fragment, String))
+    return ''
 
 
 class Assignment(tuple):
@@ -345,14 +465,12 @@ class GroupAsBinOpMult(GroupAsBinOp):
 
     def binop(self, lhs, rhs):
         # assumes to be ExtractedFragments
-        if (issubclass(lhs.folded_type, Number) and
-                issubclass(rhs.folded_type, Number) and
-                isinstance(lhs.value, (int, float)) and
-                isinstance(rhs.value, (int, float))):
-            return FoldedFragment(lhs.value * rhs.value, Number)
-        else:
-            # unsupported; ECMAScript assumes this to result in a NaN
+        lhs_value = to_number(lhs)
+        rhs_value = to_number(rhs)
+        if lhs_value == 'NaN' or rhs_value == 'NaN':
             return FoldedFragment('NaN', Number)
+        else:
+            return FoldedFragment(lhs_value * rhs_value, Number)
 
 
 class AttrSink(Attr):
