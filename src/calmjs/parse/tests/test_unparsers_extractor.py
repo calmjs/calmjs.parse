@@ -26,6 +26,7 @@ from calmjs.parse.asttypes import (
     String,
     Switch,
     Try,
+    UnaryExpr,
     With,
     While,
 )
@@ -42,6 +43,8 @@ from calmjs.parse.unparsers.extractor import (
     FoldedFragment,
     GroupAsBinOp,
     GroupAsBinOpPlus,
+    GroupAsUnaryExpr,
+    GroupAsUnaryExprPlus,
     Unparser,
     definitions,
     extractor,
@@ -266,6 +269,28 @@ class ExtractorUnparserErrorTestCase(unittest.TestCase):
                 # sentinel node to ensure no other premature termination
                 Block: [{}],
             },
+        )
+
+    def test_definitions_groupasunary_errors(self):
+        # for the case where certain types have not been properly
+        # reduced to a supported grouping
+        faulty = {}
+        faulty.update(definitions)
+        faulty['Array'] = (GroupAsUnaryExprPlus(),)
+        faulty['UnaryExpr'] = (GroupAsUnaryExpr(),)
+
+        self.assert_definitions_fault(
+            TypeError, faulty,
+            "a = [1, 2, 3]",
+            "Ruletype token 'GroupAsUnaryExprPlus' expects a 'UnaryExpr', "
+            "got 'Array'",
+            {'a': ''},
+        )
+        self.assert_definitions_fault(
+            NotImplementedError, faulty,
+            "a = +1",
+            "",
+            {'a': ''},
         )
 
     def test_definitions_groupasbin_errors(self):
@@ -937,9 +962,15 @@ class ExtractorUnparserTestCase(unittest.TestCase):
         ast = parse("""
         ++obj;
         delete obj;
+        +42;
+        -42;  // no negative numbers in ast; unary `-` negates positives
         """)
         self.assertEqual(dict(unparser(ast)), {
             Identifier: ['obj', 'obj'],
+            # UnaryExpr instead of Number, because that's the most outer
+            # node captured; a "neat" demonstration of a slippage in the
+            # ECMAScript syntax and semantics in its specifications.
+            UnaryExpr: [42, -42],
         })
 
     def test_postfix_op(self):
@@ -1055,3 +1086,18 @@ class ExtractorTestCase(unittest.TestCase):
         result = ast_to_dict(ast, fold_ops=True)
         self.assertEqual(result['twentysix'], 26)
         self.assertEqual(result['check'], 'NaN')
+
+    def test_unary_expr_folding(self):
+        unparser = Unparser()
+        ast = parse("""
+        plus = +'42';
+        neg = -'42';
+        plusobj = +{};
+        negobj = -{};
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            'plus': 42,
+            'neg': -42,
+            'plusobj': 'NaN',
+            'negobj': 'NaN',
+        })

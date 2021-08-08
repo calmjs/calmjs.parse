@@ -23,6 +23,7 @@ from calmjs.parse.asttypes import (
     Null,
     Object,
     String,
+    UnaryExpr,
     nodetype,
 )
 from calmjs.parse.ruletypes import (
@@ -497,6 +498,49 @@ class GroupAsBinOpMult(GroupAsBinOp):
             return FoldedFragment(lhs_value * rhs_value, Number)
 
 
+class GroupAsUnaryExpr(Attr):
+
+    def __call__(self, walk, dispatcher, node):
+        if not isinstance(node, UnaryExpr):
+            raise TypeError(
+                "Ruletype token %r expects a 'UnaryExpr', got %r" % (
+                    type(self).__name__, type(node).__name__))
+
+        value = next(walk(dispatcher, node.value, definition=None))
+        yield next(dispatcher.token(None, node, self.unaryop(value), None))
+
+    def unaryop(self, value):
+        raise NotImplementedError
+
+
+class GroupAsUnaryExprPlus(GroupAsUnaryExpr):
+    """
+    For UnaryExpr with op = '+'
+    """
+
+    def unaryop(self, value):
+        # assumes to be ExtractedFragments
+        value = to_number(value)
+        if value == 'NaN':
+            return FoldedFragment('NaN', Number)
+        else:
+            return FoldedFragment(value, Number)
+
+
+class GroupAsUnaryExprMinus(GroupAsUnaryExpr):
+    """
+    For UnaryExpr with op = '-'
+    """
+
+    def unaryop(self, value):
+        # assumes to be ExtractedFragments
+        value = to_number(value)
+        if value == 'NaN':
+            return FoldedFragment('NaN', Number)
+        else:
+            return FoldedFragment(- value, Number)
+
+
 class AttrSink(Attr):
     """
     Used to consume everything declared in the Attr.
@@ -702,7 +746,17 @@ definitions = {
         Text(value=' '), Attr('right'),
     ),),),
     'UnaryExpr': (
-        Attr('value'),
+        # the default grouping required to ensure positive/negative
+        # numbers return as expected, also to support the shorthand
+        # boolean expressions using numbers (i.e. !0 and !1).
+        OpDisambiguate(
+            value={
+                NotImplemented: (Attr('value'),),
+                '+': (GroupAsUnaryExprPlus(),),
+                '-': (GroupAsUnaryExprMinus(),),
+                # '!': (GroupAsUnaryExprNot(),),
+            }
+        ),
     ),
     'PostfixExpr': (
         Operator(attr='value'),
