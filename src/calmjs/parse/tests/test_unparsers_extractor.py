@@ -506,6 +506,16 @@ class ExtractorUnparserTestCase(unittest.TestCase):
             'some[id][a]': 'value',
         })
 
+    def test_bracket_accessor_on_string(self):
+        unparser = Unparser()
+        ast = parse('''
+        value = 'hello'[1];
+        ''')
+        # bracket accessor won't try to resolve the value
+        self.assertEqual(dict(unparser(ast)), {
+            'value': 'hello[1]',
+        })
+
     def test_various_special_values(self):
         unparser = Unparser()
         ast = parse('''
