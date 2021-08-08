@@ -225,7 +225,21 @@ class ExtractorUnparserErrorTestCase(unittest.TestCase):
             e.exception.args[0],
         )
 
-    def test_unsupported_definitions(self):
+    def assert_definitions_fault(
+            self, errorcls, definitions, src, msg, result):
+        unparser = Unparser(definitions=definitions)
+        ast = parse(src)
+        with self.assertRaises(errorcls) as e:
+            dict(unparser(ast))
+        self.assertIn(msg, str(e.exception))
+
+        err = setup_logger(self, extractor_logger)
+        unparser = Unparser(definitions=definitions, dispatcher_cls=Dispatcher)
+        ast = parse(src)
+        self.assertEqual(result, dict(unparser(ast)))
+        self.assertIn(msg, err.getvalue())
+
+    def test_definitions_fault_handling(self):
         class BadAttr(Attr):
             def __call__(self, walk, dispatcher, node):
                 # rather than going through dispatcher.walk, yield this
@@ -236,34 +250,17 @@ class ExtractorUnparserErrorTestCase(unittest.TestCase):
         mismatched.update(definitions)
         mismatched['Assign'] = (Attr('left'), BadAttr('op'), Attr('right'),)
 
-        unparser = Unparser(definitions=mismatched)
-        ast = parse('a = 1')
-        with self.assertRaises(TypeError) as e:
-            dict(unparser(ast))
-        self.assertIn(
+        self.assert_definitions_fault(
+            TypeError, mismatched,
+            'a = 1;{}',
             "'=' is not an instance of ExtractedFragment",
-            str(e.exception),
-        )
-
-        # now with the soft error version with logger
-        err = setup_logger(self, extractor_logger)
-        mismatched['Assign'] = (Attr('left'), BadAttr('op'), Attr('right'),)
-        unparser = Unparser(definitions=mismatched, dispatcher_cls=Dispatcher)
-        # the additional block is a sentinel
-        ast = parse('a = 1;{};')
-        # the bad pair fully omitted; with Attr it would yield normally
-        # the commented key-value.
-        self.assertEqual({
-            Identifier: ['a'],
-            # Assign: ['='],
-            Number: [1],
-
-            # sentinel node to ensure no other premature termination
-            Block: [{}],
-        }, dict(unparser(ast)))
-        self.assertIn(
-            "'=' is not an instance of ExtractedFragment",
-            err.getvalue(),
+            {
+                Identifier: ['a'],
+                # Assign: ['='],
+                Number: [1],
+                # sentinel node to ensure no other premature termination
+                Block: [{}],
+            },
         )
 
 
