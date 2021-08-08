@@ -30,13 +30,18 @@ from calmjs.parse.asttypes import (
     While,
 )
 from calmjs.parse.parsers import es5
-from calmjs.parse.ruletypes import Attr
+from calmjs.parse.ruletypes import (
+    Attr,
+    JoinAttr,
+)
 from calmjs.parse.unparsers.extractor import (
     Assignment,
     AssignmentList,
+    Dispatcher,
     ExtractedFragment,
     FoldedFragment,
-    Dispatcher,
+    GroupAsBinOp,
+    GroupAsBinOpPlus,
     Unparser,
     definitions,
     extractor,
@@ -261,6 +266,48 @@ class ExtractorUnparserErrorTestCase(unittest.TestCase):
                 # sentinel node to ensure no other premature termination
                 Block: [{}],
             },
+        )
+
+    def test_definitions_groupasbin_errors(self):
+        # for the case where certain types have not been properly
+        # reduced to a supported grouping
+        faulty = {}
+        faulty.update(definitions)
+        faulty['Array'] = (GroupAsBinOpPlus(),)
+        faulty['BinOp'] = (GroupAsBinOp(),)
+
+        self.assert_definitions_fault(
+            TypeError, faulty,
+            "a = [1, 2, 3]",
+            "Ruletype token 'GroupAsBinOpPlus' expects a 'BinOp', got 'Array'",
+            {'a': ''},
+        )
+        self.assert_definitions_fault(
+            NotImplementedError, faulty,
+            "a = 1 + 1",
+            "",
+            {'a': ''},
+        )
+
+    def test_definitions_groupasbin_incompat(self):
+        # for the case where certain types have not been properly
+        # reduced to a supported grouping
+        faulty = {}
+        faulty.update(definitions)
+        faulty['Array'] = (JoinAttr('items'),)
+        faulty['BinOp'] = (GroupAsBinOpPlus(),)
+
+        self.assert_definitions_fault(
+            ValueError, faulty,
+            "a = '' + [1, 2, 3]",
+            "Ruletype token 'GroupAsBinOpPlus' unable to process output "
+            "produced by the definition used on <Array @1:10 ...>, as it "
+            "yielded more than one fragment (first two fragments are "
+            "ExtractedFragment(value=1, node=<Number @1:11 value='1'>, "
+            "folded_type=<class 'calmjs.parse.asttypes.Number'>) and "
+            "ExtractedFragment(value=2, node=<Number @1:14 value='2'>, "
+            "folded_type=<class 'calmjs.parse.asttypes.Number'>))",
+            {'a': ''},
         )
 
 

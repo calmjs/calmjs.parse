@@ -425,15 +425,24 @@ class GroupAsBinOp(GroupAs):
         else:
             # TODO exception type
             raise ValueError(
-                "Token %r used with %r has a definition that will yield "
-                "more than one fragment (first two values are %r and %r)" % (
-                    self, node, result, fail)
+                "Ruletype token %r unable to process output produced by the "
+                "definition used on <%s @%s:%s ...>, as it yielded more than "
+                "one fragment (first two fragments are %r and %r)" % (
+                    type(self).__name__,
+                    # manually construct a zero depth with line number
+                    type(node).__name__,
+                    '?' if node.lineno is None else node.lineno,
+                    '?' if node.colno is None else node.colno,
+                    result,
+                    fail,
+                )
             )
 
     def __call__(self, walk, dispatcher, node):
         if not isinstance(node, BinOp):
-            raise TypeError("Token %r expects an asttypes.BinOp, got %r" % (
-                type(self), node))
+            raise TypeError(
+                "Ruletype token %r expects a 'BinOp', got %r" % (
+                    type(self).__name__, type(node).__name__))
 
         lhs = self._next_one(walk, dispatcher, node.left)
         rhs = self._next_one(walk, dispatcher, node.right)
