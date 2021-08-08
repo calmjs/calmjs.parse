@@ -1003,6 +1003,23 @@ class ExtractorTestCase(unittest.TestCase):
         self.assertEqual(result['_1x'], '1x')
         self.assertEqual(result['six'], 6)
 
+    def test_binop_minus(self):
+        ast = parse("""
+        greetings = 'Hello, ' - 'World!';
+        neg1 = 1 - 2;
+        _x1 = 'x' - 1;
+        _1x = 1 - 'x';
+        neg4 = 1 - 2 - 3;
+        wat = 'x' - 'x';
+        """)
+        result = ast_to_dict(ast, fold_ops=True)
+        self.assertEqual(result['greetings'], 'NaN')
+        self.assertEqual(result['neg1'], -1)
+        self.assertEqual(result['_x1'], 'NaN')
+        self.assertEqual(result['_1x'], 'NaN')
+        self.assertEqual(result['neg4'], -4)
+        self.assertEqual(result['wat'], 'NaN')
+
     def test_binop_mult(self):
         ast = parse("""
         twelve = 3 * 4;

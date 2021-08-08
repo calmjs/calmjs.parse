@@ -467,6 +467,21 @@ class GroupAsBinOpPlus(GroupAsBinOp):
             return FoldedFragment(str(lhs.value) + str(rhs.value), String)
 
 
+class GroupAsBinOpMinus(GroupAsBinOp):
+    """
+    For BinOp with op = '-'
+    """
+
+    def binop(self, lhs, rhs):
+        # assumes to be ExtractedFragments
+        lhs_value = to_number(lhs)
+        rhs_value = to_number(rhs)
+        if lhs_value == 'NaN' or rhs_value == 'NaN':
+            return FoldedFragment('NaN', Number)
+        else:
+            return FoldedFragment(lhs_value - rhs_value, Number)
+
+
 class GroupAsBinOpMult(GroupAsBinOp):
     """
     For BinOp with op = '*'
@@ -971,6 +986,7 @@ def extractor(fold_ops=False, ignore_errors=False):
                             Text(value=' '), Attr('right'),
                         ),),),
                         '+': (GroupAsBinOpPlus(),),
+                        '-': (GroupAsBinOpMinus(),),
                         '*': (GroupAsBinOpMult(),),
                     }
                 ),
