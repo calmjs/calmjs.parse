@@ -1052,7 +1052,8 @@ class ExtractorTestCase(unittest.TestCase):
         name = "John";
         greetings = 'Hello, ' + name + '!';
         accessors = 'Poking at obj ' + a.b.c + ':' + thing[1]['abc'].x + '.';
-        f_call = 'Function call: ' + f(a, b, c)
+        f_call = 'Function call: ' + f(a, b, c);
+        namename = name + name;
         """)
         result = ast_to_dict(ast, fold_ops=True)
         self.assertEqual(result['name'], 'John')
@@ -1061,6 +1062,7 @@ class ExtractorTestCase(unittest.TestCase):
             result['accessors'], 'Poking at obj {a.b.c}:{thing[1][abc].x}.')
         self.assertEqual(
             result['f_call'], 'Function call: {}')
+        self.assertEqual(result['namename'], '{name}{name}')
 
     def test_binop_minus(self):
         ast = parse("""
@@ -1073,6 +1075,7 @@ class ExtractorTestCase(unittest.TestCase):
         objobj = {} - {};
         arrarr = [] - [];
         arrneg1 = [1] - [2];
+        id = id1 - id2;
         """)
         result = ast_to_dict(ast, fold_ops=True)
         self.assertEqual(result['greetings'], 'NaN')
@@ -1084,6 +1087,7 @@ class ExtractorTestCase(unittest.TestCase):
         self.assertEqual(result['objobj'], 'NaN')
         self.assertEqual(result['arrarr'], 0)
         self.assertEqual(result['arrneg1'], -1)
+        self.assertEqual(result['id'], 'NaN')
 
     def test_binop_mult(self):
         ast = parse("""
@@ -1097,6 +1101,7 @@ class ExtractorTestCase(unittest.TestCase):
         objobj = {} * {};
         arrarr = [] * [];
         arrmult = [1] * [2];
+        id = id1 * id2;
         """)
         result = ast_to_dict(ast, fold_ops=True)
         self.assertEqual(result['twelve'], 12)
@@ -1106,6 +1111,7 @@ class ExtractorTestCase(unittest.TestCase):
         self.assertEqual(result['objobj'], 'NaN')
         self.assertEqual(result['arrarr'], 0)
         self.assertEqual(result['arrmult'], 2)
+        self.assertEqual(result['id'], 'NaN')
 
     def test_binop_div(self):
         ast = parse("""
@@ -1116,6 +1122,7 @@ class ExtractorTestCase(unittest.TestCase):
         objobj = {} / {};
         arrarr = [] / [];
         half = [1] / [2];
+        id = id1 / id2;
         """)
         result = ast_to_dict(ast, fold_ops=True)
         self.assertEqual(result['threequarters'], 0.75)
@@ -1125,6 +1132,7 @@ class ExtractorTestCase(unittest.TestCase):
         self.assertEqual(result['objobj'], 'NaN')
         self.assertEqual(result['arrarr'], 'NaN')
         self.assertEqual(result['half'], 0.5)
+        self.assertEqual(result['id'], 'NaN')
 
     def test_binop_mod(self):
         ast = parse("""
@@ -1136,6 +1144,7 @@ class ExtractorTestCase(unittest.TestCase):
         objobj = {} % {};
         arrarr = [] % [];
         three = [3] % [4];
+        id = id1 % id2;
         """)
         result = ast_to_dict(ast, fold_ops=True)
         self.assertEqual(result['zero'], 0)
@@ -1146,6 +1155,7 @@ class ExtractorTestCase(unittest.TestCase):
         self.assertEqual(result['objobj'], 'NaN')
         self.assertEqual(result['arrarr'], 'NaN')
         self.assertEqual(result['three'], 3)
+        self.assertEqual(result['id'], 'NaN')
 
     def test_binop_folding_various(self):
         ast = parse("""
