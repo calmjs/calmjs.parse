@@ -1026,6 +1026,10 @@ class ExtractorTestCase(unittest.TestCase):
         _x1 = 'x' + 1;
         _1x = 1 + 'x';
         six = 1 + 2 + 3;
+        objobj = {} + {};
+        arrarr = [] + [];
+        str12 = [1] + [2];
+        strarr = [1, 2, 3] + [4, 5, 6];
         """)
         result = ast_to_dict(ast, fold_ops=True)
         self.assertEqual(result['greetings'], 'Hello, World!')
@@ -1033,6 +1037,10 @@ class ExtractorTestCase(unittest.TestCase):
         self.assertEqual(result['_x1'], 'x1')
         self.assertEqual(result['_1x'], '1x')
         self.assertEqual(result['six'], 6)
+        self.assertEqual(result['objobj'], '[object Object][object Object]')
+        self.assertEqual(result['arrarr'], '')
+        self.assertEqual(result['str12'], '12')
+        self.assertEqual(result['strarr'], '1,2,34,5,6')
 
     def test_binop_minus(self):
         ast = parse("""
@@ -1042,6 +1050,9 @@ class ExtractorTestCase(unittest.TestCase):
         _1x = 1 - 'x';
         neg4 = 1 - 2 - 3;
         wat = 'x' - 'x';
+        objobj = {} - {};
+        arrarr = [] - [];
+        arrneg1 = [1] - [2];
         """)
         result = ast_to_dict(ast, fold_ops=True)
         self.assertEqual(result['greetings'], 'NaN')
@@ -1050,6 +1061,9 @@ class ExtractorTestCase(unittest.TestCase):
         self.assertEqual(result['_1x'], 'NaN')
         self.assertEqual(result['neg4'], -4)
         self.assertEqual(result['wat'], 'NaN')
+        self.assertEqual(result['objobj'], 'NaN')
+        self.assertEqual(result['arrarr'], 0)
+        self.assertEqual(result['arrneg1'], -1)
 
     def test_binop_mult(self):
         ast = parse("""
@@ -1060,12 +1074,18 @@ class ExtractorTestCase(unittest.TestCase):
         // currently not working because NaN is treated as an identifier
         // check = NaN * NaN
         // currently done via grouping test
+        objobj = {} * {};
+        arrarr = [] * [];
+        arrmult = [1] * [2];
         """)
         result = ast_to_dict(ast, fold_ops=True)
         self.assertEqual(result['twelve'], 12)
         self.assertEqual(result['sixty'], 60)
         self.assertEqual(result['wot'], 'NaN')
         self.assertEqual(result['wut'], 'NaN')
+        self.assertEqual(result['objobj'], 'NaN')
+        self.assertEqual(result['arrarr'], 0)
+        self.assertEqual(result['arrmult'], 2)
 
     def test_binop_folding_various(self):
         ast = parse("""

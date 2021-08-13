@@ -464,8 +464,7 @@ class GroupAsBinOpPlus(GroupAsBinOp):
                 rhs.folded_type, Number):
             return FoldedFragment(lhs.value + rhs.value, Number)
         else:
-            # assume everything else is to be casted to a string
-            return FoldedFragment(str(lhs.value) + str(rhs.value), String)
+            return FoldedFragment(to_string(lhs) + to_string(rhs), String)
 
 
 class GroupAsBinOpMinus(GroupAsBinOp):
