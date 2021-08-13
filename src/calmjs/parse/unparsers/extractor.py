@@ -20,6 +20,7 @@ from calmjs.parse.asttypes import (
     Assign,
     BinOp,
     Boolean,
+    FunctionCall,
     Number,
     Null,
     Object,
@@ -183,6 +184,18 @@ def to_string(fragment):
         return fragment.value
     elif issubclass(fragment.folded_type, Object):
         return to_string(to_primitive(fragment, String))
+
+    # For other unsupported values; if the fragment value is a string
+    # type, assume it is some kind of resolvable identifier that may be
+    # used as a format placeholder token.
+    elif isinstance(fragment.value, str):
+        return '{%s}' % fragment.value
+    # Function Calls have been destructured, but given that it is
+    # impractical to reapply as is, just replace with an anonymous
+    # field.
+    elif issubclass(fragment.folded_type, FunctionCall):
+        return '{}'
+    # Otherwise, return an empty string.
     return ''
 
 

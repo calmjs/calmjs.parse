@@ -215,8 +215,13 @@ class TypeConversionTestCase(unittest.TestCase):
         self.assertEqual(
             '[object Object]', to_string(FoldedFragment({}, Object)))
 
-        # for completeness, no idea how might other asttypes slip through
+        # for completeness, there could be definitions where unsupported
+        # asttypes can slip through, just ensure they output an empty
+        # string if the produced value is not a string.
         self.assertEqual('', to_string(FoldedFragment([], Block)))
+        # for string values, enclose them as a format token.
+        self.assertEqual(
+            '{value}', to_string(FoldedFragment('value', Identifier)))
 
 
 class ExtractorUnparserErrorTestCase(unittest.TestCase):
@@ -1041,6 +1046,21 @@ class ExtractorTestCase(unittest.TestCase):
         self.assertEqual(result['arrarr'], '')
         self.assertEqual(result['str12'], '12')
         self.assertEqual(result['strarr'], '1,2,34,5,6')
+
+    def test_binop_plus_format(self):
+        ast = parse("""
+        name = "John";
+        greetings = 'Hello, ' + name + '!';
+        accessors = 'Poking at obj ' + a.b.c + ':' + thing[1]['abc'].x + '.';
+        f_call = 'Function call: ' + f(a, b, c)
+        """)
+        result = ast_to_dict(ast, fold_ops=True)
+        self.assertEqual(result['name'], 'John')
+        self.assertEqual(result['greetings'], 'Hello, {name}!')
+        self.assertEqual(
+            result['accessors'], 'Poking at obj {a.b.c}:{thing[1][abc].x}.')
+        self.assertEqual(
+            result['f_call'], 'Function call: {}')
 
     def test_binop_minus(self):
         ast = parse("""
