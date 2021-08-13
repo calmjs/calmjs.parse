@@ -461,7 +461,10 @@ class GroupAsBinOp(GroupAs):
         if lhs_value == 'NaN' or rhs_value == 'NaN':
             return FoldedFragment('NaN', Number)
         else:
-            return FoldedFragment(self.op(lhs_value, rhs_value), Number)
+            try:
+                return FoldedFragment(self.op(lhs_value, rhs_value), Number)
+            except ArithmeticError:
+                return FoldedFragment('NaN', Number)
 
     def op(self, lhs, rhs):
         raise NotImplementedError
@@ -498,6 +501,22 @@ class GroupAsBinOpMult(GroupAsBinOp):
     """
 
     op = operator.mul
+
+
+class GroupAsBinOpDiv(GroupAsBinOp):
+    """
+    For BinOp with op = '*'
+    """
+
+    op = operator.truediv
+
+
+class GroupAsBinOpMod(GroupAsBinOp):
+    """
+    For BinOp with op = '*'
+    """
+
+    op = operator.mod
 
 
 class GroupAsUnaryExpr(Attr):
@@ -1044,6 +1063,8 @@ def extractor(fold_ops=False, ignore_errors=False):
                         '+': (GroupAsBinOpPlus(),),
                         '-': (GroupAsBinOpMinus(),),
                         '*': (GroupAsBinOpMult(),),
+                        '/': (GroupAsBinOpDiv(),),
+                        '%': (GroupAsBinOpMod(),),
                     }
                 ),
             ),

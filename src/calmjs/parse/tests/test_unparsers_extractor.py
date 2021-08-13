@@ -1087,6 +1087,46 @@ class ExtractorTestCase(unittest.TestCase):
         self.assertEqual(result['arrarr'], 0)
         self.assertEqual(result['arrmult'], 2)
 
+    def test_binop_div(self):
+        ast = parse("""
+        threequarters = 3 / 4;
+        ten = 1000 / 10 / 10;
+        wot = 'x' / 'x';
+        wut = 'x' / 'x' / 'x';
+        objobj = {} / {};
+        arrarr = [] / [];
+        half = [1] / [2];
+        """)
+        result = ast_to_dict(ast, fold_ops=True)
+        self.assertEqual(result['threequarters'], 0.75)
+        self.assertEqual(result['ten'], 10)
+        self.assertEqual(result['wot'], 'NaN')
+        self.assertEqual(result['wut'], 'NaN')
+        self.assertEqual(result['objobj'], 'NaN')
+        self.assertEqual(result['arrarr'], 'NaN')
+        self.assertEqual(result['half'], 0.5)
+
+    def test_binop_mod(self):
+        ast = parse("""
+        zero = 2 % 2;
+        one = 4 % 3;
+        two = 13 % 11 % 3
+        wot = 'x' % 'x';
+        wut = 'x' % 'x' % 'x';
+        objobj = {} % {};
+        arrarr = [] % [];
+        three = [3] % [4];
+        """)
+        result = ast_to_dict(ast, fold_ops=True)
+        self.assertEqual(result['zero'], 0)
+        self.assertEqual(result['one'], 1)
+        self.assertEqual(result['two'], 2)
+        self.assertEqual(result['wot'], 'NaN')
+        self.assertEqual(result['wut'], 'NaN')
+        self.assertEqual(result['objobj'], 'NaN')
+        self.assertEqual(result['arrarr'], 'NaN')
+        self.assertEqual(result['three'], 3)
+
     def test_binop_folding_various(self):
         ast = parse("""
         ten = 1 + 2 + 3 + 4;
