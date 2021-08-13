@@ -309,9 +309,9 @@ class ExtractorUnparserErrorTestCase(unittest.TestCase):
         )
         self.assert_definitions_fault(
             NotImplementedError, faulty,
-            "a = 1 + 1",
+            "a = 1 + 1; b = 'x' + 'x'",
             "",
-            {'a': ''},
+            {'a': '', 'b': 'NaN'},
         )
 
     def test_definitions_groupasbin_incompat(self):

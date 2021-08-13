@@ -5,6 +5,7 @@ Description for the extractor unparser
 
 from __future__ import unicode_literals
 
+import operator
 from ast import literal_eval
 from collections import namedtuple
 from collections import defaultdict
@@ -450,6 +451,19 @@ class GroupAsBinOp(GroupAs):
         yield next(dispatcher.token(None, node, self.binop(lhs, rhs), None))
 
     def binop(self, lhs, rhs):
+        """
+        Default implementation is the most common form.
+        """
+
+        # assumes to be ExtractedFragments
+        lhs_value = to_number(lhs)
+        rhs_value = to_number(rhs)
+        if lhs_value == 'NaN' or rhs_value == 'NaN':
+            return FoldedFragment('NaN', Number)
+        else:
+            return FoldedFragment(self.op(lhs_value, rhs_value), Number)
+
+    def op(self, lhs, rhs):
         raise NotImplementedError
 
 
@@ -459,7 +473,10 @@ class GroupAsBinOpPlus(GroupAsBinOp):
     """
 
     def binop(self, lhs, rhs):
-        # assumes to be ExtractedFragments
+        """
+        The plus operator is a bit different from the rest.
+        """
+
         if issubclass(lhs.folded_type, Number) and issubclass(
                 rhs.folded_type, Number):
             return FoldedFragment(lhs.value + rhs.value, Number)
@@ -472,14 +489,7 @@ class GroupAsBinOpMinus(GroupAsBinOp):
     For BinOp with op = '-'
     """
 
-    def binop(self, lhs, rhs):
-        # assumes to be ExtractedFragments
-        lhs_value = to_number(lhs)
-        rhs_value = to_number(rhs)
-        if lhs_value == 'NaN' or rhs_value == 'NaN':
-            return FoldedFragment('NaN', Number)
-        else:
-            return FoldedFragment(lhs_value - rhs_value, Number)
+    op = operator.sub
 
 
 class GroupAsBinOpMult(GroupAsBinOp):
@@ -487,14 +497,7 @@ class GroupAsBinOpMult(GroupAsBinOp):
     For BinOp with op = '*'
     """
 
-    def binop(self, lhs, rhs):
-        # assumes to be ExtractedFragments
-        lhs_value = to_number(lhs)
-        rhs_value = to_number(rhs)
-        if lhs_value == 'NaN' or rhs_value == 'NaN':
-            return FoldedFragment('NaN', Number)
-        else:
-            return FoldedFragment(lhs_value * rhs_value, Number)
+    op = operator.mul
 
 
 class GroupAsUnaryExpr(Attr):
