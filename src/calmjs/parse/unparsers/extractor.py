@@ -544,6 +544,14 @@ class GroupAsUnaryExpr(Attr):
         yield next(dispatcher.token(None, node, self.unaryop(value), None))
 
     def unaryop(self, value):
+        # assumes to be ExtractedFragments
+        value = to_number(value)
+        if value == 'NaN':
+            return FoldedFragment('NaN', Number)
+        else:
+            return FoldedFragment(self.op(value), Number)
+
+    def op(self, value):
         raise NotImplementedError
 
 
@@ -552,13 +560,8 @@ class GroupAsUnaryExprPlus(GroupAsUnaryExpr):
     For UnaryExpr with op = '+'
     """
 
-    def unaryop(self, value):
-        # assumes to be ExtractedFragments
-        value = to_number(value)
-        if value == 'NaN':
-            return FoldedFragment('NaN', Number)
-        else:
-            return FoldedFragment(value, Number)
+    def op(self, value):
+        return value
 
 
 class GroupAsUnaryExprMinus(GroupAsUnaryExpr):
@@ -566,13 +569,8 @@ class GroupAsUnaryExprMinus(GroupAsUnaryExpr):
     For UnaryExpr with op = '-'
     """
 
-    def unaryop(self, value):
-        # assumes to be ExtractedFragments
-        value = to_number(value)
-        if value == 'NaN':
-            return FoldedFragment('NaN', Number)
-        else:
-            return FoldedFragment(- value, Number)
+    def op(self, value):
+        return - value
 
 
 class AttrSink(Attr):
