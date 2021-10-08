@@ -631,6 +631,24 @@ class GroupAsBinOpBitwiseOr(GroupAsBinOpBitwise):
     op = operator.or_
 
 
+class GroupAsBinOpLogicalAnd(GroupAsBinOp):
+
+    def binop(self, lhs, rhs):
+        if not to_boolean(lhs):
+            return FoldedFragment(lhs.value, type(lhs.node))
+        else:
+            return FoldedFragment(rhs.value, type(rhs.node))
+
+
+class GroupAsBinOpLogicalOr(GroupAsBinOp):
+
+    def binop(self, lhs, rhs):
+        if to_boolean(lhs):
+            return FoldedFragment(lhs.value, type(lhs.node))
+        else:
+            return FoldedFragment(rhs.value, type(rhs.node))
+
+
 class UnaryOptionalSpace(Token):
 
     def __call__(self, walk, dispatcher, node):
@@ -1224,6 +1242,8 @@ def extractor(fold_ops=False, ignore_errors=False):
                         '&': (GroupAsBinOpBitwiseAnd(),),
                         '^': (GroupAsBinOpBitwiseXor(),),
                         '|': (GroupAsBinOpBitwiseOr(),),
+                        '&&': (GroupAsBinOpLogicalAnd(),),
+                        '||': (GroupAsBinOpLogicalOr(),),
                     }
                 ),
             ),

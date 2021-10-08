@@ -1309,6 +1309,25 @@ class ExtractorTestCase(unittest.TestCase):
         self.assertEqual(result['oneoneone'], 111)
         self.assertEqual(result['nothing'], 0)
 
+    def test_binop_logical(self):
+        ast = parse("""
+        zero = ['asdf'] && 0 && 1;
+        one = '1' && true && 1;
+        two = '2' || 0 && 1;
+        three = '33' && 0 || [3];
+        wut = unknown && 1;
+        none = unknown || null;
+        """)
+        result = ast_to_dict(ast, fold_ops=True)
+        self.assertEqual(result['zero'], 0)
+        self.assertEqual(result['one'], 1)
+        self.assertEqual(result['two'], '2')
+        self.assertEqual(result['three'], [3])
+        # as the value bound to any identifier is assumed to be null,
+        # the "variable" is returned as-is.
+        self.assertEqual(result['wut'], 'unknown')
+        self.assertEqual(result['none'], None)
+
     def test_binop_folding_various(self):
         ast = parse("""
         ten = 1 + 2 + 3 + 4;
