@@ -601,7 +601,7 @@ class ExtractorUnparserTestCase(unittest.TestCase):
         a = 'hello' + ' ' + 'world';
         """)
         self.assertEqual(dict(unparser(ast)), {
-            'a': 'hello +   + world',
+            'a': "'hello' + ' ' + 'world'",
         })
 
     def test_ternary_assignment(self):

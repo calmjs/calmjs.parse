@@ -727,6 +727,23 @@ class Raw(Token):
         yield next(dispatcher.token(None, node, self.value, None))
 
 
+class OpString(Token):
+    """
+    Special case for the BinOp/UnaryExpr, to ensure that the raw value
+    that was parsed into the ast node is returned instead of being
+    treated, such that the original expression have their quotes
+    preserved.
+    """
+
+    def __call__(self, walk, dispatcher, node):
+        value = getattr(node, self.attr)
+        if isinstance(value, String):
+            yield next(dispatcher.token(None, node, value.value, None))
+        else:
+            for chunk in walk(dispatcher, value, token=self):
+                yield chunk
+
+
 class RawBoolean(Attr):
     """
     Simple yield the raw boolean value from the attribute.
@@ -890,9 +907,9 @@ definitions = {
         ),),
     ),
     'BinOp': (GroupAsStr((
-        Attr('left'), Text(value=' '),
+        OpString('left'), Text(value=' '),
         Operator(attr='op'),
-        Text(value=' '), Attr('right'),
+        Text(value=' '), OpString('right'),
     ),),),
     'UnaryExpr': (
         # the default grouping required to ensure positive/negative
