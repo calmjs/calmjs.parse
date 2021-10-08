@@ -231,10 +231,7 @@ class TypeConversionTestCase(unittest.TestCase):
         self.assertEqual(1, to_int32(FoldedFragment(True, Boolean)))
         self.assertEqual(0, to_int32(FoldedFragment(False, Boolean)))
 
-        # conversion was done, though equal
-        value = 54321
-        self.assertIsNot(value, to_int32(FoldedFragment(54321, Number)))
-        self.assertEqual(value, to_int32(FoldedFragment(54321, Number)))
+        self.assertEqual(54321, to_int32(FoldedFragment(54321, Number)))
 
         self.assertEqual(0, to_int32(FoldedFragment(None, Null)))
         self.assertEqual(1234, to_int32(FoldedFragment('1234', Array)))
