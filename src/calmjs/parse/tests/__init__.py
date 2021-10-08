@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from textwrap import dedent
-from io import StringIO
+import sys
 import unittest
 import doctest
+from textwrap import dedent
+from io import StringIO
 from os.path import dirname
 from pkg_resources import get_distribution
 
@@ -41,7 +42,12 @@ def make_suite():  # pragma: no cover
         return result
 
     parser = doctest.DocTestParser()
-    optflags = doctest.NORMALIZE_WHITESPACE | doctest.ELLIPSIS
+    # Python 2 can't handle current string standards.
+    optflags = (
+        doctest.SKIP
+        if sys.version_info < (3,) else
+        doctest.NORMALIZE_WHITESPACE | doctest.ELLIPSIS
+    )
 
     dist = get_distribution('calmjs.parse')
     if dist:

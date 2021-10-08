@@ -4,9 +4,16 @@ Changelog
 ?.?.? - ????-??-??
 ------------------
 
+- Introduce the extractor unparser - an unparser that will unparse a
+  valid AST into a ``dict``.  [
+  `#35 <https://github.com/calmjs/calmjs.parse/issues/35>`_
+  `#38 <https://github.com/calmjs/calmjs.parse/issues/38>`_
+  ]
 - Correct the JoinAttr ruletype such that the intended empty definition
   value is passed to walk if it was defined as such to avoid an
-  unintended infinite recursion.
+  unintended infinite recursion.  [
+  `#36 <https://github.com/calmjs/calmjs.parse/issues/36>`_
+  ]
 
 1.2.5 - 2020-07-03
 ------------------

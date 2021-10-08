@@ -114,6 +114,7 @@ class Token(Rule):
         """
 
         raise NotImplementedError
+        yield  # pragma: no cover
 
 
 class Deferrable(Rule):
@@ -256,7 +257,8 @@ class ResolveFuncName(Structure):
 
 class Attr(Token):
     """
-    Return the value as specified in the attribute
+    Yield the return value as specified by attribute, where it could be
+    the name of the attribute for the Node, or deferrable.
     """
 
     def _getattr(self, dispatcher, node):
@@ -296,7 +298,12 @@ class Text(Token):
 
 class JoinAttr(Attr):
     """
-    Join the attr with value.
+    Like Attr, though instead of yielding the returned value, walk each
+    of the resulting nodes with the provided walk function, interspersed
+    with walking the provided value.
+
+    In effect, for a textual output, it would resemble invoking the
+    `value.join` method on each of the unparsed chunks.
     """
 
     def __call__(self, walk, dispatcher, node):

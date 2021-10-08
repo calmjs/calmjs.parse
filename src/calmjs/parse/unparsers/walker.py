@@ -6,6 +6,14 @@ possible.
 
 from __future__ import unicode_literals
 
+try:
+    from functools import lru_cache
+except ImportError:  # pragma: no cover
+    def lru_cache(*a, **kw):
+        def wrapper(f):
+            return f
+        return wrapper
+
 from calmjs.parse.asttypes import Node
 from calmjs.parse.ruletypes import Token
 from calmjs.parse.ruletypes import Structure
@@ -62,14 +70,21 @@ class Dispatcher(object):
     constructor for this class, or be completely ignored by the specific
     layout handlers.
 
+    An `error_handler` static method is provided by this class, which
+    may be invoked (typically by the walk function) to signal an error.
+    This default implementation will simply raise the exception passed.
+    Subclasses may simply override this static method, or may simply
+    assign a callable to an instance that accepts the same arguments
+    for the handling of exceptions.
+
     While this class can be used (it was originally conceived) as a
     generic object that allow arbitrary assignments of arguments for
     consumption by layout functions, it's better to have a dedicated
     class that provide instance methods that plug into this.  See the
     modules inside ``calmjs.parse.handlers`` for various examples on
     how this could be set up.  To better maintain object purity, users
-    of this class should not assign additional attributes to instances
-    of this class.
+    of this class should not assign additional state attributes to
+    instances of this class.
     """
 
     def __init__(
@@ -147,6 +162,7 @@ class Dispatcher(object):
 
         self.__optimized_definitions = self.optimize()
 
+    @lru_cache(maxsize=None)
     def optimize_definition(self, name, definition):
         rules = []
         for rule in definition:
@@ -214,6 +230,10 @@ class Dispatcher(object):
 
         return self.__layout_handlers.get(rule, NotImplemented)
 
+    @staticmethod
+    def error_handler(exception, rule=None, node=None):
+        raise exception
+
     @property
     def indent_str(self):
         return self.__indent_str
@@ -221,6 +241,10 @@ class Dispatcher(object):
     @property
     def newline_str(self):
         return self.__newline_str
+
+    @property
+    def has_layout(self):
+        return len(self.__layout_handlers) > 0
 
 
 def walk(dispatcher, node, definition=None):
@@ -256,6 +280,7 @@ def walk(dispatcher, node, definition=None):
 
     nodes = []
     sourcepath_stack = [NotImplemented]
+    has_layout = dispatcher.has_layout
 
     def _walk(dispatcher, node, definition=None, token=None):
         if not isinstance(node, Node):
@@ -273,8 +298,11 @@ def walk(dispatcher, node, definition=None):
             definition = dispatcher.get_optimized_definition(node)
 
         for rule in definition:
-            for chunk in rule(_walk, dispatcher, node):
-                yield chunk
+            try:
+                for chunk in rule(_walk, dispatcher, node):
+                    yield chunk
+            except Exception as e:
+                yield dispatcher.error_handler(e, rule=rule, node=node)
 
         nodes.pop(-1)
         if push:
@@ -348,18 +376,20 @@ def walk(dispatcher, node, definition=None):
             if isinstance(chunk, LayoutChunk):
                 layout_rule_chunks.append(chunk)
             else:
-                # process layout rule chunks that had been cached.
-                for chunk_from_layout in process_layouts(
-                        layout_rule_chunks, last_chunk, chunk):
-                    yield chunk_from_layout
+                if has_layout:
+                    # process layout rule chunks that had been cached.
+                    for chunk_from_layout in process_layouts(
+                            layout_rule_chunks, last_chunk, chunk):
+                        yield chunk_from_layout
                 layout_rule_chunks[:] = []
                 yield chunk
                 last_chunk = chunk
 
-        # process the remaining layout rule chunks.
-        for chunk_from_layout in process_layouts(
-                layout_rule_chunks, last_chunk, None):
-            yield chunk_from_layout
+        if has_layout:
+            # process the remaining layout rule chunks.
+            for chunk_from_layout in process_layouts(
+                    layout_rule_chunks, last_chunk, None):
+                yield chunk_from_layout
 
     for chunk in walk():
         yield chunk
