@@ -591,6 +591,46 @@ class GroupAsBinOpUnsignedRightShift(GroupAsBinOp):
             FoldedFragment(to_uint32(lhs) >> (to_uint32(rhs) & 0x1f), Number))
 
 
+class GroupAsBinOpBitwise(GroupAsBinOp):
+    """
+    Generic binop bitwise
+    """
+
+    def binop(self, lhs, rhs):
+        """
+        The plus operator is a bit different from the rest.
+        """
+
+        return FoldedFragment(self.op(to_int32(lhs), to_int32(rhs)), Number)
+
+    def op(self, lhs, rhs):
+        raise NotImplementedError
+
+
+class GroupAsBinOpBitwiseAnd(GroupAsBinOpBitwise):
+    """
+    For BinOp with op = '&'
+    """
+
+    op = operator.and_
+
+
+class GroupAsBinOpBitwiseXor(GroupAsBinOpBitwise):
+    """
+    For BinOp with op = '^'
+    """
+
+    op = operator.xor
+
+
+class GroupAsBinOpBitwiseOr(GroupAsBinOpBitwise):
+    """
+    For BinOp with op = '|'
+    """
+
+    op = operator.or_
+
+
 class GroupAsUnaryExpr(Attr):
 
     def __call__(self, walk, dispatcher, node):
@@ -1138,6 +1178,9 @@ def extractor(fold_ops=False, ignore_errors=False):
                         '<<': (GroupAsBinOpLeftShift(),),
                         '>>': (GroupAsBinOpRightShift(),),
                         '>>>': (GroupAsBinOpUnsignedRightShift(),),
+                        '&': (GroupAsBinOpBitwiseAnd(),),
+                        '^': (GroupAsBinOpBitwiseXor(),),
+                        '|': (GroupAsBinOpBitwiseOr(),),
                     }
                 ),
             ),

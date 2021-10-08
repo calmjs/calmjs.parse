@@ -42,6 +42,7 @@ from calmjs.parse.unparsers.extractor import (
     ExtractedFragment,
     FoldedFragment,
     GroupAsBinOp,
+    GroupAsBinOpBitwise,
     GroupAsBinOpPlus,
     GroupAsUnaryExpr,
     GroupAsUnaryExprPlus,
@@ -330,7 +331,6 @@ class ExtractorUnparserErrorTestCase(unittest.TestCase):
         faulty = {}
         faulty.update(definitions)
         faulty['Array'] = (GroupAsBinOpPlus(),)
-        faulty['BinOp'] = (GroupAsBinOp(),)
 
         self.assert_definitions_fault(
             TypeError, faulty,
@@ -338,11 +338,21 @@ class ExtractorUnparserErrorTestCase(unittest.TestCase):
             "Ruletype token 'GroupAsBinOpPlus' expects a 'BinOp', got 'Array'",
             {'a': ''},
         )
+
+        faulty['BinOp'] = (GroupAsBinOp(),)
         self.assert_definitions_fault(
             NotImplementedError, faulty,
             "a = 1 + 1; b = 'x' + 'x'",
             "",
             {'a': '', 'b': 'NaN'},
+        )
+
+        faulty['BinOp'] = (GroupAsBinOpBitwise(),)
+        self.assert_definitions_fault(
+            NotImplementedError, faulty,
+            "a = 1 | 1; b = 'x' | 'x'",
+            "",
+            {'a': '', 'b': ''},
         )
 
     def test_definitions_groupasbin_incompat(self):
@@ -1277,6 +1287,25 @@ class ExtractorTestCase(unittest.TestCase):
         self.assertEqual(result['max'], 4294967295)
         self.assertEqual(result['zero'], 0)
         self.assertEqual(result['overflow'], 0)
+
+    def test_binop_bitwise(self):
+        ast = parse("""
+        and_ = 12 & 10;
+        xor_ = 12 ^ 10;
+        or_ = 12 | 10;
+        zero = 4294967296 & 4294967296;
+        minus1 = 4294967295 & 4294967295;
+        oneoneone = [111] & '111';
+        nothing = {} ^ [];
+        """)
+        result = ast_to_dict(ast, fold_ops=True)
+        self.assertEqual(result['and_'], 8)
+        self.assertEqual(result['xor_'], 6)
+        self.assertEqual(result['or_'], 14)
+        self.assertEqual(result['zero'], 0)
+        self.assertEqual(result['minus1'], -1)
+        self.assertEqual(result['oneoneone'], 111)
+        self.assertEqual(result['nothing'], 0)
 
     def test_binop_folding_various(self):
         ast = parse("""
