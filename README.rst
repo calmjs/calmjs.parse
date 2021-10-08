@@ -443,6 +443,133 @@ globals being obfuscated, the resulting script will have the earlier
 obfuscated global names mangled by later ones, as the unparsing is done
 separately by the ``io.write`` function.
 
+Extract an AST to a ``dict``
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To assist with extracting values from an ast into a ``dict``, the
+``calmjs.parse.unparsers.extractor`` module provides an ``ast_to_dict``
+helper function to aid with that.  This function will accept any valid
+ast that was parsed as the argument,
+
+.. code:: pycon
+
+    >>> from calmjs.parse.unparsers.extractor import ast_to_dict
+    >>> configuration = es5(u'''
+    ... var config = module.exports = {};
+    ...
+    ... var name = "Morgan"
+    ... msg = "Hello, " + name + "! " + "Welcome to the host.";
+    ...
+    ... config.server = {
+    ...   host: '0.0.0.0',
+    ...   port: process.env.PORT || 8000,
+    ...   threads: 4 + 4,
+    ...   columns: ['id', 'name', 'description'],
+    ...   memory: 1 << 15,
+    ...   msg: msg
+    ... };
+    ...
+    ... // default proxy stub
+    ... config.proxy = {
+    ...   host: 'localhost',
+    ...   port: 8080,
+    ...   options: {
+    ...     "https": !1,
+    ...     "threshold": -100
+    ...   }
+    ... };
+    ... ''')
+    >>> baseconf = ast_to_dict(configuration)
+
+Accessing the values is simply done as a mapping:
+
+.. code:: pycon
+
+    >>> print(baseconf['name'])
+    Morgan
+
+Assignments are bound to the entire expression, i.e. not interpreted
+down to individual existing assignments.
+
+.. code:: pycon
+
+    >>> baseconf['config']
+    {}
+    >>> baseconf['config.server']['columns']
+    ['id', 'name', 'description']
+    >>> baseconf['config.server']['msg']
+    'msg'
+    >>> baseconf['config.proxy']['options']['threshold']
+    -100
+
+Note that the ``-100`` value involves folding the unary expression with
+the ``-`` operator, and by default all other expressions of this type
+are simply written back out as is.
+
+.. code:: pycon
+
+    >>> baseconf['config.proxy']['options']['https']
+    '!1'
+    >>> baseconf['msg']
+    '"Hello, " + name + "! " + "Welcome to the host."'
+    >>> baseconf['config.server']['threads']
+    '4 + 4'
+
+To assist with a more generalized usage, the ``ast_to_dict`` provides an
+additional ``fold_ops`` argument.  When set to ``True``, various
+operators will be folded to assist with computing certain constants into
+a single computed value.  This is often useful for ensuring concatenated
+strings are merged, and normalizing short-hand definition of boolean
+values via ``!0`` or ``!1``, among other commonly seen expressions.
+
+.. code:: pycon
+
+    >>> foldedconf = ast_to_dict(configuration, fold_ops=True)
+    >>> foldedconf['config.server']['threads']
+    8
+    >>> foldedconf['config.server']['memory']
+    32768
+    >>> foldedconf['config.server']['port']
+    8000
+    >>> foldedconf['config.proxy']['options']['https']
+    False
+    >>> # variables will remain as is
+    >>> foldedconf['config.server']['msg']
+    'msg'
+    >>> # however, in the context of a concatenated string, it will form
+    >>> # a format string instead.
+    >>> foldedconf['msg']
+    'Hello, {name}! Welcome to the host.'
+
+As noted, any valid AST may serve as the input argument, with any
+dangling expressions (i.e. those that are not assigned or bound to a
+name) simply be appened to a list keyed under of its outermost asttype.
+
+.. code:: pycon
+
+    >>> from calmjs.parse.asttypes import (
+    ...     Identifier, FuncExpr, UnaryExpr)
+    >>> dict_of_ast = ast_to_dict(es5("""
+    ... var i;
+    ... i;
+    ... !'ok';
+    ... function foo(bar) {
+    ...     baz = true;
+    ... }
+    ... (function(y) {
+    ...     x = 1;
+    ... });
+    ... """), fold_ops=True)
+    >>> dict_of_ast['i']
+    >>> dict_of_ast[Identifier]
+    ['i']
+    >>> dict_of_ast[UnaryExpr]  # not simply string or boolean
+    [False]
+    >>> dict_of_ast['foo']  # named function resolved
+    [['bar'], {'baz': True}]
+    >>> dict_of_ast[FuncExpr]
+    [[['y'], {'x': 1}]]
+
 
 Advanced usage
 --------------
@@ -517,6 +644,12 @@ indentation for the output of an ES5 AST can be constructed like so:
 Each of the rules (functions) have specific options that are set using
 specific keyword arguments, details are documented in their respective
 docstrings.
+
+At an even lower level, the ``ruletypes`` submodule contains the
+primitives that form the underlying definitions that each Dispatcher
+implementations currently available.  For an example on how this might
+be extended beyond simply unparsing back to text, see the source for
+the extractor unparser module.
 
 Tree walking
 ~~~~~~~~~~~~
