@@ -631,6 +631,13 @@ class GroupAsBinOpBitwiseOr(GroupAsBinOpBitwise):
     op = operator.or_
 
 
+class UnaryOptionalSpace(Token):
+
+    def __call__(self, walk, dispatcher, node):
+        value = '' if node.op in {'++', '--', '!', '~', '+', '-'} else ' '
+        yield next(dispatcher.token(None, node, value, None))
+
+
 class GroupAsUnaryExpr(Attr):
 
     def __call__(self, walk, dispatcher, node):
@@ -913,15 +920,15 @@ definitions = {
     ),),),
     'UnaryExpr': (
         # the default grouping required to ensure positive/negative
-        # numbers return as expected, also to support the shorthand
-        # boolean expressions using numbers (i.e. !0 and !1).
+        # numbers return as expected.
         OpDisambiguate(
             value={
-                NotImplemented: (Attr('value'),),
+                NotImplemented: (GroupAsStr(
+                    (Attr('op'), UnaryOptionalSpace(), OpString('value')),
+                    value='',
+                ),),
                 '+': (GroupAsUnaryExprPlus(),),
                 '-': (GroupAsUnaryExprMinus(),),
-                '~': (GroupAsUnaryExprBitwiseNot(),),
-                '!': (GroupAsUnaryExprLogicalNot(),),
             }
         ),
     ),
@@ -1217,6 +1224,21 @@ def extractor(fold_ops=False, ignore_errors=False):
                         '&': (GroupAsBinOpBitwiseAnd(),),
                         '^': (GroupAsBinOpBitwiseXor(),),
                         '|': (GroupAsBinOpBitwiseOr(),),
+                    }
+                ),
+            ),
+            'UnaryExpr': (
+                OpDisambiguate(
+                    value={
+                        NotImplemented: (GroupAsStr(
+                            (Attr('op'), UnaryOptionalSpace(),
+                                OpString('value')),
+                            value='',
+                        ),),
+                        '+': (GroupAsUnaryExprPlus(),),
+                        '-': (GroupAsUnaryExprMinus(),),
+                        '~': (GroupAsUnaryExprBitwiseNot(),),
+                        '!': (GroupAsUnaryExprLogicalNot(),),
                     }
                 ),
             ),

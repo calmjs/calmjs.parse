@@ -599,9 +599,11 @@ class ExtractorUnparserTestCase(unittest.TestCase):
         unparser = Unparser()
         ast = parse("""
         a = 'hello' + ' ' + 'world';
+        b = !'hello' + ' ' + 'world';
         """)
         self.assertEqual(dict(unparser(ast)), {
             'a': "'hello' + ' ' + 'world'",
+            'b': "!'hello' + ' ' + 'world'",
         })
 
     def test_ternary_assignment(self):
@@ -741,7 +743,7 @@ class ExtractorUnparserTestCase(unittest.TestCase):
         """)
         self.assertEqual(dict(unparser(ast)), {
             For: [
-                ['i < j && j < 15', 'i', 'j', {Block: [{'x': 'i * j'}]}],
+                ['i < j && j < 15', 'i', '++j', {Block: [{'x': 'i * j'}]}],
             ],
             'i': 0,
             'j': 10,
@@ -1005,13 +1007,13 @@ class ExtractorUnparserTestCase(unittest.TestCase):
         delete obj;
         +42;
         -42;  // no negative numbers in ast; unary `-` negates positives
+        !"foo";
         """)
         self.assertEqual(dict(unparser(ast)), {
-            Identifier: ['obj', 'obj'],
             # UnaryExpr instead of Number, because that's the most outer
             # node captured; a "neat" demonstration of a slippage in the
             # ECMAScript syntax and semantics in its specifications.
-            UnaryExpr: [42, -42],
+            UnaryExpr: ['++obj', 'delete obj', 42, -42, '!"foo"'],
         })
 
     def test_postfix_op(self):
@@ -1343,7 +1345,6 @@ class ExtractorTestCase(unittest.TestCase):
         })
 
     def test_unary_expr_bitwise_not_folding(self):
-        unparser = Unparser()
         ast = parse("""
         nu = ~null;
         nn = ~NaN;
@@ -1356,7 +1357,7 @@ class ExtractorTestCase(unittest.TestCase):
         max31 = ~2147483648;
         min31 = ~2147483647;
         """)
-        self.assertEqual(dict(unparser(ast)), {
+        self.assertEqual(ast_to_dict(ast, fold_ops=True), {
             'nn': -1,
             'nu': -1,
             'neg1': -1,
@@ -1370,7 +1371,6 @@ class ExtractorTestCase(unittest.TestCase):
         })
 
     def test_unary_expr_logical_not_folding(self):
-        unparser = Unparser()
         ast = parse("""
         nu = !null;
         nn = !NaN;
@@ -1381,7 +1381,7 @@ class ExtractorTestCase(unittest.TestCase):
         ttt = !'';
         fff = !{};
         """)
-        self.assertEqual(dict(unparser(ast)), {
+        self.assertEqual(ast_to_dict(ast, fold_ops=True), {
             'nn': True,
             'nu': True,
             't': True,
@@ -1390,4 +1390,16 @@ class ExtractorTestCase(unittest.TestCase):
             'ff': False,
             'ttt': True,
             'fff': False,
+        })
+
+    def test_unary_expr_various_folding(self):
+        ast = parse("""
+        de = delete obj;
+        i = +1;
+        j = -1;
+        """)
+        self.assertEqual(ast_to_dict(ast, fold_ops=True), {
+            'de': 'delete obj',
+            'i': 1,
+            'j': -1,
         })
