@@ -14,8 +14,6 @@ environment:
       nodejs_version: "10"
     - PYTHON: "C:\\Python38"
       nodejs_version: "10"
-    - PYTHON: "C:\\Python39"
-      nodejs_version: "14"
 
 install:
   - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
