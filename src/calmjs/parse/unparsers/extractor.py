@@ -9,6 +9,10 @@ import operator
 from ast import literal_eval
 from collections import namedtuple
 from collections import defaultdict
+from math import (
+    floor,
+    inf,
+)
 from logging import getLogger
 try:
     from collections.abc import MutableSequence
@@ -167,6 +171,31 @@ def to_number(fragment):
     elif issubclass(fragment.folded_type, Object):
         return to_primitive(fragment, Number).value
     return 'NaN'
+
+
+def to_integer(fragment):
+    value = to_number(fragment)
+    if value == 'NaN':
+        return 0
+    if value in (0, inf):
+        return value
+    return (1 if abs(value) == value else -1) * floor(abs(value))
+
+
+def to_uint32(fragment):
+    value = to_integer(fragment)
+    if value in ('NaN', 0, inf):
+        return value
+    posint = (1 if abs(value) == value else -1) * floor(abs(value))
+    return posint % 2 ** 32
+
+
+def to_int32(fragment):
+    int32bit = to_uint32(fragment)
+    if int32bit >= 2 ** 31:
+        return int32bit - 2 ** 32
+    else:
+        return int32bit
 
 
 def to_string(fragment):
@@ -530,6 +559,36 @@ class GroupAsBinOpMod(GroupAsBinOp):
     """
 
     op = operator.mod
+
+
+class GroupAsBinOpLeftShift(GroupAsBinOp):
+    """
+    For BinOp with op = '<<'
+    """
+
+    def binop(self, lhs, rhs):
+        return to_int32(
+            FoldedFragment(to_int32(lhs) << (to_uint32(rhs) & 0x1f), Number))
+
+
+class GroupAsBinOpRightShift(GroupAsBinOp):
+    """
+    For BinOp with op = '>>'
+    """
+
+    def binop(self, lhs, rhs):
+        return to_int32(
+            FoldedFragment(to_int32(lhs) >> (to_uint32(rhs) & 0x1f), Number))
+
+
+class GroupAsBinOpUnsignedRightShift(GroupAsBinOp):
+    """
+    For BinOp with op = '>>>'
+    """
+
+    def binop(self, lhs, rhs):
+        return to_uint32(
+            FoldedFragment(to_uint32(lhs) >> (to_uint32(rhs) & 0x1f), Number))
 
 
 class GroupAsUnaryExpr(Attr):
@@ -1076,6 +1135,9 @@ def extractor(fold_ops=False, ignore_errors=False):
                         '*': (GroupAsBinOpMult(),),
                         '/': (GroupAsBinOpDiv(),),
                         '%': (GroupAsBinOpMod(),),
+                        '<<': (GroupAsBinOpLeftShift(),),
+                        '>>': (GroupAsBinOpRightShift(),),
+                        '>>>': (GroupAsBinOpUnsignedRightShift(),),
                     }
                 ),
             ),

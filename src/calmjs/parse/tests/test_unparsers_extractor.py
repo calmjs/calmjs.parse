@@ -52,6 +52,7 @@ from calmjs.parse.unparsers.extractor import (
     logger as extractor_logger,
     to_boolean,
     to_number,
+    to_int32,
     to_primitive,
     to_string,
     value_to_str,
@@ -222,6 +223,31 @@ class TypeConversionTestCase(unittest.TestCase):
         # for string values, enclose them as a format token.
         self.assertEqual(
             '{value}', to_string(FoldedFragment('value', Identifier)))
+
+    def test_to_int32(self):
+        self.assertEqual(0, to_int32(FoldedFragment([], Array)))
+        self.assertEqual(1, to_int32(FoldedFragment([[['1']]], Array)))
+        self.assertEqual(1, to_int32(FoldedFragment(True, Boolean)))
+        self.assertEqual(0, to_int32(FoldedFragment(False, Boolean)))
+
+        # conversion was done, though equal
+        value = 54321
+        self.assertIsNot(value, to_int32(FoldedFragment(54321, Number)))
+        self.assertEqual(value, to_int32(FoldedFragment(54321, Number)))
+
+        self.assertEqual(0, to_int32(FoldedFragment(None, Null)))
+        self.assertEqual(1234, to_int32(FoldedFragment('1234', Array)))
+        self.assertEqual(0, to_int32(FoldedFragment({}, Object)))
+
+        maxint32 = 2147483647
+        overint32 = 2147483648
+        self.assertEqual(
+            maxint32, to_int32(FoldedFragment(maxint32, Number)))
+        self.assertEqual(
+            - overint32, to_int32(FoldedFragment(overint32, Number)))
+
+        # for completeness, no idea how might other asttypes slip through
+        self.assertEqual(0, to_int32(FoldedFragment([], Block)))
 
 
 class ExtractorUnparserErrorTestCase(unittest.TestCase):
@@ -1156,6 +1182,101 @@ class ExtractorTestCase(unittest.TestCase):
         self.assertEqual(result['arrarr'], 'NaN')
         self.assertEqual(result['three'], 3)
         self.assertEqual(result['id'], 'NaN')
+
+    def test_binop_leftshift(self):
+        ast = parse("""
+        eight = 2 << 2;
+        eightyeight = 11 << 3;
+        wot = 'x' << 'x';
+        objobj = {} << {};
+        arrarr = [] << [];
+        six = [3] << [1];
+        sixteen = '4' << '2';
+        id = id1 << id2;
+        neg2 = 2147483647 << 1;
+        negmax = 1 << 31;
+        negmax2 = 2147483647 << 31;
+        negspot = -2147483649 << 111;
+        negtwo = -1 << -31;
+        negone = -1 << -32;
+        negmax3 = -1 << -33;
+        """)
+        result = ast_to_dict(ast, fold_ops=True)
+        self.assertEqual(result['eight'], 8)
+        self.assertEqual(result['eightyeight'], 88)
+        self.assertEqual(result['wot'], 0)
+        self.assertEqual(result['objobj'], 0)
+        self.assertEqual(result['arrarr'], 0)
+        self.assertEqual(result['six'], 6)
+        self.assertEqual(result['sixteen'], 16)
+        self.assertEqual(result['id'], 0)
+        self.assertEqual(result['neg2'], -2)
+        self.assertEqual(result['negmax'], -2147483648)
+        self.assertEqual(result['negmax2'], -2147483648)
+        self.assertEqual(result['negspot'], -32768)
+        self.assertEqual(result['negtwo'], -2)
+        self.assertEqual(result['negone'], -1)
+        self.assertEqual(result['negmax3'], -2147483648)
+
+    def test_binop_rightshift(self):
+        ast = parse("""
+        eight = 32 >> 2;
+        eightyeight = 704 >> 3;
+        wot = 'x' >> 'x';
+        objobj = {} >> {};
+        arrarr = [] >> [];
+        six = [12] >> [1];
+        sixteen = '259' >> '4';
+        id = id1 >> id2;
+        neg2 = -4 >> 1;
+        negmax = 2147483648 >> [];
+        max = 2147483647 >> 32;
+        zero = 32767 >> 18;
+        """)
+        result = ast_to_dict(ast, fold_ops=True)
+        self.assertEqual(result['eight'], 8)
+        self.assertEqual(result['eightyeight'], 88)
+        self.assertEqual(result['wot'], 0)
+        self.assertEqual(result['objobj'], 0)
+        self.assertEqual(result['arrarr'], 0)
+        self.assertEqual(result['six'], 6)
+        self.assertEqual(result['sixteen'], 16)
+        self.assertEqual(result['id'], 0)
+        self.assertEqual(result['neg2'], -2)
+        self.assertEqual(result['negmax'], -2147483648)
+        self.assertEqual(result['max'], 2147483647)
+        self.assertEqual(result['zero'], 0)
+
+    def test_binop_signedrightshift(self):
+        ast = parse("""
+        eight = 32 >>> 2;
+        eightyeight = 704 >>> 3;
+        wot = 'x' >>> 'x';
+        objobj = {} >>> {};
+        arrarr = [] >>> [];
+        six = [12] >>> [1];
+        sixteen = '259' >>> '4';
+        id = id1 >>> id2;
+        neg2 = -4 >>> 1;
+        negmax = 2147483648 >>> [];
+        max = -1 >>> 0;
+        zero = 4294967296 >>> 0;
+        overflow = 32767 >>> 18;
+        """)
+        result = ast_to_dict(ast, fold_ops=True)
+        self.assertEqual(result['eight'], 8)
+        self.assertEqual(result['eightyeight'], 88)
+        self.assertEqual(result['wot'], 0)
+        self.assertEqual(result['objobj'], 0)
+        self.assertEqual(result['arrarr'], 0)
+        self.assertEqual(result['six'], 6)
+        self.assertEqual(result['sixteen'], 16)
+        self.assertEqual(result['id'], 0)
+        self.assertEqual(result['neg2'], 2147483646)
+        self.assertEqual(result['negmax'], 2147483648)
+        self.assertEqual(result['max'], 4294967295)
+        self.assertEqual(result['zero'], 0)
+        self.assertEqual(result['overflow'], 0)
 
     def test_binop_folding_various(self):
         ast = parse("""
