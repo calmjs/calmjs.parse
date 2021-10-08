@@ -9,10 +9,7 @@ import operator
 from ast import literal_eval
 from collections import namedtuple
 from collections import defaultdict
-from math import (
-    floor,
-    inf,
-)
+from math import floor
 from logging import getLogger
 try:
     from collections.abc import MutableSequence
@@ -59,6 +56,7 @@ from calmjs.parse.unparsers import walker
 from calmjs.parse.utils import str
 
 
+inf = float('inf')
 logger = getLogger(__name__)
 
 # The primary fragment type; token_handler_extractor yields these
@@ -179,14 +177,14 @@ def to_integer(fragment):
         return 0
     if value in (0, inf):
         return value
-    return (1 if abs(value) == value else -1) * floor(abs(value))
+    return (1 if abs(value) == value else -1) * int(floor(abs(value)))
 
 
 def to_uint32(fragment):
     value = to_integer(fragment)
     if value in ('NaN', 0, inf):
         return value
-    posint = (1 if abs(value) == value else -1) * floor(abs(value))
+    posint = (1 if abs(value) == value else -1) * int(floor(abs(value)))
     return posint % 2 ** 32
 
 

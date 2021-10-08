@@ -177,7 +177,7 @@ immediate access to the parsing feature.  It may be used like so:
 .. code:: pycon
 
     >>> from calmjs.parse import es5
-    >>> program_source = u'''
+    >>> program_source = '''
     ... // simple program
     ... var main = function(greet) {
     ...     var hello = "hello " + greet;
@@ -454,7 +454,7 @@ ast that was parsed as the argument,
 .. code:: pycon
 
     >>> from calmjs.parse.unparsers.extractor import ast_to_dict
-    >>> configuration = es5(u'''
+    >>> configuration = es5('''
     ... var config = module.exports = {};
     ...
     ... var name = "Morgan"
@@ -549,7 +549,7 @@ name) simply be appened to a list keyed under of its outermost asttype.
 
     >>> from calmjs.parse.asttypes import (
     ...     Identifier, FuncExpr, UnaryExpr)
-    >>> dict_of_ast = ast_to_dict(es5("""
+    >>> dict_of_ast = ast_to_dict(es5(u"""
     ... var i;
     ... i;
     ... !'ok';
@@ -599,7 +599,7 @@ indentation for the output of an ES5 AST can be constructed like so:
     ...     obfuscate(obfuscate_globals=False),
     ...     indent(indent_str='    '),
     ... ))
-    >>> math_module = es5(u'''
+    >>> math_module = es5('''
     ... (function(root) {
     ...   var fibonacci = function(count) {
     ...     if (count < 2)
@@ -668,7 +668,7 @@ Object assignments from a given script file:
     >>> from calmjs.parse.asttypes import Object, VarDecl, FunctionCall
     >>> from calmjs.parse.walkers import Walker
     >>> walker = Walker()
-    >>> declarations = es5(u'''
+    >>> declarations = es5('''
     ... var i = 1;
     ... var s = {
     ...     a: "test",
