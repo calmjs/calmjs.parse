@@ -1327,7 +1327,7 @@ class ExtractorTestCase(unittest.TestCase):
         self.assertEqual(result['twentysix'], 26)
         self.assertEqual(result['check'], 'NaN')
 
-    def test_unary_expr_folding(self):
+    def test_unary_expr_plusminus_folding(self):
         unparser = Unparser()
         ast = parse("""
         plus = +'42';
@@ -1340,4 +1340,54 @@ class ExtractorTestCase(unittest.TestCase):
             'neg': -42,
             'plusobj': 'NaN',
             'negobj': 'NaN',
+        })
+
+    def test_unary_expr_bitwise_not_folding(self):
+        unparser = Unparser()
+        ast = parse("""
+        nu = ~null;
+        nn = ~NaN;
+        neg1 = ~0;
+        zero = ~'-1';
+        negthreethree = ~[32];
+        negtwofivesix = ~'0xff';
+        bigzero = ~4294967295;
+        smallneg1 = ~{};
+        max31 = ~2147483648;
+        min31 = ~2147483647;
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            'nn': -1,
+            'nu': -1,
+            'neg1': -1,
+            'zero': 0,
+            'negthreethree': -33,
+            'negtwofivesix': -256,
+            'bigzero': 0,
+            'smallneg1': -1,
+            'max31': 2147483647,
+            'min31': -2147483648,
+        })
+
+    def test_unary_expr_logical_not_folding(self):
+        unparser = Unparser()
+        ast = parse("""
+        nu = !null;
+        nn = !NaN;
+        t = !0;
+        f = !1;
+        tt = !false;
+        ff = ![0];
+        ttt = !'';
+        fff = !{};
+        """)
+        self.assertEqual(dict(unparser(ast)), {
+            'nn': True,
+            'nu': True,
+            't': True,
+            'f': False,
+            'tt': True,
+            'ff': False,
+            'ttt': True,
+            'fff': False,
         })

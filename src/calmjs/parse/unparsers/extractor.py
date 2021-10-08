@@ -672,6 +672,24 @@ class GroupAsUnaryExprMinus(GroupAsUnaryExpr):
         return - value
 
 
+class GroupAsUnaryExprBitwiseNot(GroupAsUnaryExpr):
+    """
+    For UnaryExpr with op = '~'
+    """
+
+    def unaryop(self, value):
+        return FoldedFragment(~ to_int32(value), Number)
+
+
+class GroupAsUnaryExprLogicalNot(GroupAsUnaryExpr):
+    """
+    For UnaryExpr with op = '!'
+    """
+
+    def unaryop(self, value):
+        return FoldedFragment(not to_boolean(value), Boolean)
+
+
 class AttrSink(Attr):
     """
     Used to consume everything declared in the Attr.
@@ -885,7 +903,8 @@ definitions = {
                 NotImplemented: (Attr('value'),),
                 '+': (GroupAsUnaryExprPlus(),),
                 '-': (GroupAsUnaryExprMinus(),),
-                # '!': (GroupAsUnaryExprNot(),),
+                '~': (GroupAsUnaryExprBitwiseNot(),),
+                '!': (GroupAsUnaryExprLogicalNot(),),
             }
         ),
     ),
