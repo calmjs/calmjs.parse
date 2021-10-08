@@ -5,12 +5,12 @@ A collection of parsers and helper libraries for understanding
 ECMAScript; a near feature complete fork of |slimit|_.  A CLI front-end
 for this package is shipped separately as |crimp|_.
 
-.. image:: https://github.com/calmjs/calmjs.parse/actions/workflows/build.yml/badge.svg?branch=1.3.x
-    :target: https://github.com/calmjs/calmjs.parse/actions/workflows/build.yml?query=branch:1.3.x
-.. image:: https://ci.appveyor.com/api/projects/status/5dj8dnu9gmj02msu/branch/1.3.x?svg=true
-    :target: https://ci.appveyor.com/project/metatoaster/calmjs-parse/branch/1.3.x
-.. image:: https://coveralls.io/repos/github/calmjs/calmjs.parse/badge.svg?branch=1.3.x
-    :target: https://coveralls.io/github/calmjs/calmjs.parse?branch=1.3.x
+.. image:: https://github.com/calmjs/calmjs.parse/actions/workflows/build.yml/badge.svg?branch=1.3.0
+    :target: https://github.com/calmjs/calmjs.parse/actions/workflows/build.yml?query=branch:1.3.0
+.. image:: https://ci.appveyor.com/api/projects/status/5dj8dnu9gmj02msu/branch/1.3.0?svg=true
+    :target: https://ci.appveyor.com/project/metatoaster/calmjs-parse/branch/1.3.0
+.. image:: https://coveralls.io/repos/github/calmjs/calmjs.parse/badge.svg?branch=1.3.0
+    :target: https://coveralls.io/github/calmjs/calmjs.parse?branch=1.3.0
 
 .. |calmjs.parse| replace:: ``calmjs.parse``
 .. |crimp| replace:: ``crimp``
