@@ -1,7 +1,7 @@
 Changelog
 =========
 
-?.?.? - ????-??-??
+1.3.0 - 2021-10-08
 ------------------
 
 - Introduce the extractor unparser - an unparser that will unparse a
