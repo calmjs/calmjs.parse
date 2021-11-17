@@ -2,7 +2,17 @@ import atexit
 import sys
 from setuptools import setup, find_packages
 from setuptools.command.install import install
+from setuptools.command.build_py import build_py
 from subprocess import call
+
+
+class BuildHook(build_py):
+    """Forcing the optimizer to run before the build step"""
+    def __init__(self, *a, **kw):
+        call([sys.executable, '-m', 'calmjs.parse.parsers.optimize'], env={
+            'PYTHONPATH': 'src'
+        })
+        build_py.__init__(self, *a, **kw)
 
 
 class InstallHook(install):
@@ -60,6 +70,7 @@ setup(
     zip_safe=False,
     cmdclass={
         'install': InstallHook,
+        'build_py': BuildHook,
     },
     install_requires=[
         'setuptools',
