@@ -12,11 +12,7 @@ import sys
 from functools import partial
 from os import unlink
 from os.path import exists
-from ply import lex
 from importlib import import_module
-
-# have to do this for every parser modules
-from calmjs.parse.parsers import es5
 
 
 def find_tab_paths(module):
@@ -52,10 +48,15 @@ def verify_paths(paths):
     for path in paths:
         if exists(path):
             yield path
+        # locate any adjacent .py[co]? files based on module path
+        # returned; mostly a problem with Python 2
         if path[-4:] in ('.pyc', '.pyo'):
-            # find the .py file, too.
             if exists(path[:-1]):
                 yield path[:-1]
+        else:
+            for c in 'co':
+                if exists(path + c):
+                    yield path + c
 
 
 def unlink_modules(paths):
@@ -98,13 +99,31 @@ def reoptimize_all(monkey_patch=False, first_build=False):
     """
 
     if monkey_patch:
-        lex.open = partial(codecs.open, encoding='utf8')
-    modules = (es5,)
-    for module in modules:
-        if first_build:
-            optimize_build(module)
+        try:
+            from ply import lex
+        except ImportError:  # pragma: no cover
+            pass  # fail later; only fail if import ply is truly needed
         else:
-            reoptimize(module)
+            lex.open = partial(codecs.open, encoding='utf8')
+
+    modules = ('.es5',)
+    try:
+        for name in modules:
+            module = import_module(name, 'calmjs.parse.parsers')
+            if first_build:
+                optimize_build(module)
+            else:
+                reoptimize(module)
+    except ImportError as e:
+        if not first_build or 'ply' not in str(e):
+            raise
+        sys.stderr.write(
+            u"ERROR: cannot import ply, aborting build; please ensure "
+            "that the python package 'ply' is installed before attempting to "
+            "build this package; please refer to the top level README for "
+            "further details\n"
+        )
+        sys.exit(1)
 
 
 if __name__ == '__main__':  # pragma: no cover

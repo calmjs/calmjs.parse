@@ -5,6 +5,7 @@ import importlib
 import os
 import sys
 
+from io import StringIO
 from shutil import rmtree
 from tempfile import mkdtemp
 from types import ModuleType
@@ -25,13 +26,22 @@ class OptimizeTestCase(unittest.TestCase):
         # undo whatever monkey patch that may have happened
         lex.open = open
 
+    def break_ply(self):
+        import ply
+
+        def cleanup():
+            sys.modules['ply'] = ply
+
+        self.addCleanup(cleanup)
+        sys.modules['ply'] = None
+
     def test_verify_paths(self):
         tempdir = mkdtemp()
         self.addCleanup(rmtree, tempdir)
 
         # create fake module files
         modules = [os.path.join(tempdir, name) for name in (
-            'foo.pyc', 'bar.pyc', 'foo.py')]
+            'foo.pyc', 'bar.py', 'bar.pyc', 'foo.py')]
 
         for module in modules:
             with open(module, 'w'):
@@ -125,3 +135,32 @@ class OptimizeTestCase(unittest.TestCase):
         optimize.reoptimize_all(True, first_build=True)
         # shouldn't have purged any modules
         self.assertEqual(len(self.purged), 0)
+
+    def test_optimize_first_build_valid_with_broken_ply(self):
+        self.break_ply()
+        optimize.reoptimize_all(True, first_build=True)
+        # shouldn't have purged any modules
+        self.assertEqual(len(self.purged), 0)
+
+    def test_optimize_first_build_valid_with_broken_ply_error(self):
+        def fail_import(module, package):
+            raise ImportError('no module named ply')
+
+        optimize.import_module = fail_import
+
+        with self.assertRaises(ImportError):
+            optimize.reoptimize_all()
+
+        stderr = sys.stderr
+
+        def cleanup():
+            sys.stderr = stderr
+
+        self.addCleanup(cleanup)
+
+        sys.stderr = StringIO()
+        with self.assertRaises(SystemExit):
+            optimize.reoptimize_all(first_build=True)
+
+        self.assertTrue(sys.stderr.getvalue().startswith(
+            'ERROR: cannot import ply'))
