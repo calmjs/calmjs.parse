@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Helpers that will forcibly regenerate the tab files.
+Helpers for maintenance/generation of the lextab/yacctab modules.
 
 The original goal of this was to force the creation of tab files using
 the utf8 codec to workaround issues with the ply package, for systems
@@ -19,8 +19,11 @@ from importlib import import_module
 from calmjs.parse.parsers import es5
 
 
-def purge_tabs(module):
+def find_tab_paths(module):
+    # return a list of lextab/yacctab module paths and a list of missing
+    # import names.
     paths = []
+    missing = []
     for entry in ('lextab', 'yacctab'):
         # we assume the specified entries are defined as such
         name = getattr(module, entry)
@@ -34,11 +37,14 @@ def purge_tabs(module):
         try:
             import_module(name)
         except ImportError:
-            # don't need to do anything
-            pass
+            missing.append(name)
         else:
             paths.append(sys.modules.pop(name).__file__)
+    return paths, missing
 
+
+def purge_tabs(module):
+    paths, _ = find_tab_paths(module)
     unlink_modules(verify_paths(paths))
 
 
@@ -64,13 +70,42 @@ def reoptimize(module):
     module.Parser()
 
 
-def reoptimize_all(monkey_patch=False):
+def optimize_build(module):
+    paths, missing = find_tab_paths(module)
+    if missing:
+        # only purge and regenerate if any are missing.
+        unlink_modules(verify_paths(paths))
+        module.Parser()
+
+
+def reoptimize_all(monkey_patch=False, first_build=False):
+    """
+    The main optimize method for maintainence of the generated tab
+    modules required by ply
+
+    Arguments:
+
+    monkey_patch
+        patches the default open function in ply.lex to use utf8
+
+        default: False
+
+    first_build
+        flag for switching between reoptimize/optimize_build method;
+        setting the flag to True specifies the latter.
+
+        default: False
+    """
+
     if monkey_patch:
         lex.open = partial(codecs.open, encoding='utf8')
     modules = (es5,)
     for module in modules:
-        reoptimize(module)
+        if first_build:
+            optimize_build(module)
+        else:
+            reoptimize(module)
 
 
 if __name__ == '__main__':  # pragma: no cover
-    reoptimize_all(True)
+    reoptimize_all(True, '--build' in sys.argv)

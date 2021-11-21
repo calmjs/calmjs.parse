@@ -42,11 +42,28 @@ class OptimizeTestCase(unittest.TestCase):
             sorted(optimize.verify_paths(modules[:2])),
         )
 
-    def test_unlink_modules(self):
+    def test_find_tab_paths(self):
+        fake_es5 = ModuleType('fake_es5')
+        fake_es5.lextab = 'some_lextab'
+        fake_es5.yacctab = 'some_yacctab'
+        paths, missing = optimize.find_tab_paths(fake_es5)
+        self.assertEqual([], paths)
+        self.assertEqual(['some_lextab', 'some_yacctab'], missing)
+
         # ensure the parser exists
         es5.Parser()
         # should have created the optimized version of the file, if not
         # already exists
+        answers = [
+            sys.modules[es5.lextab].__file__,
+            sys.modules[es5.yacctab].__file__,
+        ]
+        paths, missing = optimize.find_tab_paths(es5)
+        self.assertEqual(paths, answers)
+        self.assertEqual([], missing)
+
+    def test_unlink_modules(self):
+        es5.Parser()
         p = sys.modules[es5.yacctab].__file__
         self.assertTrue(os.path.exists(p))
         # unlink has been patched out
@@ -87,3 +104,24 @@ class OptimizeTestCase(unittest.TestCase):
     def test_reoptimize_monkey_patched(self):
         optimize.reoptimize_all(True)
         self.assertIsNot(lex.open, open)
+        self.assertNotEqual(len(self.purged), 0)
+
+    def test_optimize_build(self):
+        called = []
+
+        def sentinel():
+            called.append(True)
+
+        fake_es5 = ModuleType('fake_es5')
+        fake_es5.lextab = 'some_lextab'
+        fake_es5.yacctab = 'some_yacctab'
+        fake_es5.Parser = sentinel
+
+        optimize.optimize_build(fake_es5)
+        self.assertEqual(len(self.purged), 0)
+        self.assertTrue(called)
+
+    def test_optimize_first_build(self):
+        optimize.reoptimize_all(True, first_build=True)
+        # shouldn't have purged any modules
+        self.assertEqual(len(self.purged), 0)
