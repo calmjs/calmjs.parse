@@ -65,18 +65,25 @@ def make_suite():  # pragma: no cover
         'calmjs.parse.tests', pattern='test_*.py',
         top_level_dir=dirname(__file__)
     )
-    test_suite.addTest(doctest.DocTestSuite(es5lexer, optionflags=optflags))
-    test_suite.addTest(doctest.DocTestSuite(walkers, optionflags=optflags))
-    test_suite.addTest(doctest.DocTestSuite(sourcemap, optionflags=optflags))
-    test_suite.addTest(doctest.DocTestCase(
-        # skipping all the error case tests which should all be in the
-        # troubleshooting section at the end; bump the index whenever
-        # more failure examples are added.
-        # also note that line number is unknown, as PKG_INFO has headers
-        # and also the counter is somehow inaccurate in this case.
-        doctest.DocTest(pkgdesc_tests[:-1], {
-            'open': open}, 'PKG_INFO', 'README.rst', None, pkgdesc),
-        optionflags=optflags,
-    ))
+    try:
+        test_suite.addTest(doctest.DocTestSuite(
+            es5lexer, optionflags=optflags))
+        test_suite.addTest(doctest.DocTestSuite(
+            walkers, optionflags=optflags))
+        test_suite.addTest(doctest.DocTestSuite(
+            sourcemap, optionflags=optflags))
+        test_suite.addTest(doctest.DocTestCase(
+            # skipping all the error case tests which should all be in the
+            # troubleshooting section at the end; bump the index whenever
+            # more failure examples are added.
+            # also note that line number is unknown, as PKG_INFO has headers
+            # and also the counter is somehow inaccurate in this case.
+            doctest.DocTest(pkgdesc_tests[:-1], {
+                'open': open}, 'PKG_INFO', 'README.rst', None, pkgdesc),
+            optionflags=optflags,
+        ))
+    except AttributeError:
+        # Assuming this is in Python>3.9 where the -OO flag was used...
+        pass
 
     return test_suite
