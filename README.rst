@@ -516,11 +516,13 @@ are simply written back out as is.
     '4 + 4'
 
 To assist with a more generalized usage, the ``ast_to_dict`` provides an
-additional ``fold_ops`` argument.  When set to ``True``, various
-operators will be folded to assist with computing certain constants into
-a single computed value.  This is often useful for ensuring concatenated
-strings are merged, and normalizing short-hand definition of boolean
-values via ``!0`` or ``!1``, among other commonly seen expressions.
+additional ``fold_ops`` argument.  When set to ``True``, operator
+folding will be enabled on supported types; for example, constants will
+be attempted to be folded into a single value as per how operators are
+handled in the ECMAScript specification.  This is often useful for
+ensuring concatenated strings are merged, and normalizing short-hand
+definition of boolean values via ``!0`` or ``!1``, among other commonly
+seen expressions.
 
 .. code:: pycon
 

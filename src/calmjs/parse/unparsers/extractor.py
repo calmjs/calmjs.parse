@@ -76,7 +76,6 @@ FoldedFragment = namedtuple('FoldedFragment', [
 # See ECMA-262 5.1 Edition, Section 9
 # Note that this parser does not provide an undefined token or global
 # binding, it's currently not handled.
-# The hint argument is the PreferredType
 
 def value_to_str(value):
     """
@@ -111,7 +110,7 @@ def value_to_str(value):
 
 
 def to_primitive(fragment, hint):
-    # TODO implement the correct return value for either Object/Array
+    # The hint argument is the PreferredType
     if (issubclass(fragment.folded_type, Array) or
             issubclass(fragment.folded_type, Object)):
         value = value_to_str(fragment.value)
@@ -794,7 +793,6 @@ class TopLevelAttrs(Attr):
     """
 
     def __call__(self, walk, dispatcher, node):
-        # TODO this is getting similar with AsDict
         misc_chunks = defaultdict(list)
         nodes = iter(node)
         for target_node in nodes:
@@ -1049,7 +1047,6 @@ definitions = {
         ),),
     ),
     'FuncDecl': (
-        # TODO DeclareAsFunc?
         GroupAsAssignment((
             Attr(Declare('identifier')),
             PushScope,

@@ -218,3 +218,16 @@ class ReprTestCase(unittest.TestCase):
 
             "]>"
         )
+
+    def test_walker_skip(self):
+        t = es5('''
+        a = 1;
+        b = '2';
+        ''')
+        self.assertEqual(str(walker.extract(
+            t, lambda n: isinstance(n, asttypes.Assign), skip=1)), "b = '2'")
+
+        with self.assertRaises(TypeError) as e:
+            walker.extract(t, lambda n: isinstance(n, asttypes.Assign), skip=2)
+
+        self.assertEqual(str(e.exception), 'no match found')
