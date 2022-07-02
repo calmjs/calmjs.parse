@@ -13,6 +13,8 @@ class InstallHook(install):
             call, [sys.executable, '-m', 'calmjs.parse.parsers.optimize'])
 
 
+# Attributes
+
 version = '1.4.0'
 
 classifiers = """
