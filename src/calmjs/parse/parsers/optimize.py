@@ -8,18 +8,36 @@ that do not have utf8 configured as the default codec.
 """
 
 import codecs
+import os
 import sys
 from functools import partial
 from os import unlink
 from os.path import exists
 from importlib import import_module
+from calmjs.parse.utils import generate_tab_names
+from calmjs.parse.utils import ply_dist
+
+_ASSUME_PLY_VERSION = '3.11'
+_ASSUME_ENVVAR = 'CALMJS_PARSE_ASSUME_PLY_VERSION'
+
+
+def validate_imports(*imports):
+    paths = []
+    missing = []
+    for name in imports:
+        try:
+            import_module(name)
+        except ImportError:
+            missing.append(name)
+        else:
+            paths.append(sys.modules.pop(name).__file__)
+    return paths, missing
 
 
 def find_tab_paths(module):
     # return a list of lextab/yacctab module paths and a list of missing
     # import names.
-    paths = []
-    missing = []
+    names = []
     for entry in ('lextab', 'yacctab'):
         # we assume the specified entries are defined as such
         name = getattr(module, entry)
@@ -30,13 +48,8 @@ def find_tab_paths(module):
                 'provided module `%s` does not export expected tab values ' %
                 module.__name__
             )
-        try:
-            import_module(name)
-        except ImportError:
-            missing.append(name)
-        else:
-            paths.append(sys.modules.pop(name).__file__)
-    return paths, missing
+        names.append(name)
+    return validate_imports(*names)
 
 
 def purge_tabs(module):
@@ -71,11 +84,42 @@ def reoptimize(module):
     module.Parser()
 
 
-def optimize_build(module):
-    paths, missing = find_tab_paths(module)
+def _assume_ply_version():
+    version = os.environ.get(_ASSUME_ENVVAR, _ASSUME_PLY_VERSION)
+    if ply_dist is None:
+        if _ASSUME_ENVVAR in os.environ:
+            source = "using environment variable %r" % _ASSUME_ENVVAR
+        else:
+            source = "using default value"
+        sys.stderr.write(
+            u"WARNING: cannot find distribution for 'ply'; "
+            "%s, assuming 'ply==%s' for pre-generated modules\n" % (
+                source, version))
+    return version
+
+
+def optimize_build(module_name, assume_ply_version=True):
+    """
+    optimize build helper for first build
+
+    assume_ply_version
+        This flag denotes whether or not to assume a ply version should
+        ply be NOT installed; this will either assume ply to be whatever
+        value assigned to _ASSUME_PLY_VERSION (i.e. 3.11), or read from
+        the environment variable `CALMJS_PARSE_ASSUME_PLY_VERSION`.
+
+        Default: True
+    """
+
+    kws = {}
+    if assume_ply_version:
+        kws['_version'] = _assume_ply_version()
+
+    paths, missing = validate_imports(*generate_tab_names(module_name, **kws))
     if missing:
-        # only purge and regenerate if any are missing.
+        # only import, purge and regenerate if any are missing.
         unlink_modules(verify_paths(paths))
+        module = import_module(module_name)
         module.Parser()
 
 
@@ -109,19 +153,30 @@ def reoptimize_all(monkey_patch=False, first_build=False):
     modules = ('.es5',)
     try:
         for name in modules:
-            module = import_module(name, 'calmjs.parse.parsers')
             if first_build:
-                optimize_build(module)
+                # A consideration for modifying this flag to simply
+                # check for a marker file to denote none of this being
+                # needed (i.e. this tarball was fully prepared), but it
+                # will not solve the issue where the distro packager
+                # already got an even more recent version of ply
+                # installed (as unlikely as that is) and that build step
+                # then is completely skipped.
+                optimize_build('calmjs.parse.parsers' + name)
             else:
+                module = import_module(name, 'calmjs.parse.parsers')
                 reoptimize(module)
     except ImportError as e:
         if not first_build or 'ply' not in str(e):
             raise
         sys.stderr.write(
-            u"ERROR: cannot import ply, aborting build; please ensure "
-            "that the python package 'ply' is installed before attempting to "
-            "build this package; please refer to the top level README for "
-            "further details\n"
+            u"ERROR: cannot find pre-generated modules for the assumed 'ply' "
+            "version from above and/or cannot `import ply` to build generated "
+            "modules, aborting build; please either ensure that the source "
+            "archive containing the pre-generate modules is being used, or "
+            "that the python package 'ply' is installed and available for "
+            "import before attempting to use the setup.py to build this "
+            "package; please refer to the top level README for further "
+            "details\n"
         )
         sys.exit(1)
 

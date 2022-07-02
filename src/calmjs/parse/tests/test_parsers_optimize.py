@@ -12,6 +12,7 @@ from types import ModuleType
 from ply import lex
 from calmjs.parse.parsers import optimize
 from calmjs.parse.parsers import es5
+from calmjs.parse.utils import ply_dist
 
 
 class OptimizeTestCase(unittest.TestCase):
@@ -23,6 +24,7 @@ class OptimizeTestCase(unittest.TestCase):
     def tearDown(self):
         optimize.unlink = os.unlink
         optimize.import_module = importlib.import_module
+        optimize.ply_dist = ply_dist
         # undo whatever monkey patch that may have happened
         lex.open = open
 
@@ -122,12 +124,16 @@ class OptimizeTestCase(unittest.TestCase):
         def sentinel():
             called.append(True)
 
-        fake_es5 = ModuleType('fake_es5')
-        fake_es5.lextab = 'some_lextab'
-        fake_es5.yacctab = 'some_yacctab'
+        fake_es5 = ModuleType('fake_namespace.fake_es5')
         fake_es5.Parser = sentinel
 
-        optimize.optimize_build(fake_es5)
+        # inject fake namespace and module
+        sys.modules['fake_namespace'] = ModuleType('fake_namespace')
+        self.addCleanup(sys.modules.pop, 'fake_namespace')
+        sys.modules['fake_namespace.fake_es5'] = fake_es5
+        self.addCleanup(sys.modules.pop, 'fake_namespace.fake_es5')
+
+        optimize.optimize_build('fake_namespace.fake_es5')
         self.assertEqual(len(self.purged), 0)
         self.assertTrue(called)
 
@@ -142,8 +148,29 @@ class OptimizeTestCase(unittest.TestCase):
         # shouldn't have purged any modules
         self.assertEqual(len(self.purged), 0)
 
+    def test_assume_ply_version(self):
+        # only applicable if no ply_dist found
+        optimize.ply_dist = None
+        stderr = sys.stderr
+        self.addCleanup(setattr, sys, 'stderr', stderr)
+
+        sys.stderr = StringIO()
+        optimize._assume_ply_version()
+        self.assertTrue(sys.stderr.getvalue().startswith(
+            "WARNING: cannot find distribution for 'ply'; using default "
+            "value, assuming 'ply==3.11' for pre-generated modules"))
+
+        self.addCleanup(os.environ.pop, optimize._ASSUME_ENVVAR, None)
+        sys.stderr = StringIO()
+        os.environ[optimize._ASSUME_ENVVAR] = '0.9999'  # should never exist
+        optimize._assume_ply_version()
+        self.assertTrue(sys.stderr.getvalue().startswith(
+            "WARNING: cannot find distribution for 'ply'; using environment "
+            "variable 'CALMJS_PARSE_ASSUME_PLY_VERSION', "
+            "assuming 'ply==0.9999' for pre-generated modules"))
+
     def test_optimize_first_build_valid_with_broken_ply_error(self):
-        def fail_import(module, package):
+        def fail_import(*a, **kw):
             raise ImportError('no module named ply')
 
         optimize.import_module = fail_import
@@ -163,4 +190,62 @@ class OptimizeTestCase(unittest.TestCase):
             optimize.reoptimize_all(first_build=True)
 
         self.assertTrue(sys.stderr.getvalue().startswith(
-            'ERROR: cannot import ply'))
+            "ERROR: cannot find pre-generated modules for the assumed 'ply' "
+            "version"))
+
+    def test_optimize_first_build_assume_broken_ply_error(self):
+        optimize.ply_dist = None
+
+        def fail_import(*a, **kw):
+            raise ImportError('no module named ply')
+
+        optimize.import_module = fail_import
+
+        with self.assertRaises(ImportError):
+            optimize.reoptimize_all()
+
+        stderr = sys.stderr
+
+        def cleanup():
+            sys.stderr = stderr
+
+        self.addCleanup(cleanup)
+
+        sys.stderr = StringIO()
+        with self.assertRaises(SystemExit):
+            optimize.reoptimize_all(first_build=True)
+
+        lines = sys.stderr.getvalue().splitlines()
+        self.assertTrue(lines[0].startswith(
+            "WARNING: cannot find distribution for 'ply'; using default value"
+            ))
+        self.assertTrue(lines[1].startswith(
+            "ERROR: cannot find pre-generated modules for the assumed 'ply' "
+            "version"))
+
+    def test_optimize_build_assume_broken_ply(self):
+        optimize.ply_dist = None
+        called = []
+
+        def sentinel():
+            called.append(True)
+
+        fake_es5 = ModuleType('fake_namespace.fake_es5')
+        fake_es5.Parser = sentinel
+
+        # inject fake namespace and module
+        sys.modules['fake_namespace'] = ModuleType('fake_namespace')
+        self.addCleanup(sys.modules.pop, 'fake_namespace')
+        sys.modules['fake_namespace.fake_es5'] = fake_es5
+        self.addCleanup(sys.modules.pop, 'fake_namespace.fake_es5')
+        stderr = sys.stderr
+        self.addCleanup(setattr, sys, 'stderr', stderr)
+        sys.stderr = StringIO()
+
+        optimize.optimize_build('fake_namespace.fake_es5')
+        self.assertEqual(len(self.purged), 0)
+        self.assertTrue(called)
+        self.assertTrue(sys.stderr.getvalue().startswith(
+            "WARNING: cannot find distribution for 'ply'; using default value"
+            ))
+        self.assertNotIn('ERROR', sys.stderr.getvalue())

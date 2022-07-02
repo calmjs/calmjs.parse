@@ -78,9 +78,8 @@ As this package uses |ply|, it requires the generation of optimization
 modules for its lexer.  The wheel distribution of |calmjs.parse| does
 not require this extra step as it contains these pre-generated modules
 for |ply| up to version 3.11 (the latest version available at the time
-of previous release), however the source tarball or if |ply| version
-that is installed lies outside of the supported versions, the following
-caveats will apply.
+of previous release), however the version of |ply| that is installed is
+beyond the supported version, the following caveats will apply.
 
 If a more recent release of |ply| becomes available and the environment
 upgrades to that version, those pre-generated modules may become
@@ -89,11 +88,18 @@ A corrective action can be achieved through a `manual optimization`_
 step if a newer version of |calmjs.parse| is not available, or |ply| may
 be downgraded back to version 3.11 if possible.
 
+Alternatively, install a more recent version of |calmjs.parse| wheel
+that has the most complete set of pre-generated modules built.
+
 Once the package is installed, the installation may be `tested`_ or be
 `used directly`_.
 
-Alternative installation methods (for developers, advanced users)
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Manual installation and packaging requirements
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+*This section is for developers and advanced users; contains important
+information for package maintainers for OS distributions (e.g. Linux)
+that will prevent less than ideal experiences for downstream users.*
 
 Development is still ongoing with |calmjs.parse|, for the latest
 features and bug fixes, the development version may be installed through
@@ -101,14 +107,43 @@ git like so:
 
 .. code:: console
 
-    $ pip install git+https://github.com/calmjs/calmjs.parse.git#egg=calmjs.parse
+    $ pip install ply  # this MUST be done first; see below for reason
+    $ pip install -e git+https://github.com/calmjs/calmjs.parse.git#egg=calmjs.parse
 
-Alternatively, the git repository can be cloned directly and execute
+Note that |ply| MUST be pre-installed for the ``setup.py build`` step to
+run, otherwise the build step required to create the pre-generated
+modules will result in the following failure condition, even when trying
+to package this library:
+
+.. code:: console
+
+    $ python setup.py sdist --format=zip
+    running sdist
+    ...
+    WARNING: cannot find distribution for 'ply'; using default value,
+    assuming 'ply==3.11' for pre-generated modules
+    ERROR: cannot find pre-generated modules for the assumed 'ply'
+    version from above and/or cannot `import ply` to build generated
+    modules, aborting build; please either ensure that the source
+    archive containing the pre-generate modules is being used, or that
+    the python package 'ply' is installed and available for import
+    before attempting to use the setup.py to build this package; please
+    refer to the top level README for further details
+
+Naturally, the git repository can be cloned directly and execute
 ``python setup.py develop`` while inside the root of the source
-directory.
+directory; again, |ply| MUST already be available.
 
-A manual optimization step may need to be performed for platforms and
-systems that do not have utf8 as their default encoding.
+As the git repository does NOT contain any pre-generated modules or
+code, the above message is likely to be seen by developers or distro
+maintainers who are on their first try at interacting with this
+software.  However, the zip archives released on PyPI starting from
+version 1.3.0 do contain these modules fully pre-generated, thus they
+may be used as part of a standard installation step, i.e. without
+requiring |ply| be available for import before usage of the ``setup.py``
+for any purpose.  While the same warning message about |ply| being
+missing may be shown, the pre-generated modules will allow the build
+step to proceed as normal.
 
 Manual optimization
 ~~~~~~~~~~~~~~~~~~~
@@ -714,6 +749,7 @@ Object assignments from a given script file:
 Further details and example usage can be consulted from the various
 docstrings found within the module.
 
+
 Limitations
 -----------
 
@@ -734,6 +770,7 @@ tokens and the node as implemented only provides a single slot for
 comments.  Likewise, any comments before the ``:`` token in a ternary
 statement will also be discarded as that is the second token consumed
 by the production rule that produces a ``Conditional`` node.
+
 
 Troubleshooting
 ---------------
@@ -780,6 +817,18 @@ the resolved generator functions for each asttype Node type, however
 this will may require both the token and layout functions not having
 arguments with name collisions, and the new function will take in all
 of those arguments in one go.
+
+ERROR message about `import ply` when trying to run setup.py
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As noted in the full message, the |ply|_) package must be installed
+before attempting to build the package through ``setup.py`` in the
+situation where the pre-generated modules are missing.  This situation
+may be caused by building directly using the source provided by the
+source code repository, or where there is no matching pre-generated
+module matching with the installed version of |ply|.  Please ensure
+that |ply| is installed and available first before installing from
+source if this error message is sighted.
 
 
 Contribute
