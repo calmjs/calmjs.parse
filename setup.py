@@ -1,3 +1,4 @@
+import os
 import sys
 from setuptools import setup, find_packages
 from setuptools.command.build_py import build_py
@@ -7,11 +8,12 @@ from subprocess import call
 class BuildHook(build_py):
     """Forcing the optimizer to run before the build step"""
     def __init__(self, *a, **kw):
+        # must use clone of this, otherwise Python on Windows gets sad.
+        env = os.environ.copy()
+        env['PYTHONPATH'] = 'src'
         code = call([
             sys.executable, '-m', 'calmjs.parse.parsers.optimize', '--build'
-        ], env={
-            'PYTHONPATH': 'src'
-        })
+        ], env=env)
         if code:
             sys.exit(1)
         build_py.__init__(self, *a, **kw)
