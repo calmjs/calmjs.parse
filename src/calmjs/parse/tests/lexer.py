@@ -545,6 +545,201 @@ es5_pos_cases = [
     )
 ]
 
+es2015_cases = [
+    (
+        'const_keyword',
+        ('const c',
+         ['CONST const', 'ID c']),
+    ), (
+        'let_keyword',
+        ('let c',
+         ['LET let', 'ID c']),
+    ), (
+        'var_let_keyword',
+        ('var let = 1',
+         ['VAR var', 'LET let', 'EQ =', 'NUMBER 1']),
+    ), (
+        'static_keyword',
+        ('class Foo { static foo() {} }',
+         ['CLASS class', 'ID Foo', 'LBRACE {', 'STATIC static', 'ID foo',
+          'LPAREN (', 'RPAREN )', 'LBRACE {', 'RBRACE }', 'RBRACE }']),
+    ), (
+        'var_static_keyword',
+        ('var static = 1',
+         ['VAR var', 'STATIC static', 'EQ =', 'NUMBER 1']),
+    ), (
+        'yield_keyword',
+        ('function *gen() { yield 1 }',
+         ['FUNCTION function', 'MULT *', 'ID gen', 'LPAREN (', 'RPAREN )',
+          'LBRACE {', 'YIELD yield', 'NUMBER 1', 'RBRACE }']),
+    ), (
+        'es2015_numbers',
+        (('0b1011 0B1101 0o755 0O644'),
+         ['NUMBER 0b1011', 'NUMBER 0B1101', 'NUMBER 0o755', 'NUMBER 0O644']),
+    ), (
+        'punctuators',
+        ('=> ...',
+         ['ARROW =>', 'SPREAD ...']),
+    ), (
+        'arrow_functions',
+        ('const c = (name) => { return name; }',
+         ['CONST const', 'ID c', 'EQ =', 'LPAREN (', 'ID name', 'RPAREN )',
+          'ARROW =>', 'LBRACE {', 'RETURN return', 'ID name', 'SEMI ;',
+          'RBRACE }']),
+    ), (
+        'spread',
+        ('[...spring, ...summer]',
+         ['LBRACKET [', 'SPREAD ...', 'ID spring', 'COMMA ,', 'SPREAD ...',
+          'ID summer', 'RBRACKET ]']),
+    ), (
+        'template_literal',
+        ('`foo`',
+         ['TEMPLATE_NOSUB `foo`']),
+    ), (
+        'template_multiline',
+        ('`foo\nbar\r\nfoo`',
+         ['TEMPLATE_NOSUB `foo\nbar\r\nfoo`']),
+    ), (
+        'template_other_newlines',
+        ('`foo\u2028\u2029foo`',
+         ['TEMPLATE_NOSUB `foo\u2028\u2029foo`']),
+    ), (
+        'template_literal_with_dollar',
+        ('`foo$`',
+         ['TEMPLATE_NOSUB `foo$`']),
+    ), (
+        'template_head_tail',
+        (r'`hello ${name} while this`',
+         ['TEMPLATE_HEAD `hello ${', 'ID name', 'TEMPLATE_TAIL } while this`']),
+    ), (
+        'template_empty_head_tail',
+        (r'`${name}`',
+         ['TEMPLATE_HEAD `${', 'ID name', 'TEMPLATE_TAIL }`']),
+    ), (
+        'template_nested',
+        (r'`${`${a * 2}`} ${b}`',
+         ['TEMPLATE_HEAD `${', 'TEMPLATE_HEAD `${', 'ID a', 'MULT *',
+          'NUMBER 2', 'TEMPLATE_TAIL }`', 'TEMPLATE_MIDDLE } ${', 'ID b',
+          'TEMPLATE_TAIL }`']),
+    ), (
+        'template_some_keywords',
+        (r'`this -> ${this}.`',
+         ['TEMPLATE_HEAD `this -> ${', 'THIS this', 'TEMPLATE_TAIL }.`']),
+    ), (
+        'template_literal_escape',
+        (r'`f\`o`',
+         [r'TEMPLATE_NOSUB `f\`o`']),
+    ), (
+        'template_middle_with_object',
+        ('`object${{1:1}} ${foo}`',
+         ['TEMPLATE_HEAD `object${',
+          'LBRACE {', 'NUMBER 1', 'COLON :', 'NUMBER 1', 'RBRACE }',
+          'TEMPLATE_MIDDLE } ${', 'ID foo', 'TEMPLATE_TAIL }`']),
+    ), (
+        'template_tail_with_object',
+        ('`object${{1:1}}`',
+         ['TEMPLATE_HEAD `object${',
+          'LBRACE {', 'NUMBER 1', 'COLON :', 'NUMBER 1', 'RBRACE }',
+          'TEMPLATE_TAIL }`']),
+    ), (
+        'template_literal_assignment',
+        ('s = `hello world`',
+         ['ID s', 'EQ =', 'TEMPLATE_NOSUB `hello world`']),
+    )
+]
+
+es2015_pos_cases = [
+    (
+        'single_line_template',
+        """
+        var foo = `bar`;
+        """, ([
+            'var 1:0', 'foo 1:4', '= 1:8', '`bar` 1:10', '; 1:15'
+        ], [
+            'var 1:1', 'foo 1:5', '= 1:9', '`bar` 1:11', '; 1:16',
+        ])
+    ), (
+        'multi_line',
+        """
+        var foo = `bar
+        ${1}`;
+        """, ([
+            'var 1:0', 'foo 1:4', '= 1:8', '`bar\n${ 1:10',
+            '1 2:17', '}` 2:18', '; 2:20',
+        ], [
+            'var 1:1', 'foo 1:5', '= 1:9', '`bar\n${ 1:11',
+            '1 2:3', '}` 2:4', '; 2:6',
+        ])
+    ), (
+        'multi_line_joined',
+        r"""
+        var foo = `bar\
+        ${1}`;
+        """, ([
+            'var 1:0', 'foo 1:4', '= 1:8', '`bar\\\n${ 1:10',
+            '1 2:18', '}` 2:19', '; 2:21',
+        ], [
+            'var 1:1', 'foo 1:5', '= 1:9', '`bar\\\n${ 1:11',
+            '1 2:3', '}` 2:4', '; 2:6',
+        ])
+    )
+]
+
+# various template related syntax errors
+es2015_error_cases_tmpl = [
+    (
+        'unterminated_template_eof',
+        "var foo = `test",
+        "Unterminated template literal '`test' at 1:11",
+    ), (
+        'unterminated_template_middle_eof',
+        "var foo = `${foo}bar${baz}fail",
+        # the specific identifiers are not tracked, thus ...
+        "Unterminated template literal '`${...}bar${...}...' at 1:11",
+    ), (
+        'unterminated_template_nested',
+        "var foo = `${`${foo}bar${baz}fail`}",
+        # the specific identifiers are not tracked, thus ...
+        "Unterminated template literal '`${...}' at 1:11",
+    ), (
+        'unexpected_template_tail',
+        "var foo = `${value}`}`",
+        "Unexpected '}' at 1:21",
+    ), (
+        'invalid_hex_sequence',
+        "var foo = `fail\\x1`",
+        # backticks are converted to single quotes
+        "Invalid hexadecimal escape sequence '\\x1' at 1:16",
+    ), (
+        'invalid_unicode_sequence',
+        "var foo = `fail\\u12`",
+        "Invalid unicode escape sequence '\\u12' at 1:16",
+    ), (
+        'invalid_hex_sequence_multiline',
+        "var foo = `foobar\r\nfail\\x1`",
+        # backticks are converted to single quotes
+        "Invalid hexadecimal escape sequence '\\x1' at 2:5",
+    ), (
+        'invalid_unicode_sequence_multiline',
+        "var foo = `foobar\nfail\\u12`",
+        "Invalid unicode escape sequence '\\u12' at 2:5",
+    ), (
+        'invalid_hex_sequence_middle',
+        "var foo = `fail${wat}blah\\x1`",
+        # backticks are converted to single quotes
+        "Invalid hexadecimal escape sequence '\\x1' at 1:26",
+    ), (
+        'invalid_hex_sequence_middle_multiline',
+        "var foo = `foobar${lolwat}\r\nfailure${failure}wat\r\nwat\\x1`",
+        # backticks are converted to single quotes
+        "Invalid hexadecimal escape sequence '\\x1' at 3:4",
+    ), (
+        'long_invalid_template_truncated',
+        "var foo = `1234567890abcdetruncated",
+        "Unterminated template literal '`1234567890abcde...' at 1:11",
+    )
+]
+
 
 def run_lexer(value, lexer_cls):
     lexer = lexer_cls()

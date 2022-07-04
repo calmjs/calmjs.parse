@@ -2,6 +2,7 @@
 per-file-ignores =
     src/calmjs/parse/tests/lexer.py:E501
     src/calmjs/parse/lexers/es5.py:E221
+    src/calmjs/parse/lexers/es2015.py:E221
 
 include =
     src/
