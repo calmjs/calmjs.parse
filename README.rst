@@ -805,6 +805,24 @@ A workaround helper script is provided, it may be executed like so:
 Further details on this topic may be found in the `manual optimization`_
 section of this document.
 
+WARNING: There are unused tokens on import
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This indicates that the installation method or source for this package
+being imported isn't optimized.  A quick workaround is to follow the
+instructions at the `manual optimization`_ section of this document to
+ensure these messages are no longer generated (and if this warning
+happens every time the module is imported, it means the symbol tables
+are regenerated every time that happens and this extra computational
+overhead should be corrected through the generation of that optimization
+module).
+
+This optimization module is included with the wheel release and the
+source release on PyPI, but it is not part of the source repository as
+generated code are never committed.  Should a binary release made by
+a third-party results in this warning upon import, their release should
+be corrected to include the optimization module.
+
 Slow performance
 ~~~~~~~~~~~~~~~~
 
