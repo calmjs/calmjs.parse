@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.3.1 - 20??-??-??
+1.3.1 - 2023-10-28
 ------------------
 
 - Modified existing ``setup.py`` hook from an install hook to a build
