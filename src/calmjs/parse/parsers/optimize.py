@@ -115,12 +115,15 @@ def optimize_build(module_name, assume_ply_version=True):
     if assume_ply_version:
         kws['_version'] = _assume_ply_version()
 
-    paths, missing = validate_imports(*generate_tab_names(module_name, **kws))
+    lextab, yacctab = generate_tab_names(module_name, **kws)
+    paths, missing = validate_imports(lextab, yacctab)
     if missing:
         # only import, purge and regenerate if any are missing.
         unlink_modules(verify_paths(paths))
         module = import_module(module_name)
-        module.Parser()
+        # use whatever assumed version or otherwise as set up by
+        # the local generation function.
+        module.Parser(lextab=lextab, yacctab=yacctab)
 
 
 def reoptimize_all(monkey_patch=False, first_build=False):

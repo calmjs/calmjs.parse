@@ -121,7 +121,7 @@ class OptimizeTestCase(unittest.TestCase):
     def test_optimize_build(self):
         called = []
 
-        def sentinel():
+        def sentinel(*a, **kw):
             called.append(True)
 
         fake_es5 = ModuleType('fake_namespace.fake_es5')
@@ -227,7 +227,7 @@ class OptimizeTestCase(unittest.TestCase):
         optimize.ply_dist = None
         called = []
 
-        def sentinel():
+        def sentinel(*a, **kw):
             called.append(True)
 
         fake_es5 = ModuleType('fake_namespace.fake_es5')
