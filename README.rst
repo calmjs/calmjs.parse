@@ -107,18 +107,20 @@ git like so:
 
 .. code:: console
 
-    $ pip install ply  # this MUST be done first; see below for reason
+    $ pip install ply setuptools  # this MUST be done first; see below for reason
     $ pip install -e git+https://github.com/calmjs/calmjs.parse.git#egg=calmjs.parse
 
-Note that |ply| MUST be pre-installed for the ``setup.py build`` step to
-run, otherwise the build step required to create the pre-generated
-modules will result in the following failure condition, even when trying
-to package this library:
+Note that all dependencies MUST be pre-installed ``setup.py build`` step
+to run, otherwise the build step required to create the pre-generated
+modules will result in failure.
+
+If |ply| isn't installed:
 
 .. code:: console
 
-    $ python setup.py sdist --format=zip
-    running sdist
+    $ python -m pip install -e .
+    ...
+    running egg_info
     ...
     WARNING: cannot find distribution for 'ply'; using default value,
     assuming 'ply==3.11' for pre-generated modules
@@ -130,9 +132,25 @@ to package this library:
     before attempting to use the setup.py to build this package; please
     refer to the top level README for further details
 
+If ``setuptools`` isn't installed:
+
+.. code:: console
+
+    $ python -m pip install -e .
+    ...
+    running egg_info
+    ...
+    Traceback (most recent call last):
+      ...
+      File ".../calmjs.parse/src/calmjs/__init__.py", line 1, in <module>
+        __import__('pkg_resources').declare_namespace(__name__)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ModuleNotFoundError: No module named 'pkg_resources'
+
 Naturally, the git repository can be cloned directly and execute
 ``python setup.py develop`` while inside the root of the source
-directory; again, |ply| MUST already be available.
+directory; again, both |ply| AND ``setuptools`` MUST already have be
+available for import.
 
 As the git repository does NOT contain any pre-generated modules or
 code, the above message is likely to be seen by developers or distro
@@ -817,11 +835,19 @@ are regenerated every time that happens and this extra computational
 overhead should be corrected through the generation of that optimization
 module).
 
-This optimization module is included with the wheel release and the
+The optimization modules are included with the wheel release and the
 source release on PyPI, but it is not part of the source repository as
 generated code are never committed.  Should a binary release made by
 a third-party results in this warning upon import, their release should
 be corrected to include the optimization module.
+
+Moreover, there are safeguards in place that prevent this warning from
+being generated for releases made for releases from 1.3.1 onwards by
+a more heavy handed enforcement of this optimization step at build time,
+but persistent (or careless) actors may circumvent this during the build
+process, but official releases made through PyPI should include the
+required optimization for all supported |ply| versions (which are
+versions 3.6 to 3.11, inclusive).
 
 Slow performance
 ~~~~~~~~~~~~~~~~
@@ -836,17 +862,17 @@ this will may require both the token and layout functions not having
 arguments with name collisions, and the new function will take in all
 of those arguments in one go.
 
-ERROR message about `import ply` when trying to run setup.py
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+ERROR message about import error when trying to install
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-As noted in the full message, the |ply|_) package must be installed
-before attempting to build the package through ``setup.py`` in the
+As noted in the error message, the |ply|_ and ``setuptools`` package
+must be installed before attempting to install build the package in the
 situation where the pre-generated modules are missing.  This situation
 may be caused by building directly using the source provided by the
 source code repository, or where there is no matching pre-generated
-module matching with the installed version of |ply|.  Please ensure
-that |ply| is installed and available first before installing from
-source if this error message is sighted.
+module matching with the installed version of |ply|.  Please ensure that
+|ply| is installed and available first before installing from source if
+this error message is sighted.
 
 
 Contribute
