@@ -6,3 +6,7 @@ include *.rst
 include LICENSE
 recursive-exclude src *.pyc
 recursive-exclude src *.pyo
+prune .github
+exclude .gitignore
+exclude appveyor.yml
+exclude .flake8

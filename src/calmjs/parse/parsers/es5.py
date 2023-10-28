@@ -42,8 +42,10 @@ from calmjs.parse.io import read as io_read
 
 asttypes = AstTypesFactory(pretty_print, ReprWalker())
 
-# The default values for the `Parser` constructor, passed on to ply; they must
-# be strings
+# These default values for the `Parser` constructor, passed on to ply;
+# they must be strings; these values are for reference only as
+# modifications to this value will not change what's been set up as
+# the Parser's default.
 lextab, yacctab = generate_tab_names(__name__)
 
 
