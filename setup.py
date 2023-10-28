@@ -1,16 +1,22 @@
-import atexit
+import os
 import sys
 from setuptools import setup, find_packages
-from setuptools.command.install import install
+from setuptools.command.build_py import build_py
 from subprocess import call
 
 
-class InstallHook(install):
-    """For hooking the optimizer when setup exits"""
+class BuildHook(build_py):
+    """Forcing the optimizer to run before the build step"""
     def __init__(self, *a, **kw):
-        install.__init__(self, *a, **kw)
-        atexit.register(
-            call, [sys.executable, '-m', 'calmjs.parse.parsers.optimize'])
+        # must use clone of this, otherwise Python on Windows gets sad.
+        env = os.environ.copy()
+        env['PYTHONPATH'] = 'src'
+        code = call([
+            sys.executable, '-m', 'calmjs.parse.parsers.optimize', '--build'
+        ], env=env)
+        if code:
+            sys.exit(1)
+        build_py.__init__(self, *a, **kw)
 
 
 # Attributes
@@ -32,6 +38,8 @@ Programming Language :: Python :: 3.7
 Programming Language :: Python :: 3.8
 Programming Language :: Python :: 3.9
 Programming Language :: Python :: 3.10
+Programming Language :: Python :: 3.11
+Programming Language :: Python :: 3.12
 """.strip().splitlines()
 
 long_description = (
@@ -59,7 +67,7 @@ setup(
     include_package_data=True,
     zip_safe=False,
     cmdclass={
-        'install': InstallHook,
+        'build_py': BuildHook,
     },
     install_requires=[
         'setuptools',

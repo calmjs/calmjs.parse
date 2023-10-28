@@ -13,6 +13,14 @@ try:
     from pkg_resources import working_set
     from pkg_resources import Requirement
     ply_dist = working_set.find(Requirement.parse('ply'))
+    # note that for **extremely** ancient versions of setuptools, e.g.
+    # setuptools<0.6c11, or some very non-standard environment that does
+    # not include the required metadata (e.g. pyinstaller without the
+    # required metadata), will require the following workaround...
+    if ply_dist is None:  # pragma: no cover
+        from pkg_resources import Distribution
+        import ply
+        ply_dist = Distribution(project_name='ply', version=ply.__version__)
 except ImportError:  # pragma: no cover
     ply_dist = None
 
@@ -34,7 +42,7 @@ def repr_compat(s):
         return repr(s)
 
 
-def generate_tab_names(name):
+def generate_tab_names(name, _version='unknown'):
     """
     Return the names to lextab and yacctab modules for the given module
     name.  Typical usage should be like so::
@@ -44,8 +52,8 @@ def generate_tab_names(name):
 
     package_name, module_name = name.rsplit('.', 1)
 
-    version = ply_dist.version.replace(
-        '.', '_') if ply_dist is not None else 'unknown'
+    version = (ply_dist.version if ply_dist is not None else _version).replace(
+        '.', '_')
     data = (package_name, module_name, py_major, version)
     lextab = '%s.lextab_%s_py%d_ply%s' % data
     yacctab = '%s.yacctab_%s_py%d_ply%s' % data
