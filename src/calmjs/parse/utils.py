@@ -14,11 +14,13 @@ try:
     from pkg_resources import Requirement
     ply_dist = working_set.find(Requirement.parse('ply'))
     # note that for **extremely** ancient versions of setuptools, e.g.
-    # setuptools<0.6c11, will require the following workaround...
-    # if ply_dist is None:
-    #     from pkg_resources import Distribution
-    #     import ply
-    #     ply_dist = Distribution(project_name='ply', version=ply.__version__)
+    # setuptools<0.6c11, or some very non-standard environment that does
+    # not include the required metadata (e.g. pyinstaller without the
+    # required metadata), will require the following workaround...
+    if ply_dist is None:  # pragma: no cover
+        from pkg_resources import Distribution
+        import ply
+        ply_dist = Distribution(project_name='ply', version=ply.__version__)
 except ImportError:  # pragma: no cover
     ply_dist = None
 
