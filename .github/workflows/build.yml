@@ -58,7 +58,11 @@ jobs:
       run: |
         python -OO -m unittest calmjs.parse.tests.make_suite
         coverage run --include=src/* -m unittest calmjs.parse.tests.make_suite
+    # Python 3.12 on Windows resulted in MemoryError here, so optional.
+    - name: Coverage report
+      run: |
         coverage report -m
+      continue-on-error: true
     - name: Coveralls
       if: ${{ matrix.os == 'ubuntu-latest' && matrix.python-version != '2.7' && matrix.python-version != 'pypy2' }}
       env:
