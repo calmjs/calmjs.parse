@@ -148,17 +148,29 @@ class OptimizeTestCase(unittest.TestCase):
         # shouldn't have purged any modules
         self.assertEqual(len(self.purged), 0)
 
-    def test_assume_ply_version(self):
+    def test_assume_ply_version_default_ply(self):
         # only applicable if no ply_dist found
         optimize.ply_dist = None
         stderr = sys.stderr
         self.addCleanup(setattr, sys, 'stderr', stderr)
 
+        # where ply is actually available; and since the real thing is
+        # expected to be present and usable, intersperse that real value
+        # into the expected string.
+        import ply
         sys.stderr = StringIO()
         optimize._assume_ply_version()
         self.assertTrue(sys.stderr.getvalue().startswith(
-            "WARNING: cannot find distribution for 'ply'; using default "
-            "value, assuming 'ply==3.11' for pre-generated modules"))
+            "WARNING: cannot find distribution for 'ply'; using value "
+            "provided by ply, assuming 'ply==%s' for pre-generated modules" % (
+                ply.__version__
+            )))
+
+    def test_assume_ply_version_override_ply(self):
+        # can still override if ply is actually available
+        optimize.ply_dist = None
+        stderr = sys.stderr
+        self.addCleanup(setattr, sys, 'stderr', stderr)
 
         self.addCleanup(os.environ.pop, optimize._ASSUME_ENVVAR, None)
         sys.stderr = StringIO()
@@ -168,6 +180,19 @@ class OptimizeTestCase(unittest.TestCase):
             "WARNING: cannot find distribution for 'ply'; using environment "
             "variable 'CALMJS_PARSE_ASSUME_PLY_VERSION', "
             "assuming 'ply==0.9999' for pre-generated modules"))
+
+    def test_assume_ply_version_no_ply(self):
+        # default when ply is fully broken.
+        optimize.ply_dist = None
+        stderr = sys.stderr
+        self.addCleanup(setattr, sys, 'stderr', stderr)
+
+        self.break_ply()
+        sys.stderr = StringIO()
+        optimize._assume_ply_version()
+        self.assertTrue(sys.stderr.getvalue().startswith(
+            "WARNING: cannot find distribution for 'ply'; using default "
+            "value, assuming 'ply==3.11' for pre-generated modules"))
 
     def test_optimize_first_build_valid_with_broken_ply_error(self):
         def fail_import(*a, **kw):
@@ -196,6 +221,8 @@ class OptimizeTestCase(unittest.TestCase):
     def test_optimize_first_build_assume_broken_ply_error(self):
         optimize.ply_dist = None
 
+        self.break_ply()
+
         def fail_import(*a, **kw):
             raise ImportError('no module named ply')
 
@@ -223,7 +250,7 @@ class OptimizeTestCase(unittest.TestCase):
             "ERROR: cannot find pre-generated modules for the assumed 'ply' "
             "version"))
 
-    def test_optimize_build_assume_broken_ply(self):
+    def test_optimize_build_assume_broken_ply_but_available(self):
         optimize.ply_dist = None
         called = []
 
@@ -245,7 +272,10 @@ class OptimizeTestCase(unittest.TestCase):
         optimize.optimize_build('fake_namespace.fake_es5')
         self.assertEqual(len(self.purged), 0)
         self.assertTrue(called)
+        # this parser will not actually error as it does nothing; and
+        # so not actually care whether ply actually available here or
+        # not.
         self.assertTrue(sys.stderr.getvalue().startswith(
-            "WARNING: cannot find distribution for 'ply'; using default value"
+            "WARNING: cannot find distribution for 'ply'; "
             ))
         self.assertNotIn('ERROR', sys.stderr.getvalue())

@@ -5,9 +5,11 @@ Changelog
 ------------------
 
 - Modified existing ``setup.py`` hook from an install hook to a build
-  hook to ensure the generated module files are present.  Should they be
-  missing and ``ply`` is not already present this will result in a
-  non-zero exit.
+  hook to ensure the generated module files are present.  Should any of
+  those modules are missing and the required dependencies for are not
+  present (i.e. ``ply`` and ``setuptools``), the build will result in a
+  non-zero exit status and the documented error message should reflect
+  which of the required dependencies are missing.
 
 1.3.0 - 2021-10-08
 ------------------

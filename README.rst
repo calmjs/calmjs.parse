@@ -142,9 +142,6 @@ If ``setuptools`` isn't installed:
     ...
     Traceback (most recent call last):
       ...
-      File ".../calmjs.parse/src/calmjs/__init__.py", line 1, in <module>
-        __import__('pkg_resources').declare_namespace(__name__)
-        ^^^^^^^^^^^^^^^^^^^^^^^^^^^
     ModuleNotFoundError: No module named 'pkg_resources'
 
 Naturally, the git repository can be cloned directly and execute

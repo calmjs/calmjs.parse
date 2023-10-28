@@ -90,7 +90,16 @@ def _assume_ply_version():
         if _ASSUME_ENVVAR in os.environ:
             source = "using environment variable %r" % _ASSUME_ENVVAR
         else:
-            source = "using default value"
+            # allow bypassing of setuptools as ply provides this
+            # attribute
+            try:
+                import ply
+                version = ply.__version__
+                source = "using value provided by ply"
+            except ImportError:  # pragma: no cover
+                ply = None
+                source = "using default value"
+
         sys.stderr.write(
             u"WARNING: cannot find distribution for 'ply'; "
             "%s, assuming 'ply==%s' for pre-generated modules\n" % (
@@ -107,6 +116,10 @@ def optimize_build(module_name, assume_ply_version=True):
         ply be NOT installed; this will either assume ply to be whatever
         value assigned to _ASSUME_PLY_VERSION (i.e. 3.11), or read from
         the environment variable `CALMJS_PARSE_ASSUME_PLY_VERSION`.
+
+        The goal is to allow the build to proceed if the pre-generated
+        files are already present, before the dependency resolution at
+        the installation time actually kicks in to install ply.
 
         Default: True
     """
