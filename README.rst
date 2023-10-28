@@ -846,6 +846,33 @@ process, but official releases made through PyPI should include the
 required optimization for all supported |ply| versions (which are
 versions 3.6 to 3.11, inclusive).
 
+Alternatively, this issue may also occur via usage of ``pyinstaller``
+if the package metadata is not copied for |ply| in versions prior to
+``calmjs.parse-1.3.1`` and will always occur if the hidden imports are
+not declared for those optimization modules.  The following hook should
+may be used to ensure |calmjs.parse| functions correctly in the compiled
+binary:
+
+.. code:: python
+
+    from PyInstaller.utils.hooks import collect_data_files, copy_metadata
+    from calmjs.parse.utils import generate_tab_names
+
+    datas = []
+    datas.extend(collect_data_files("ply"))
+    datas.extend(copy_metadata("ply"))
+    datas.extend(collect_data_files("calmjs.parse"))
+    datas.extend(copy_metadata("calmjs.parse"))
+
+    hiddenimports = []
+    hiddenimports.extend(generate_tab_names('calmjs.parse.parsers.es5'))
+
+    # if running under Python 3 with ply-3.11, above is equivalent to
+    # hiddenimports = [
+    #     "calmjs.parse.parsers.lextab_es5_py3_ply3_11",
+    #     "calmjs.parse.parsers.yacctab_es5_py3_ply3_11",
+    # ]
+
 Slow performance
 ~~~~~~~~~~~~~~~~
 
