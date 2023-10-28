@@ -1,24 +1,21 @@
+image: Visual Studio 2022
+
 environment:
   matrix:
     - PYTHON: "C:\\Python27"
-      nodejs_version: "4.6"
     - PYTHON: "C:\\Python33"
-      nodejs_version: "4.6"
     - PYTHON: "C:\\Python34"
-      nodejs_version: "6.9"
     - PYTHON: "C:\\Python35"
-      nodejs_version: "6.9"
     - PYTHON: "C:\\Python36"
-      nodejs_version: "8"
     - PYTHON: "C:\\Python37"
-      nodejs_version: "10"
     - PYTHON: "C:\\Python38"
-      nodejs_version: "10"
+    - PYTHON: "C:\\Python39-x64"
+    - PYTHON: "C:\\Python310-x64"
+    - PYTHON: "C:\\Python311-x64"
 
 install:
   - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
-  - ps: Install-Product node $env:nodejs_version
-  - "%PYTHON%\\python.exe -m pip install coverage ply"
+  - "%PYTHON%\\python.exe -m pip install setuptools coverage ply"
   - "%PYTHON%\\python.exe setup.py install"
 
 test_script:
