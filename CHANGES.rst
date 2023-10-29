@@ -9,7 +9,9 @@ Changelog
   those modules are missing and the required dependencies for are not
   present (i.e. ``ply`` and ``setuptools``), the build will result in a
   non-zero exit status and the documented error message should reflect
-  which of the required dependencies are missing.
+  which of the required dependencies are missing.  [
+  `#41 <https://github.com/calmjs/calmjs.parse/issues/41>`_
+  ]
 
 1.3.0 - 2021-10-08
 ------------------
