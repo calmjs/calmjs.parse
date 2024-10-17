@@ -62,7 +62,7 @@ jobs:
         coverage report -m
       continue-on-error: true
     - name: Coveralls
-      if: ${{ matrix.os == 'ubuntu-22.04' }}
+      if: ${{ matrix.os == 'ubuntu-latest' }}
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
