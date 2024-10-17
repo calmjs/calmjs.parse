@@ -1,6 +1,14 @@
 Changelog
 =========
 
+1.3.2 - 2024-10-17
+------------------
+
+- Ensure building from source tree under Python 3.13 works.
+- Dropped support for building under Python 2 in source tree. [
+  `#44 <https://github.com/calmjs/calmjs.parse/issues/44>`_
+  ]
+
 1.3.1 - 2023-10-28
 ------------------
 
