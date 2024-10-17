@@ -6,6 +6,7 @@ import unittest
 import doctest
 from textwrap import dedent
 from io import StringIO
+from os.path import basename
 from os.path import dirname
 from pkg_resources import get_distribution
 
@@ -31,14 +32,27 @@ examples = {
 }
 
 
+class StringIOWrapper(StringIO):
+    """
+    Needed to rstrip the output to make all doctest output behave in a
+    consistent way across all platforms because for whatever reason the
+    doctest has different behaviors between Windows and others...
+    """
+
+    def read(self):
+        return StringIO.read(self).rstrip()
+
+
 def make_suite():  # pragma: no cover
     from calmjs.parse.lexers import es5 as es5lexer
     from calmjs.parse import walkers
     from calmjs.parse import sourcemap
 
     def open(p, flag='r'):
-        result = StringIO(examples[p] if flag == 'r' else '')
-        result.name = p
+        result = StringIOWrapper(examples[p] if flag == 'r' else '')
+        # Need basename here because Python 3.13 under Windows broke
+        # _something_ and made the reporting inconsistent...
+        result.name = basename(p)
         return result
 
     parser = doctest.DocTestParser()
