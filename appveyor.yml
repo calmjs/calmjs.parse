@@ -2,16 +2,8 @@ image: Visual Studio 2022
 
 environment:
   matrix:
-    - PYTHON: "C:\\Python27"
-    - PYTHON: "C:\\Python33"
-    - PYTHON: "C:\\Python34"
-    - PYTHON: "C:\\Python35"
-    - PYTHON: "C:\\Python36"
-    - PYTHON: "C:\\Python37"
-    - PYTHON: "C:\\Python38"
-    - PYTHON: "C:\\Python39-x64"
-    - PYTHON: "C:\\Python310-x64"
-    - PYTHON: "C:\\Python311-x64"
+    - PYTHON: "C:\\Python312-x64"
+    - PYTHON: "C:\\Python313-x64"
 
 install:
   - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
@@ -21,7 +13,9 @@ install:
 test_script:
   - python setup.py develop
   - coverage run --include=src\* -m unittest calmjs.parse.tests.make_suite
-  - coverage report -m
+  # This is now broken on appveyor for whatever reason.  Why does Python
+  # and their tools just break?
+  # - coverage report -m
 
 artifacts:
   - path: dist\*

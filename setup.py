@@ -1,6 +1,6 @@
 import os
 import sys
-from setuptools import setup, find_packages
+from setuptools import setup
 from setuptools.command.build_py import build_py
 from subprocess import call
 
@@ -29,7 +29,6 @@ Intended Audience :: Developers
 License :: OSI Approved :: MIT License
 Operating System :: OS Independent
 Programming Language :: JavaScript
-Programming Language :: Python :: 2.7
 Programming Language :: Python :: 3.3
 Programming Language :: Python :: 3.4
 Programming Language :: Python :: 3.5
@@ -40,6 +39,7 @@ Programming Language :: Python :: 3.9
 Programming Language :: Python :: 3.10
 Programming Language :: Python :: 3.11
 Programming Language :: Python :: 3.12
+Programming Language :: Python :: 3.13
 """.strip().splitlines()
 
 long_description = (
@@ -61,9 +61,14 @@ setup(
     author_email='tommy.yu@auckland.ac.nz',
     url='https://github.com/calmjs/calmjs.parse',
     license='mit',
-    packages=find_packages('src'),
-    package_dir={'': 'src'},
-    namespace_packages=['calmjs'],
+    # To build this under Python 2, create src/calmjs/__init__.py with
+    #
+    #     __import__('pkg_resources').declare_namespace(__name__)
+    #
+    # and uncomment the following:
+    # packages=find_packages('src'),
+    # package_dir={'': 'src'},
+    # namespace_packages=['calmjs'],
     include_package_data=True,
     zip_safe=False,
     cmdclass={
@@ -73,6 +78,7 @@ setup(
         'setuptools',
         'ply>=3.6',
     ],
+    python_requires='>=3.3',
     entry_points={
     },
     test_suite="calmjs.parse.tests.make_suite",

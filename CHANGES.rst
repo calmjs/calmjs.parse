@@ -1,6 +1,14 @@
 Changelog
 =========
 
+1.3.2 - 2024-10-17
+------------------
+
+- Ensure building from source tree under Python 3.13 works.
+- Dropped support for building under Python 2 in source tree. [
+  `#44 <https://github.com/calmjs/calmjs.parse/issues/44>`_
+  ]
+
 1.3.1 - 2023-10-28
 ------------------
 
@@ -9,7 +17,9 @@ Changelog
   those modules are missing and the required dependencies for are not
   present (i.e. ``ply`` and ``setuptools``), the build will result in a
   non-zero exit status and the documented error message should reflect
-  which of the required dependencies are missing.
+  which of the required dependencies are missing.  [
+  `#41 <https://github.com/calmjs/calmjs.parse/issues/41>`_
+  ]
 
 1.3.0 - 2021-10-08
 ------------------
