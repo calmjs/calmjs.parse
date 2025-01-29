@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.3.3 - 2025-??-??
+1.3.3 - 2025-01-29
 ------------------
 
 - Revert the usage of ``lru_cache`` as that isn't being hit as expected,
