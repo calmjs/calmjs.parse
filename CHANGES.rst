@@ -1,6 +1,16 @@
 Changelog
 =========
 
+1.3.3 - 2025-01-29
+------------------
+
+- Revert the usage of ``lru_cache`` as that isn't being hit as expected,
+  and that the benefits it brings is too negligible to bring back given
+  the extremely limited cache hits. [
+  `#45 <https://github.com/calmjs/calmjs.parse/issues/45>`_
+  `#46 <https://github.com/calmjs/calmjs.parse/issues/46>`_
+  ]
+
 1.3.2 - 2024-10-17
 ------------------
 
