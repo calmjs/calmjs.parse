@@ -8,7 +8,6 @@ from textwrap import dedent
 from io import StringIO
 from os.path import basename
 from os.path import dirname
-from pkg_resources import get_distribution
 
 examples = {
     '/tmp/html4.js': dedent("""
@@ -63,14 +62,21 @@ def make_suite():  # pragma: no cover
         doctest.NORMALIZE_WHITESPACE | doctest.ELLIPSIS
     )
 
-    dist = get_distribution('calmjs.parse')
-    if dist:
-        if dist.has_metadata('PKG-INFO'):
-            pkgdesc = dist.get_metadata('PKG-INFO').replace('\r', '')
-        elif dist.has_metadata('METADATA'):
-            pkgdesc = dist.get_metadata('METADATA').replace('\r', '')
-        else:
-            pkgdesc = ''
+    try:
+        from importlib import metadata
+        pkgdesc = metadata.metadata('calmjs.parse').get('description')
+        pkgdesc = pkgdesc.replace('\r', '') if pkgdesc else ''
+    except ImportError:
+        from pkg_resources import get_distribution
+        dist = get_distribution('calmjs.parse')
+        if dist:
+            if dist.has_metadata('PKG-INFO'):
+                pkgdesc = dist.get_metadata('PKG-INFO').replace('\r', '')
+            elif dist.has_metadata('METADATA'):
+                pkgdesc = dist.get_metadata('METADATA').replace('\r', '')
+            else:
+                pkgdesc = ''
+
     pkgdesc_tests = [
         t for t in parser.parse(pkgdesc) if isinstance(t, doctest.Example)]
 
