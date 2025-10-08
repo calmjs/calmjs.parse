@@ -21,16 +21,15 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         # This should include the latest 3 stable releases
-        python-version: ["3.11", "3.12", "3.13"]
+        python-version: ["3.12", "3.13", "3.14"]
         include:
           # Use Linux only to test older releases to limit CI time
           - os: ubuntu-latest
             python-version: "3.9"
           - os: ubuntu-latest
             python-version: "3.10"
-          # uncomment when 3.11 is bumped off by "3.14"
-          # - os: ubuntu-latest
-          #   python-version: "3.11"
+          - os: ubuntu-latest
+            python-version: "3.11"
 
           # Include pypy3.11 for Windows and Linux
           - os: windows-latest
