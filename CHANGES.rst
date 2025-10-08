@@ -1,6 +1,15 @@
 Changelog
 =========
 
+1.3.4 - 2025-10-??
+------------------
+
+- Avoid use of the deprecated ``pkg_resources`` module. [
+  `#47 <https://github.com/calmjs/calmjs.parse/issues/47>`_
+  `#48 <https://github.com/calmjs/calmjs.parse/issues/48>`_
+  ]
+- Ensure Python 3.14 support.
+
 1.3.3 - 2025-01-29
 ------------------
 
