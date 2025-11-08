@@ -21,7 +21,7 @@ class BuildHook(build_py):
 
 # Attributes
 
-version = '1.3.4'
+version = '1.3.5'
 
 classifiers = """
 Development Status :: 5 - Production/Stable
