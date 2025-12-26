@@ -9,20 +9,47 @@ from os.path import isabs
 from os.path import normpath
 from os.path import relpath
 
+
+class _Distribution(object):
+    def __init__(self, project_name, version):
+        self.project_name = project_name
+        self.version = version
+
+
 try:
-    from pkg_resources import working_set
-    from pkg_resources import Requirement
-    ply_dist = working_set.find(Requirement.parse('ply'))
-    # note that for **extremely** ancient versions of setuptools, e.g.
-    # setuptools<0.6c11, or some very non-standard environment that does
-    # not include the required metadata (e.g. pyinstaller without the
-    # required metadata), will require the following workaround...
-    if ply_dist is None:  # pragma: no cover
-        from pkg_resources import Distribution
-        import ply
-        ply_dist = Distribution(project_name='ply', version=ply.__version__)
+    from importlib import metadata
+    try:
+        ply_version = metadata.version('ply')
+    except Exception:  # pragma: no cover
+        ply_dist = None
+    else:
+        ply_dist = _Distribution(project_name='ply', version=ply_version)
 except ImportError:  # pragma: no cover
-    ply_dist = None
+    try:
+        from pkg_resources import working_set
+        from pkg_resources import Requirement
+        ply_dist = working_set.find(Requirement.parse('ply'))
+        # note that for **extremely** ancient versions of setuptools, e.g.
+        # setuptools<0.6c11, or some very non-standard environment that does
+        # not include the required metadata (e.g. pyinstaller without the
+        # required metadata), will require the following workaround...
+        if ply_dist:
+            # convert to our private version class
+            ply_dist = _Distribution(
+                project_name='ply',
+                version=ply_dist.version,
+            )
+        else:
+            try:
+                import ply
+                ply_dist = _Distribution(
+                    project_name='ply',
+                    version=ply.__version__,
+                )
+            except ImportError:
+                ply_dist = None
+    except ImportError:  # pragma: no cover
+        ply_dist = None
 
 py_major = sys.version_info.major
 unicode = unicode if py_major < 3 else None  # noqa: F821
